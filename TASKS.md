@@ -19,7 +19,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 - [x] 0.1 Nama produk: Satu Persen (kode dan domain: `satupersen`)
 - [x] 0.2 Buat project Supabase; catat URL, anon key, service role key (dikonfirmasi user 2026-10-28; kredensial diisi langsung ke `.env.local` di mesin user, tidak pernah masuk repo atau chat)
 - [ ] 0.3 Buat akun OpenRouter dan API key
-- [ ] 0.4 Pilih varian DeepSeek di [openrouter.ai/models](https://openrouter.ai/models): untuk output JSON pilih yang non-reasoning, dan pastikan ada provider yang lolos `data_collection: deny`. Uji 10 contoh entri (Indonesia, Inggris, campur, pendek, curhat berat), lalu isi `AI_MODEL_DAILY`, `AI_MODEL_CHAT`, `AI_MODEL_REPORT` (Sebagian 2026-10-28: model dipilih `deepseek/deepseek-v4.1-flash` dan sudah diisi ke `.env`; 5 dari 10 contoh entri sudah diuji hidup dengan hasil baik. Sisa: periksa filter data policy provider di dashboard OpenRouter, dan uji 5 contoh sisanya.)
+- [ ] 0.4 Pilih varian DeepSeek di [openrouter.ai/models](https://openrouter.ai/models): untuk output JSON pilih yang non-reasoning, dan pastikan ada provider yang lolos `data_collection: deny`. Uji 10 contoh entri (Indonesia, Inggris, campur, pendek, curhat berat), lalu isi `AI_MODEL_DAILY`, `AI_MODEL_CHAT`, `AI_MODEL_REPORT` (Sebagian 2026-10-28: model dipilih `deepseek/deepseek-v4.1-flash` dan sudah diisi ke `.env`; 5 dari 10 contoh entri sudah diuji hidup dengan hasil baik. Syarat `data_collection: deny` **sudah terbukti terpenuhi** tanpa perlu membuka dashboard: tujuh panggilan hidup dikirim dengan `provider.data_collection: "deny"` dan semuanya dilayani tanpa error, jadi ada provider yang lolos. Sisa: uji 5 contoh entri lagi.)
 - [ ] 0.5 Mulai verifikasi Meta Business, buat app WhatsApp Cloud API, siapkan nomor uji (jangan tunggu fase lain)
 - [ ] 0.6 Pilih gateway pembayaran (Midtrans atau Xendit) dan mulai aktivasi merchant
 - [ ] 0.7 Setujui atau ubah draf teks respons krisis di `PRD.md` §7, lalu verifikasi sendiri nomor Healing119 di healing119.id
@@ -52,7 +52,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 
 - [ ] 2.1 Editor `/today` dengan auto-save, auto-grow, dan mode fokus menulis di HP (DIARY-1, DIARY-2, DIARY-3, `DESIGN.md` §5 sampai §7)
 - [ ] 2.2 `/history` kalender, entri lampau hanya baca (DIARY-4)
-- [x] 2.3 Klien OpenRouter, schema zod, prompts (AI-2). Mock hanya boleh di file tes. (Selesai 2026-10-28: `src/lib/ai/openrouter.ts`, `schemas.ts`, `prompts.ts`. Diuji hidup dengan model sungguhan untuk 5 contoh entri, termasuk jalur krisis. Commit 3951886.)
+- [x] 2.3 Klien OpenRouter, schema zod, prompts (AI-2). Mock hanya boleh di file tes. (Selesai 2026-10-28: `src/lib/ai/openrouter.ts`, `schemas.ts`, `prompts.ts`. Diuji hidup dengan model sungguhan untuk 5 contoh entri, termasuk jalur krisis. Ditambah 9 tes klien ber-mock yang mengunci bentuk request, retry sekali, jalur krisis, error provider, dan env kosong. Commit 3951886.)
 - [x] 2.4 `scoring.ts` dan tes: pembobotan, dimensi tanpa data dikeluarkan lalu bobot dibagi ulang, `delta_pct` null jika data kurang (SCORE-1, SCORE-2) (Selesai 2026-10-28 lebih dulu dari 2.1-2.3 karena ketiganya terblokir kredensial. 17 tes baru, total 49 tes lulus, commit cbc3222.)
 - [ ] 2.5 `POST /api/ai/summarize` dan UI hasil dengan tombol "Rangkum hari ini": ringkasan, cincin skor, delta, alasan, kuota rangkum ulang, dan ketujuh state di `DESIGN.md` §7 (AI-1, AI-3, AI-4, SCORE-3)
 - [ ] 2.6 Penanganan krisis: `crisis.ts` (filter kata kunci, teks tetap), tampilan khusus tanpa skor (AI-5, PRD §7)
@@ -104,9 +104,21 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 - [ ] 6.2 Pembayaran dan webhook, sinkron ke `subscriptions` dan `profiles` (SUB-1 sampai SUB-3). **Terblokir sampai gateway diputuskan.**
 - [ ] 6.3 Export data (JSON) dan hapus akun beserta seluruh data
 - [ ] 6.4 Landing page sesuai `DESIGN.md` §10, `/privacy`, `/terms` (draf, wajib ditinjau manusia), dan manifest PWA sesuai `DESIGN.md` §5
-- [ ] 6.5 Checklist launch: semua env production terisi, audit RLS ulang, tidak ada log berisi isi diary, pencarian secret di repo, uji penuh di HP
+- [ ] 6.5 Checklist launch: semua env production terisi, audit RLS ulang, tidak ada log berisi isi diary, pencarian secret di repo, pencarian nama dan nilai tiap secret di hasil build (`.next/static`), uji RLS dengan anon key saja, uji akses data user lain dengan mengganti ID, cek header keamanan produksi (CSP, HSTS, nosniff, framing, Referrer-Policy), `npm audit`, uji penuh di HP
 
 **Selesai bila:** user baru bisa daftar, memakai fitur gratis, membayar, dan fitur premium terbuka; user bisa export dan menghapus akunnya.
+
+---
+
+## Fase 7 — Tanya diary-mu (setelah Fase 6)
+
+- [ ] 7.1 Migrasi: indeks pencarian dan `ask_usage` sesuai keputusan `PRD.md` §11, RLS aktif. Buktikan isolasi: pencarian user A tidak mengembalikan entri user B (ASK-1, ASK-8)
+- [ ] 7.2 Pengindeksan entri lewat tick atau setelah dirangkum, tidak pernah saat auto-save; ikut diperbarui dan dihapus bersama entri (ASK-8)
+- [ ] 7.3 `POST /api/ai/ask`: validasi zod, filter krisis, pencarian dengan sesi user, prompt berlandaskan entri di `prompts.ts`, validasi sumber terhadap hasil pencarian, kuota dan rate limit di server (ASK-1 sampai ASK-7)
+- [ ] 7.4 UI Tanya diary-mu dengan state loading, kosong, dan error. Wireframe dan penempatan navigasi ditambahkan dulu ke `DESIGN.md` dan perlu disetujui user
+- [ ] 7.5 Uji guardrail dengan model sungguhan, hasilnya dicatat: pertanyaan yang jawabannya ada, tidak ada, minta diagnosis, bertanda krisis, entri berisi instruksi tersembunyi (prompt injection), dan dua user dengan entri mirip
+
+**Selesai bila:** user bertanya tentang riwayatnya dan menerima jawaban bersumber tanggal yang benar; pertanyaan tanpa bukti dijawab "tidak menemukan"; tidak ada data lintas user yang bocor.
 
 ---
 
@@ -122,6 +134,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2.1, 2.2 | Butuh tabel `entries` dan user yang bisa login (1.2 dan 1.4), yang keduanya menunggu kredensial Supabase | Isi tiga variabel Supabase di `.env.local` |
 | 2.3, 2.5 | Butuh `OPENROUTER_API_KEY` dan ID model DeepSeek (Fase 0.3 dan 0.4); tanpa kunci, klien AI tidak bisa dijalankan end-to-end dengan model sungguhan | Buat akun dan API key OpenRouter, lalu pilih varian DeepSeek |
 | 2.6 | Teks respons krisis belum disetujui manusia (Fase 0.7); AI dilarang mengarang nomor layanan | Setujui atau ubah draf di `PRD.md` §7 |
+| 7.1 sampai 7.5 | Metode pencarian, model embedding, kuota per plan, dan persetujuan menyimpan indeks pencarian masih terbuka (`PRD.md` §11); selain itu bergantung pada Fase 2 sampai 6 | Putuskan empat butir ASK di `PRD.md` §11 sebelum Fase 7 dimulai |
 
 ## Catatan keputusan AI
 
@@ -163,10 +176,12 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 2.3 | Alur krisis dibuat dua tahap setelah uji hidup menemukan masalah nyata: untuk entri bertanda krisis, model hanya mengisi sebagian field sehingga schema penuh menolaknya dan hari itu berakhir `failed`. Sekarang `risk_flag` dan `language` dibaca lebih dulu; bila `risk_flag` true, teks model dibuang dan aplikasi memakai teks tetap dari `crisis.ts` tanpa skor, sesuai `PRD.md` §7 dan `DESIGN.md` §9. |
 | 2026-10-28 | Fase 2.3 | Uji hidup model `deepseek/deepseek-v4.1-flash` untuk 5 contoh entri: Indonesia, Inggris, campur, sangat pendek, dan tanda krisis. Hasil: bahasa mengikuti entri (entri campur dinilai `id` karena dominan Indonesia), entri sangat pendek mendapat skor dimensi 5, entri bertanda krisis mengembalikan `kind=crisis`. Harness uji hidup dihapus setelah dipakai agar `npm test` tidak pernah menembak jaringan. |
 | 2026-10-28 | Fase 2.3 | Commit `3951886` memuat migrasi 1.2 dan modul AI. 59 tes unit lulus (32 tanggal, 17 skor, 10 schema), `tsc`, `lint`, dan `build` lulus. |
+| 2026-10-28 | Fase 0.4 | Syarat "pastikan ada provider yang lolos `data_collection: deny`" terbukti terpenuhi tanpa membuka dashboard: seluruh uji hidup dikirim dengan `provider.data_collection: "deny"` dan dilayani tanpa error, jadi minimal satu provider untuk `deepseek/deepseek-v4.1-flash` memenuhi kebijakan itu. Kalau nanti muncul error "tidak ada provider", itu tanda untuk mengganti model atau provider, bukan alasan melonggarkan setelan (`AGENTS.md` §6). |
+| 2026-10-28 | Fase 2.3 | Ditambahkan `src/lib/ai/openrouter.test.ts` (9 tes, `fetch` di-stub; mock hanya di file tes sesuai 2.3). Tes mengunci: bentuk request (`temperature` 0.2, `response_format: json_object`, `provider.data_collection: deny`), retry sekali saat output tidak valid, gagal setelah dua kali, jalur krisis yang tidak butuh schema penuh, error provider yang membawa status, dan env kosong yang melempar `AiConfigError` tanpa memanggil jaringan. |
+| 2026-10-28 | Fase 2.3 | Total 68 tes unit lulus (32 tanggal, 17 skor, 10 schema, 9 klien). `tsc` dan `lint` lulus. |
 
 ## Ide ditunda
 
-- "Tanya diary-mu" (pencarian AI di seluruh riwayat)
 - Pesan suara WhatsApp dengan transkripsi
 - Catat expense dan habit lewat WhatsApp
 - Scan struk

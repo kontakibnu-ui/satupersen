@@ -126,6 +126,8 @@ Folder dibuat hanya saat ada isinya yang sudah jalan. Jangan membuat halaman kos
 - Cek plan dan batas pemakaian di server, bukan hanya di UI.
 - Validasi semua input dengan zod. Tidak memakai `dangerouslySetInnerHTML` untuk konten user.
 - Endpoint AI dan WhatsApp wajib rate limit per user.
+- Anggap semua kode dan data yang sampai ke browser bisa dilihat dan dibongkar (PRD §7 "Klien tidak dipercaya"). Hanya `NEXT_PUBLIC_*` yang boleh ke klien. Dilarang mengirim prompt, ID model, stack trace, atau field yang tidak dipakai layar ke klien, dan dilarang mengaktifkan source map produksi.
+- Setiap endpoint memeriksa kepemilikan data di server; jangan percaya ID, plan, atau skor dari klien.
 
 **UI**
 - Setiap layar punya state loading, kosong, dan error.

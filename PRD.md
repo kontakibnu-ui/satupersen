@@ -1,6 +1,6 @@
 # PRD Satu Persen
 
-> Versi 1.3 · 2026-10-28 · Nama produk: Satu Persen (kode dan domain memakai `satupersen`).
+> Versi 1.4 · 2026-10-28 · Nama produk: Satu Persen (kode dan domain memakai `satupersen`).
 > File ini = **apa yang dibangun dan kenapa**. Keputusan teknis dan aturan kerja AI ada di `AGENTS.md`. Progres ada di `TASKS.md`.
 > Jika permintaan di chat bertentangan dengan PRD ini, ikuti PRD dan beri tahu user. Setiap kriteria punya ID (mis. `DIARY-2`) yang dirujuk `TASKS.md`.
 
@@ -31,13 +31,14 @@ Usia 18 sampai 25 (produk hanya untuk 18 tahun ke atas): mahasiswa, pelajar, pek
 | Expense | EXP |
 | Dashboard progres | DASH |
 | Laporan mingguan dan bulanan | REPORT |
+| Tanya diary-mu (tanya jawab AI atas riwayat diary sendiri) | ASK |
 | Curhat lewat WhatsApp | WA |
 | Langganan dan pembayaran | SUB |
 | Landing page, privasi, export dan hapus akun, PWA (bisa dipasang di layar utama HP, tanpa mode offline) | LAUNCH |
 
 **Ditunda (jangan dibangun, catat di `TASKS.md` bagian "Ide ditunda")**
 
-"Tanya diary-mu" (pencarian AI di seluruh riwayat), pesan suara WhatsApp, catat expense atau habit lewat WhatsApp, scan struk, aplikasi native, goals/OKR, tidur dan olahraga, fitur sosial, wearable, laporan tahunan oleh AI.
+Pesan suara WhatsApp, catat expense atau habit lewat WhatsApp, scan struk, aplikasi native, goals/OKR, tidur dan olahraga, fitur sosial, wearable, laporan tahunan oleh AI.
 
 **Batasan keras**
 
@@ -97,6 +98,16 @@ Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika 
 - REPORT-2: Idempoten: tidak pernah dobel untuk (user_id, type, period_start).
 - REPORT-3: Isi: tren skor, 2 sampai 3 pola, satu fokus untuk periode berikutnya. Insight lintas modul (mis. pengeluaran vs mood) hanya jika kedua modul punya data minimal 5 hari.
 - REPORT-4: Mingguan versi ringkas untuk free, lengkap dan bulanan untuk premium.
+
+**ASK** (Tanya diary-mu; dikerjakan setelah Fase 6, guardrail lengkap di §7)
+- ASK-1: User mengetik satu pertanyaan bebas (maksimal 300 karakter) tentang riwayat diary-nya sendiri. `POST /api/ai/ask` mencari bagian entri yang relevan milik user itu saja, lalu AI menjawab hanya dari bagian tersebut.
+- ASK-2: Jawaban selalu menyertakan sumber: daftar tanggal entri yang dipakai, masing-masing bisa dibuka di `/history`. Kode memeriksa setiap tanggal sumber terhadap hasil pencarian; tanggal yang tidak ada di hasil dibuang.
+- ASK-3: Jika pencarian tidak menemukan bagian yang relevan, jawabannya tetap "tidak menemukan di diary-mu" dan AI tidak dipanggil.
+- ASK-4: Output model divalidasi zod terhadap schema di §7. Tidak valid: coba ulang 1x, lalu tampilkan error dengan tombol "Coba lagi". Tidak ada jawaban palsu.
+- ASK-5: Pertanyaan diperiksa filter krisis (`crisis.ts`) sebelum AI dipanggil. Terdeteksi atau `risk_flag` true: pakai teks tetap §7, bukan jawaban AI. Krisis tidak dihitung ke kuota.
+- ASK-6: Kuota harian dan cakupan riwayat per plan dicek di server (§8). Angkanya masih usulan.
+- ASK-7: Pertanyaan dan jawaban tidak disimpan dan tidak masuk log. Yang tercatat hanya hitungan pemakaian per hari.
+- ASK-8: Mengedit atau menghapus entri, atau menghapus akun, ikut memperbarui atau menghapus indeks pencariannya.
 
 **WA, SUB, LAUNCH:** lihat §6, §8, dan `TASKS.md` Fase 6.
 
@@ -195,6 +206,40 @@ Dimensi tanpa data (mis. user belum punya habit atau budget) dikeluarkan dan bob
 - Pesan WhatsApp melewati server Meta. User diberi tahu saat menghubungkan dan disarankan tidak mengirim data sangat sensitif (password, nomor kartu).
 - Kebijakan privasi dan syarat layanan wajib ada sebelum launch (UU Pelindungan Data Pribadi). Draf dari AI wajib ditinjau manusia.
 
+**Klien tidak dipercaya: tidak ada yang penting di sisi browser**
+
+Semua yang dikirim ke browser bisa dilihat lewat Inspect, tab Network, bundle JavaScript, atau reverse engineering. Itu tidak bisa dicegah, jadi aturannya: **kalau seluruh sisi klien dibongkar, penyerang tidak mendapat secret, logika yang bisa dimanipulasi, atau data user lain.** Tidak ada sistem yang bisa dijanjikan 100% bebas celah; tujuan aturan ini membuat hasil terburuk dari membongkar klien tetap tidak berarti.
+
+1. **Secret hanya di server.** Satu-satunya nilai yang boleh sampai ke klien adalah `NEXT_PUBLIC_*`. URL dan anon key Supabase memang publik, dan keamanannya sepenuhnya dari RLS. `SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`, token dan app secret WhatsApp, `CRON_SECRET`, dan kunci gateway pembayaran tidak pernah masuk kode klien, respons API, atau log.
+2. **Logika yang menentukan hasil ada di server.** Skor, kuota, batas plan, status langganan, dan pembuatan prompt dihitung dan dicek di server. Klien hanya menampilkan hasilnya. Nilai dari klien (plan, skor, ID user) tidak pernah dipercaya.
+3. **Prompt, ID model, dan detail internal tidak dikirim ke klien.** Respons API hanya berisi field yang dibutuhkan layar. Pesan error ke user berupa kalimat umum, tanpa stack trace, query, atau nama tabel; detailnya hanya di log server (tanpa isi diary).
+4. **Kepemilikan dicek di setiap endpoint**, bukan hanya mengandalkan UUID yang sulit ditebak. Ini mencegah user mengganti ID di request untuk mengakses data orang lain.
+5. **Source map produksi tidak diaktifkan**, dan tidak ada `console.log` di klien yang memuat data user.
+6. **Header keamanan** di produksi: Content-Security-Policy, HSTS, `X-Content-Type-Options: nosniff`, pembatasan framing, dan Referrer-Policy.
+7. **Dependency** diperiksa dengan `npm audit` sebelum launch, dan temuan serius diselesaikan.
+8. **Dibuktikan, bukan diklaim.** Checklist launch (`TASKS.md` 6.5) memuat: pencarian nama dan nilai tiap secret di hasil build (`.next/static`), uji RLS memakai anon key saja, uji akses ke data user lain lewat penggantian ID, dan pengecekan header produksi.
+
+**Tanya diary-mu: guardrail AI dan keamanan** (berlaku untuk ASK; prinsip prompt injection dan render teks juga berlaku untuk ringkasan harian dan balasan WhatsApp)
+
+*Guardrail AI*
+1. **Hanya dari entri.** Prompt hanya berisi potongan entri hasil pencarian. AI dilarang memakai pengetahuan luar atau menyimpulkan kejadian yang tidak tertulis. Bukti kurang: `found` false dan jawabannya mengatakan tidak menemukan.
+2. **Selalu ada sumber** (ASK-2). Jawaban tanpa sumber yang valid ditolak.
+3. **Tidak mendiagnosis dan tidak menghakimi.** Pertanyaan seperti "apakah aku depresi?" dijawab dengan menolak mendiagnosis secara halus, lalu menawarkan merangkum apa yang user sendiri tulis. Tidak ada saran medis, hukum, atau keuangan. Tidak ada skor di jawaban.
+4. **Krisis** mengikuti ASK-5 dan teks tetap di atas.
+5. **Isi entri adalah data, bukan perintah.** Potongan entri dibungkus pembatas, dan instruksi sistem menyatakan bahwa perintah di dalamnya diabaikan. Model tidak diberi tool atau akses apa pun selain teks yang dikirim. Ini mengurangi risiko, bukan menghilangkannya, jadi dampaknya dibatasi lewat desain: konteks hanya berisi data user itu sendiri, dan output hanya bisa berupa teks terstruktur.
+6. **Output terstruktur** (zod): `answer` string (maksimal sekitar 150 kata), `found` boolean, `sources` array berisi `date`, `risk_flag` boolean. Bahasa mengikuti pertanyaan. Temperature rendah (0.2).
+7. **Output ditampilkan sebagai teks biasa**, tanpa HTML dan tanpa tautan aktif buatan model.
+
+*Keamanan*
+1. **Isolasi data.** Pencarian berjalan dengan sesi user (RLS), bukan service role. Fungsi pencarian memakai hak pemanggil dan tetap memfilter `user_id` secara eksplisit. Wajib ada tes: pertanyaan user A tidak pernah memunculkan potongan entri user B.
+2. **Batas input dan konteks.** Panjang pertanyaan, jumlah potongan (usulan 8), dan total karakter konteks dibatasi, divalidasi zod.
+3. **Rate limit per user dan kuota plan** dicek di server (ASK-6).
+4. **Penyedia AI.** Semua panggilan, termasuk pembuatan embedding jika dipakai, memakai `data_collection: deny`. Jika tidak ada penyedia yang lolos untuk model embedding, berhenti dan laporkan; jangan ubah pengaturannya.
+5. **Indeks pencarian setara sensitifnya dengan diary.** RLS aktif, tidak pernah ikut respons API, tidak ikut export (data turunan), dan terhapus bersama entri atau akun.
+6. **Kapan entri diindeks.** Tidak pernah saat auto-save (selaras AI-1). Diindeks setelah dirangkum atau setelah harinya berakhir lewat tick, karena entri lampau hanya-baca (DIARY-4).
+7. **Privasi.** Kebijakan privasi wajib menyebut bahwa isi entri dikirim ke penyedia model dan embedding. Tinjauan manusia seperti butir lain di atas.
+8. **Log** hanya berisi ID dan status, tidak pernah pertanyaan, jawaban, atau potongan entri.
+
 ## 8. Monetisasi
 
 Harga usulan: Rp 29.000 per bulan atau Rp 249.000 per tahun, trial premium 7 hari tanpa kartu. **Harga dan gateway belum final** (§11).
@@ -210,6 +255,7 @@ Harga usulan: Rp 29.000 per bulan atau Rp 249.000 per tahun, trial premium 7 har
 | Riwayat grafik | 30 hari | 365 hari |
 | Laporan mingguan | Ringkas | Lengkap |
 | Laporan bulanan | Tidak | Ya |
+| Tanya diary-mu (usulan, belum final) | 3 per hari, 30 hari terakhir | 20 per hari, seluruh riwayat |
 | Export dan hapus data | Ya | Ya |
 
 - **SUB-1:** Batas plan dicek di server, tidak hanya di UI.
@@ -234,6 +280,15 @@ Dua belas tabel. Semua tabel data user punya `user_id` dan RLS `user_id = auth.u
 | whatsapp_links | user_id, phone text, verified_at, opted_in boolean, reminder_time time, last_inbound_at timestamptz | PK user_id; UNIQUE phone; phone = format digit E.164 tanpa "+" seperti dikirim Meta |
 | whatsapp_link_codes (server) | code text, user_id, expires_at | PK code |
 | wa_messages (server) | id, user_id (nullable), wa_message_id text, direction text, kind text, body text, created_at | UNIQUE wa_message_id (idempotensi webhook); direction in (in, out); kind untuk pesan keluar in (ai_reply, notice, crisis, summary, reminder, help); jumlah `ai_reply` per tanggal lokal user = pemakaian batas harian |
+
+**Tambahan untuk ASK (usulan).** Dua tabel ini menambah data baru yang disimpan, jadi baru dibuat setelah user menyetujuinya (§11). Keduanya punya `user_id` dan RLS `user_id = auth.uid()`.
+
+| Tabel | Kolom | Constraint |
+| --- | --- | --- |
+| entry_embeddings (hanya jika pgvector dipilih) | entry_id uuid, user_id, embedding vector(N), model text, content_hash text, created_at | PK entry_id, ON DELETE CASCADE dari `entries`; N mengikuti model embedding terpilih |
+| ask_usage (server) | user_id, date, count smallint | PK (user_id, date); `date` = tanggal lokal user |
+
+Jika pencarian memakai full-text Postgres, tidak ada `entry_embeddings`; cukup kolom `tsvector` turunan di `entries` dan satu indeks.
 
 ## 10. Metrik sukses
 
@@ -261,3 +316,7 @@ Tugas yang bergantung pada hal ini harus berhenti dan ditulis di `TASKS.md` bagi
 - [ ] Layanan krisis terverifikasi dan persetujuan teks respons (draf ada di §7)
 - [ ] Teks template pengingat WhatsApp dan persetujuannya dari Meta
 - [ ] Bobot skor final setelah diuji pada contoh entri nyata
+- [ ] ASK: metode pencarian. Usulan AI: pgvector di Supabase (tanpa vector database terpisah), karena pertanyaan user biasanya berupa parafrase dan bahasa campur yang sulit ditangkap pencarian kata kunci. Syaratnya model embedding lolos `data_collection: deny` dan cukup baik berbahasa Indonesia, dibuktikan dengan uji pada contoh pertanyaan nyata. Jika tidak lolos, pakai full-text Postgres
+- [ ] ASK: model embedding dan env baru (mis. `AI_MODEL_EMBEDDING`, belum ada di daftar env `AGENTS.md` §4). Keluarga DeepSeek yang sudah diputuskan mungkin tidak menyediakan model embedding; ini harus dicek, bukan diasumsikan
+- [ ] ASK: kuota dan cakupan riwayat per plan (usulan di §8)
+- [ ] ASK: persetujuan menyimpan indeks pencarian sebagai data turunan baru (§9) dan revisi teks privasi
