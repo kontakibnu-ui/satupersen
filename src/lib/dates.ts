@@ -1,3 +1,4 @@
+import { id as indonesianLocale } from "date-fns/locale";
 import { formatInTimeZone } from "date-fns-tz";
 
 /**
@@ -87,4 +88,15 @@ export function endOfMonthKey(key: DateKey): DateKey {
   const date = parseDateKey(key);
   const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
   return `${key.slice(0, 7)}-${pad(lastDay)}`;
+}
+
+/**
+ * "Selasa, 28 Oktober" for a date key, as DESIGN.md §4 asks. The key is a
+ * calendar day, so it is formatted in UTC to keep the machine's own time zone
+ * out of the result.
+ */
+export function formatDayLabel(key: DateKey): string {
+  return formatInTimeZone(parseDateKey(key), "UTC", "EEEE, d MMMM", {
+    locale: indonesianLocale,
+  });
 }

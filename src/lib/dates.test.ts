@@ -4,6 +4,7 @@ import {
   daysBetween,
   endOfMonthKey,
   endOfWeekKey,
+  formatDayLabel,
   lastNDays,
   startOfMonthKey,
   startOfWeekKey,
@@ -123,6 +124,18 @@ describe("months", () => {
   it("covers the whole month when combined", () => {
     expect(daysBetween(startOfMonthKey("2026-10-28"), endOfMonthKey("2026-10-28")) + 1).toBe(31);
     expect(daysBetween(startOfMonthKey("2028-02-10"), endOfMonthKey("2028-02-10")) + 1).toBe(29);
+  });
+});
+
+describe("formatDayLabel", () => {
+  it("menulis tanggal dalam Bahasa Indonesia sesuai DESIGN.md §4", () => {
+    expect(formatDayLabel("2026-10-28")).toBe("Rabu, 28 Oktober");
+    expect(formatDayLabel("2026-01-01")).toBe("Kamis, 1 Januari");
+    expect(formatDayLabel("2026-11-01")).toBe("Minggu, 1 November");
+  });
+
+  it("menolak kunci yang tidak valid", () => {
+    expect(() => formatDayLabel("2026-02-31")).toThrow(/Invalid date key/);
   });
 });
 

@@ -57,5 +57,5 @@ export async function completeOnboarding(formData: FormData): Promise<Onboarding
     return { ok: false, message: "Persetujuan belum tersimpan. Coba lagi sebentar lagi." };
   }
 
-  redirect("/settings");
+  redirect("/today");
 }

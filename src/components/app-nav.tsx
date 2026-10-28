@@ -1,6 +1,6 @@
 "use client";
 
-import { UserRound } from "lucide-react";
+import { NotebookPen, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,7 +13,10 @@ import { usePathname } from "next/navigation";
  * active item is marked with `primary` **and** `aria-current`, because colour
  * alone is never the only signal (DESIGN.md §13).
  */
-const NAV_ITEMS = [{ href: "/settings", label: "Akun", icon: UserRound }] as const;
+const NAV_ITEMS = [
+  { href: "/today", label: "Hari Ini", icon: NotebookPen },
+  { href: "/settings", label: "Akun", icon: UserRound },
+] as const;
 
 export function AppNav() {
   const pathname = usePathname();
@@ -24,6 +27,7 @@ export function AppNav() {
     <>
       <nav
         aria-label="Navigasi utama"
+        data-app-nav
         className="fixed inset-x-0 bottom-0 z-10 flex items-stretch justify-around border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {NAV_ITEMS.map((item) => (
@@ -43,6 +47,7 @@ export function AppNav() {
 
       <nav
         aria-label="Navigasi utama"
+        data-app-nav
         className="fixed inset-y-0 left-0 z-10 hidden w-[72px] flex-col items-center gap-2 border-r border-border bg-surface pt-6 md:flex lg:hidden"
       >
         {NAV_ITEMS.map((item) => (
@@ -62,6 +67,7 @@ export function AppNav() {
 
       <nav
         aria-label="Navigasi utama"
+        data-app-nav
         className="fixed inset-y-0 left-0 z-10 hidden w-[240px] flex-col gap-1 border-r border-border bg-surface px-3 pt-6 lg:flex"
       >
         {NAV_ITEMS.map((item) => (

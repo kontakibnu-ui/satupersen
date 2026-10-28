@@ -91,6 +91,17 @@ html.dark {
   color-scheme: only dark;
 }
 
+/*
+ * DESIGN.md §5: while the diary editor has focus on a phone, the bottom
+ * navigation is hidden so the keyboard does not cover the text. Tablets and
+ * laptops keep their rail and sidebar.
+ */
+@media (max-width: 767px) {
+  html[data-writing="true"] [data-app-nav] {
+    display: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

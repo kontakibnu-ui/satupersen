@@ -74,13 +74,26 @@ test("alur lengkap: tautan email, onboarding, lalu Akun", async ({ page }) => {
   await page.getByRole("checkbox", { name: /18 tahun/i }).check();
   await page.getByRole("button", { name: "Mulai" }).click();
 
-  // 1.7 plus 1.6d: the first (app) page, with the navigation around it.
-  await expect(page).toHaveURL(/\/settings/);
-  await expect(page.getByRole("heading", { name: "Akun" })).toBeVisible();
-  await expect(page.getByText(email)).toBeVisible();
+  // DIARY-1 plus 1.6d: the diary is the home screen, with the navigation around it.
+  await expect(page).toHaveURL(/\/today/);
+  await expect(page.getByRole("heading", { name: "Gimana harimu?" })).toBeVisible();
+  await expect(page.getByLabel("Tulisan hari ini")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Navigasi utama" }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Akun" }).first()).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Hari Ini" }).first()).toHaveAttribute(
     "aria-current",
     "page",
   );
+
+  // DIARY-2: the text survives a reload, so it really reached the database.
+  const text = "Hari ini aku akhirnya kelarin laporan yang tertunda.";
+  await page.getByLabel("Tulisan hari ini").fill(text);
+  await expect(page.getByRole("status")).toHaveText("Tersimpan", { timeout: 15_000 });
+  await page.reload();
+  await expect(page.getByLabel("Tulisan hari ini")).toHaveValue(text, { timeout: 15_000 });
+
+  // The navigation reaches the other page and marks it as current.
+  await page.getByRole("link", { name: "Akun" }).first().click();
+  await expect(page).toHaveURL(/\/settings/);
+  await expect(page.getByRole("heading", { name: "Akun" })).toBeVisible();
+  await expect(page.getByText(email)).toBeVisible();
 });

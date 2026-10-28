@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const origin = resolveOrigin(request);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/settings";
+  const next = searchParams.get("next") ?? "/today";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?status=gagal`);
