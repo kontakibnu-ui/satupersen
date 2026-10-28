@@ -19,7 +19,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 - [x] 0.1 Nama produk: Satu Persen (kode dan domain: `satupersen`)
 - [x] 0.2 Buat project Supabase; catat URL, anon key, service role key (dikonfirmasi user 2026-10-28; kredensial diisi langsung ke `.env.local` di mesin user, tidak pernah masuk repo atau chat)
 - [ ] 0.3 Buat akun OpenRouter dan API key
-- [ ] 0.4 Pilih varian DeepSeek di [openrouter.ai/models](https://openrouter.ai/models): untuk output JSON pilih yang non-reasoning, dan pastikan ada provider yang lolos `data_collection: deny`. Uji 10 contoh entri (Indonesia, Inggris, campur, pendek, curhat berat), lalu isi `AI_MODEL_DAILY`, `AI_MODEL_CHAT`, `AI_MODEL_REPORT`
+- [ ] 0.4 Pilih varian DeepSeek di [openrouter.ai/models](https://openrouter.ai/models): untuk output JSON pilih yang non-reasoning, dan pastikan ada provider yang lolos `data_collection: deny`. Uji 10 contoh entri (Indonesia, Inggris, campur, pendek, curhat berat), lalu isi `AI_MODEL_DAILY`, `AI_MODEL_CHAT`, `AI_MODEL_REPORT` (Sebagian 2026-10-28: model dipilih `deepseek/deepseek-v4.1-flash` dan sudah diisi ke `.env`; 5 dari 10 contoh entri sudah diuji hidup dengan hasil baik. Sisa: periksa filter data policy provider di dashboard OpenRouter, dan uji 5 contoh sisanya.)
 - [ ] 0.5 Mulai verifikasi Meta Business, buat app WhatsApp Cloud API, siapkan nomor uji (jangan tunggu fase lain)
 - [ ] 0.6 Pilih gateway pembayaran (Midtrans atau Xendit) dan mulai aktivasi merchant
 - [ ] 0.7 Setujui atau ubah draf teks respons krisis di `PRD.md` §7, lalu verifikasi sendiri nomor Healing119 di healing119.id
@@ -52,7 +52,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 
 - [ ] 2.1 Editor `/today` dengan auto-save, auto-grow, dan mode fokus menulis di HP (DIARY-1, DIARY-2, DIARY-3, `DESIGN.md` §5 sampai §7)
 - [ ] 2.2 `/history` kalender, entri lampau hanya baca (DIARY-4)
-- [ ] 2.3 Klien OpenRouter, schema zod, prompts (AI-2). Mock hanya boleh di file tes.
+- [x] 2.3 Klien OpenRouter, schema zod, prompts (AI-2). Mock hanya boleh di file tes. (Selesai 2026-10-28: `src/lib/ai/openrouter.ts`, `schemas.ts`, `prompts.ts`. Diuji hidup dengan model sungguhan untuk 5 contoh entri, termasuk jalur krisis. Commit 3951886.)
 - [x] 2.4 `scoring.ts` dan tes: pembobotan, dimensi tanpa data dikeluarkan lalu bobot dibagi ulang, `delta_pct` null jika data kurang (SCORE-1, SCORE-2) (Selesai 2026-10-28 lebih dulu dari 2.1-2.3 karena ketiganya terblokir kredensial. 17 tes baru, total 49 tes lulus, commit cbc3222.)
 - [ ] 2.5 `POST /api/ai/summarize` dan UI hasil dengan tombol "Rangkum hari ini": ringkasan, cincin skor, delta, alasan, kuota rangkum ulang, dan ketujuh state di `DESIGN.md` §7 (AI-1, AI-3, AI-4, SCORE-3)
 - [ ] 2.6 Penanganan krisis: `crisis.ts` (filter kata kunci, teks tetap), tampilan khusus tanpa skor (AI-5, PRD §7)
@@ -114,7 +114,9 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 
 | Tugas | Penyebab | Dibutuhkan dari manusia |
 | --- | --- | --- |
-| 1.2, 1.4, 1.5, 1.7 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, dan `SUPABASE_SERVICE_ROLE_KEY` belum ada di `.env.local` | Isi ketiga variabel dari dashboard Supabase langsung di file `.env.local` (jangan ditempel di chat) |
+| 1.2 | Kredensial Supabase sudah ada dan terverifikasi, tetapi connection string "Direct connection" hanya punya alamat IPv6 (`db.<ref>.supabase.co`), sedangkan mesin ini hanya IPv4; `supabase db push` gagal dengan `getaddrinfo ENOTFOUND` | Ambil URI **Session pooler** (IPv4) di dashboard → Connect, lalu isi sebagai `SUPABASE_DB_URL`. Alternatif: jalankan Docker Desktop agar saya pakai Supabase lokal, atau jalankan isi file migrasi sekali di SQL Editor dashboard |
+| 1.4 | Butuh tabel dari 1.2, ditambah OAuth client Google di Supabase Auth dan pengiriman email untuk magic link (layanan email bawaan Supabase sangat dibatasi) | Setelah 1.2: buat OAuth client Google dan daftarkan di Supabase → Authentication → Providers; tentukan SMTP |
+| 1.5, 1.7 | Bergantung pada 1.2 dan 1.4 | Menyusul otomatis setelah keduanya selesai |
 | 1.8 | Akun Vercel dan domain belum disiapkan (Fase 0.8) | Selesaikan 0.8, lalu beri URL production ke AI |
 | 1.6c (sisa) dan 1.6d | Belum ada halaman di grup `(app)` yang bisa dibungkus kontainer dan ditautkan navigasinya; membuat halaman kosong dilarang `AGENTS.md` §5 | Tidak ada dari manusia. Selesai otomatis begitu 1.7 mengerjakan `/settings`, yang menunggu kredensial Supabase pada baris di atas |
 | 2.1, 2.2 | Butuh tabel `entries` dan user yang bisa login (1.2 dan 1.4), yang keduanya menunggu kredensial Supabase | Isi tiga variabel Supabase di `.env.local` |
@@ -154,6 +156,13 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 2.4 | Kurva dimensi keuangan adalah tafsiran saya karena `PRD.md` hanya menyebut "pengeluaran hari itu vs budget harian": nilai 100 bila pengeluaran di bawah atau sama dengan budget harian, lalu turun garis lurus ke 0 tepat di dua kali budget harian, dan berhenti di 0 setelahnya. Ini perlu ditinjau user; angkanya mudah diubah di `financeValue`. |
 | 2026-10-28 | Fase 2.4 | Input yang tidak mungkin datang dari database melempar error, bukan dibulatkan diam-diam (mis. mood 6, `completedHabitCount` melebihi `activeHabitCount`, `daysInMonth` 0, `monthlyBudget` 0 yang akan membuat pembagian nol). `delta_pct` dibulatkan 1 angka desimal; pembulatan tampilan ditentukan UI di 3.5 dan 4.4. |
 | 2026-10-28 | Fase 2.4 | Total 49 tes lulus (32 tanggal + 17 skor), `tsc`, `lint`, dan `build` lulus. Commit `cbc3222`. |
+| 2026-10-28 | Lingkungan | Mesin ini tidak punya alamat IPv6 global dan `ipv6.google.com:443` tidak terjangkau, sedangkan host database Supabase "Direct connection" hanya punya alamat IPv6. Karena itu `supabase db push` gagal (`getaddrinfo ENOTFOUND`). Docker Desktop terpasang (v29.6.1) tetapi engine-nya belum berjalan, jadi Supabase lokal belum bisa dipakai. |
+| 2026-10-28 | Fase 1.2 | Migrasi 12 tabel, RLS di semua tabel, dan trigger `handle_new_user` ditulis di `supabase/migrations/20261028180000_init.sql`; `supabase init` sudah dijalankan. Migrasi belum bisa diterapkan sampai ada koneksi database, jadi bukti isolasi RLS juga masih menunggu. |
+| 2026-10-28 | Fase 1.2 | Policy `habit_logs` diperketat di luar `user_id = auth.uid()`: baris hanya boleh dibuat bila `habit_id` itu milik user yang sama, supaya log tidak bisa ditempelkan ke habit milik user lain dan mengacaukan perhitungan streak-nya. Tabel server-only (`subscriptions`, `whatsapp_link_codes`, `wa_messages`) tetap tanpa policy, dan `anon` dicabut semua hak akses tabel. |
+| 2026-10-28 | Fase 2.3 | Klien OpenRouter, schema zod, dan prompt selesai. Setiap request memakai `temperature` 0.2, `response_format: { type: "json_object" }`, `provider.data_collection: "deny"`, dan timeout 30 detik. Output tidak valid dicoba ulang sekali, lalu melempar error supaya pemanggil menandai status `failed` (AI-2). |
+| 2026-10-28 | Fase 2.3 | Alur krisis dibuat dua tahap setelah uji hidup menemukan masalah nyata: untuk entri bertanda krisis, model hanya mengisi sebagian field sehingga schema penuh menolaknya dan hari itu berakhir `failed`. Sekarang `risk_flag` dan `language` dibaca lebih dulu; bila `risk_flag` true, teks model dibuang dan aplikasi memakai teks tetap dari `crisis.ts` tanpa skor, sesuai `PRD.md` §7 dan `DESIGN.md` §9. |
+| 2026-10-28 | Fase 2.3 | Uji hidup model `deepseek/deepseek-v4.1-flash` untuk 5 contoh entri: Indonesia, Inggris, campur, sangat pendek, dan tanda krisis. Hasil: bahasa mengikuti entri (entri campur dinilai `id` karena dominan Indonesia), entri sangat pendek mendapat skor dimensi 5, entri bertanda krisis mengembalikan `kind=crisis`. Harness uji hidup dihapus setelah dipakai agar `npm test` tidak pernah menembak jaringan. |
+| 2026-10-28 | Fase 2.3 | Commit `3951886` memuat migrasi 1.2 dan modul AI. 59 tes unit lulus (32 tanggal, 17 skor, 10 schema), `tsc`, `lint`, dan `build` lulus. |
 
 ## Ide ditunda
 
