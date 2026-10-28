@@ -53,7 +53,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 - [ ] 2.1 Editor `/today` dengan auto-save, auto-grow, dan mode fokus menulis di HP (DIARY-1, DIARY-2, DIARY-3, `DESIGN.md` §5 sampai §7)
 - [ ] 2.2 `/history` kalender, entri lampau hanya baca (DIARY-4)
 - [ ] 2.3 Klien OpenRouter, schema zod, prompts (AI-2). Mock hanya boleh di file tes.
-- [ ] 2.4 `scoring.ts` dan tes: pembobotan, dimensi tanpa data dikeluarkan lalu bobot dibagi ulang, `delta_pct` null jika data kurang (SCORE-1, SCORE-2)
+- [x] 2.4 `scoring.ts` dan tes: pembobotan, dimensi tanpa data dikeluarkan lalu bobot dibagi ulang, `delta_pct` null jika data kurang (SCORE-1, SCORE-2) (Selesai 2026-10-28 lebih dulu dari 2.1-2.3 karena ketiganya terblokir kredensial. 17 tes baru, total 49 tes lulus, commit cbc3222.)
 - [ ] 2.5 `POST /api/ai/summarize` dan UI hasil dengan tombol "Rangkum hari ini": ringkasan, cincin skor, delta, alasan, kuota rangkum ulang, dan ketujuh state di `DESIGN.md` §7 (AI-1, AI-3, AI-4, SCORE-3)
 - [ ] 2.6 Penanganan krisis: `crisis.ts` (filter kata kunci, teks tetap), tampilan khusus tanpa skor (AI-5, PRD §7)
 
@@ -117,6 +117,9 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 1.2, 1.4, 1.5, 1.7 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, dan `SUPABASE_SERVICE_ROLE_KEY` belum ada di `.env.local` | Isi ketiga variabel dari dashboard Supabase langsung di file `.env.local` (jangan ditempel di chat) |
 | 1.8 | Akun Vercel dan domain belum disiapkan (Fase 0.8) | Selesaikan 0.8, lalu beri URL production ke AI |
 | 1.6c (sisa) dan 1.6d | Belum ada halaman di grup `(app)` yang bisa dibungkus kontainer dan ditautkan navigasinya; membuat halaman kosong dilarang `AGENTS.md` §5 | Tidak ada dari manusia. Selesai otomatis begitu 1.7 mengerjakan `/settings`, yang menunggu kredensial Supabase pada baris di atas |
+| 2.1, 2.2 | Butuh tabel `entries` dan user yang bisa login (1.2 dan 1.4), yang keduanya menunggu kredensial Supabase | Isi tiga variabel Supabase di `.env.local` |
+| 2.3, 2.5 | Butuh `OPENROUTER_API_KEY` dan ID model DeepSeek (Fase 0.3 dan 0.4); tanpa kunci, klien AI tidak bisa dijalankan end-to-end dengan model sungguhan | Buat akun dan API key OpenRouter, lalu pilih varian DeepSeek |
+| 2.6 | Teks respons krisis belum disetujui manusia (Fase 0.7); AI dilarang mengarang nomor layanan | Setujui atau ubah draf di `PRD.md` §7 |
 
 ## Catatan keputusan AI
 
@@ -146,6 +149,11 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 1.6 | Commit `5cdd519`: `build`, `lint`, `tsc`, 32 tes vitest, dan 12 tes Playwright lulus. Catatan terbuka: komponen shadcn memakai varian `dark:` berbasis kelas `.dark`, sedangkan token mengikuti sistem; kelas `.dark` baru dipasang di 1.7, jadi sebelum itu varian `dark:` di komponen shadcn belum aktif saat sistem gelap. |
 | 2026-10-28 | Fase 1.1 | `npm install` di dalam OneDrive butuh sekitar 5 menit untuk 357 paket. `node_modules`, `.next`, `test-results`, dan `*.tsbuildinfo` tidak ikut ter-commit. Commit pertama: `7f1073a`. |
 | 2026-10-28 | Fase 1.6 | Rute `/` masih berisi teks bawaan scaffold (`--empty`: "Hello world!") karena halaman Hari Ini baru dibuat di 2.1 dan landing page di 6.4. Ini teks bawaan, bukan data contoh buatan AI, dan tidak boleh ditambahi konten palsu. |
+| 2026-10-28 | Fase 2.4 | 2.4 dikerjakan sebelum 2.1-2.3 karena 2.1 dan 2.2 butuh tabel serta login (terblokir kredensial Supabase) dan 2.3 serta 2.5 butuh API key OpenRouter. `scoring.ts` adalah fungsi murni tanpa ketergantungan keduanya, dan `SCORE-1` memang memisahkan perhitungan skor dari jalur AI. |
+| 2026-10-28 | Fase 2.4 | Bobot dimensi disimpan sebagai konstanta `DIMENSION_WEIGHTS` (kebiasaan 30%, produktivitas 30%, mood dan energi 25%, keuangan 15%) sesuai tabel `PRD.md` §5, tetapi `PRD.md` §11 masih membuka "bobot skor final setelah diuji pada contoh entri nyata". Konstanta ini satu tempat, jadi mengubahnya murah setelah user menguji dengan entri asli. |
+| 2026-10-28 | Fase 2.4 | Kurva dimensi keuangan adalah tafsiran saya karena `PRD.md` hanya menyebut "pengeluaran hari itu vs budget harian": nilai 100 bila pengeluaran di bawah atau sama dengan budget harian, lalu turun garis lurus ke 0 tepat di dua kali budget harian, dan berhenti di 0 setelahnya. Ini perlu ditinjau user; angkanya mudah diubah di `financeValue`. |
+| 2026-10-28 | Fase 2.4 | Input yang tidak mungkin datang dari database melempar error, bukan dibulatkan diam-diam (mis. mood 6, `completedHabitCount` melebihi `activeHabitCount`, `daysInMonth` 0, `monthlyBudget` 0 yang akan membuat pembagian nol). `delta_pct` dibulatkan 1 angka desimal; pembulatan tampilan ditentukan UI di 3.5 dan 4.4. |
+| 2026-10-28 | Fase 2.4 | Total 49 tes lulus (32 tanggal + 17 skor), `tsc`, `lint`, dan `build` lulus. Commit `cbc3222`. |
 
 ## Ide ditunda
 
