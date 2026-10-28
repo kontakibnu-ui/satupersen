@@ -1,7 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3000;
-const BASE_URL = `http://localhost:${PORT}`;
+/**
+ * 127.0.0.1 rather than localhost on purpose: the local Supabase stack allows
+ * redirects to http://127.0.0.1:3000 (site_url in supabase/config.toml), and a
+ * magic link redirect must stay on the same host as the session cookies.
+ */
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",

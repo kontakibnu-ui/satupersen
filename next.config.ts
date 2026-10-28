@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
    * nature; nothing is prerendered for everyone.
    */
   cacheComponents: false,
+
+  /**
+   * Playwright talks to the dev server over http://127.0.0.1:3000, because the
+   * local Supabase stack only allows magic link redirects back to that host
+   * (site_url in supabase/config.toml). Next.js 16 blocks dev resources for
+   * origins it does not know, which silently stops the client bundle from
+   * loading and leaves the page unhydrated, so the host is allowed here.
+   */
+  allowedDevOrigins: ["127.0.0.1"],
   turbopack: {
     rules: {
       "*.css": {

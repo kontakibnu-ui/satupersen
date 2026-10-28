@@ -14,6 +14,27 @@ const anonKey = process.env.LOCAL_SUPABASE_ANON_KEY;
 const serviceKey = process.env.LOCAL_SUPABASE_SERVICE_KEY;
 const configured = Boolean(url && anonKey && serviceKey);
 
+/**
+ * The values can be present while the stack is stopped (they live in
+ * .env.local), so reachability is checked too: `npm test` must keep passing on
+ * a machine without Docker running.
+ */
+async function isReachable(): Promise<boolean> {
+  if (!configured) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${url}/auth/v1/health`, { signal: AbortSignal.timeout(3000) });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+const stackIsUp = await isReachable();
+
 const authHeaders = (key: string, token?: string) => ({
   apikey: key,
   Authorization: `Bearer ${token ?? key}`,
@@ -86,7 +107,7 @@ async function post(path: string, key: string, token: string | undefined, payloa
   return { status: response.status, body: (await response.json().catch(() => null)) as unknown };
 }
 
-describe.skipIf(!configured)("isolasi RLS dengan dua user sungguhan", () => {
+describe.skipIf(!stackIsUp)("isolasi RLS dengan dua user sungguhan", () => {
   beforeAll(async () => {
     idA = await createUser(userA.email, userA.password);
     idB = await createUser(userB.email, userB.password);
@@ -146,10 +167,40 @@ describe.skipIf(!configured)("isolasi RLS dengan dua user sungguhan", () => {
     expect(status).toBeGreaterThanOrEqual(400);
   });
 
-  it("tabel server-only tidak bisa dibaca user biasa", async () => {
-    for (const table of ["subscriptions", "wa_messages", "whatsapp_link_codes"]) {
-      const { status } = await get(`${table}?select=*`, anonKey as string, tokenA);
-      expect(status, `tabel ${table}`).toBeGreaterThanOrEqual(400);
+  it("tabel server-only tidak membocorkan baris dan menolak tulisan user biasa", async () => {
+    const readOnlyTables = ["subscriptions", "wa_messages", "whatsapp_link_codes"];
+
+    for (const table of readOnlyTables) {
+      const read = await get(`${table}?select=*`, anonKey as string, tokenA);
+
+      // RLS without policies hides every row: PostgREST then answers 200 with an
+      // empty array. A 4xx is also fine, but a 200 with rows would be a leak.
+      if (read.status === 200) {
+        expect(read.body, `baris terlihat di ${table}`).toEqual([]);
+      } else {
+        expect(read.status, `baca ${table}`).toBeGreaterThanOrEqual(400);
+      }
+    }
+
+    // A row that would be valid on its own must still be refused by RLS.
+    const attempts = [
+      {
+        table: "subscriptions",
+        payload: { user_id: idA, provider: "uji", provider_ref: `uji-${stamp}`, plan: "premium", status: "active" },
+      },
+      {
+        table: "wa_messages",
+        payload: { user_id: idA, wa_message_id: `uji-${stamp}`, direction: "in", body: "uji" },
+      },
+      {
+        table: "whatsapp_link_codes",
+        payload: { code: `UJI${stamp}`, user_id: idA, expires_at: new Date().toISOString() },
+      },
+    ];
+
+    for (const attempt of attempts) {
+      const written = await post(attempt.table, anonKey as string, tokenA, attempt.payload);
+      expect(written.status, `tulis ke ${attempt.table}`).toBeGreaterThanOrEqual(400);
     }
   });
 

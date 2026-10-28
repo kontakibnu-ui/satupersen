@@ -64,7 +64,13 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!isLoggedIn && !isPublicPath(pathname)) {
-    const loginUrl = new URL("/login", request.url);
+    // Built from the Host header: `next dev` canonicalises request.url to its
+    // own host, and redirecting to another host would lose the session cookies.
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+    const proto = request.headers.get("x-forwarded-proto") ?? "http";
+    const origin = host ? `${proto}://${host}` : request.nextUrl.origin;
+
+    const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set("next", pathname);
 
     return NextResponse.redirect(loginUrl);
@@ -75,6 +81,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
+    // Static assets and the dev-only hot reload sockets never need a session
+    // check; letting them through keeps the client bundle and HMR working.
+    "/((?!_next/static|_next/image|_next/hmr|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
   ],
 };
