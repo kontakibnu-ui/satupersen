@@ -103,7 +103,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 - [ ] 6.1 Gating plan di server untuk semua batas di PRD §8
 - [ ] 6.2 Pembayaran dan webhook, sinkron ke `subscriptions` dan `profiles` (SUB-1 sampai SUB-3). **Terblokir sampai gateway diputuskan.**
 - [ ] 6.3 Export data (JSON) dan hapus akun beserta seluruh data
-- [ ] 6.4 Landing page sesuai `DESIGN.md` §10, `/privacy`, `/terms` (draf, wajib ditinjau manusia), dan manifest PWA sesuai `DESIGN.md` §5
+- [ ] 6.4 Landing page sesuai `DESIGN.md` §10, `/privacy`, `/terms` (draf, wajib ditinjau manusia), dan manifest PWA sesuai `DESIGN.md` §5. Kebijakan privasi wajib menyebut bahwa isi entri dikirim ke penyedia model, dan ke penyedia embedding bila pgvector dipakai (PRD §7)
 - [ ] 6.5 Checklist launch: semua env production terisi, audit RLS ulang, tidak ada log berisi isi diary, pencarian secret di repo, pencarian nama dan nilai tiap secret di hasil build (`.next/static`), uji RLS dengan anon key saja, uji akses data user lain dengan mengganti ID, cek header keamanan produksi (CSP, HSTS, nosniff, framing, Referrer-Policy), `npm audit`, uji penuh di HP
 
 **Selesai bila:** user baru bisa daftar, memakai fitur gratis, membayar, dan fitur premium terbuka; user bisa export dan menghapus akunnya.
@@ -113,9 +113,9 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 ## Fase 7 — Tanya diary-mu (setelah Fase 6)
 
 - [ ] 7.1 Migrasi: indeks pencarian dan `ask_usage` sesuai keputusan `PRD.md` §11, RLS aktif. Buktikan isolasi: pencarian user A tidak mengembalikan entri user B (ASK-1, ASK-8)
-- [ ] 7.2 Pengindeksan entri lewat tick atau setelah dirangkum, tidak pernah saat auto-save; ikut diperbarui dan dihapus bersama entri (ASK-8)
-- [ ] 7.3 `POST /api/ai/ask`: validasi zod, filter krisis, pencarian dengan sesi user, prompt berlandaskan entri di `prompts.ts`, validasi sumber terhadap hasil pencarian, kuota dan rate limit di server (ASK-1 sampai ASK-7)
-- [ ] 7.4 UI Tanya diary-mu dengan state loading, kosong, dan error. Wireframe dan penempatan navigasi ditambahkan dulu ke `DESIGN.md` dan perlu disetujui user
+- [ ] 7.2 Pengindeksan entri lewat tick atau setelah dirangkum, tidak pernah saat auto-save; ikut diperbarui dan dihapus bersama entri (ASK-8); indeks tidak ikut export dan tidak pernah muncul di respons API (data turunan, PRD §7)
+- [ ] 7.3 `POST /api/ai/ask`: validasi zod (pertanyaan maks 300 karakter, potongan maks 8, batas total karakter konteks), filter krisis, pencarian dengan sesi user, prompt berlandaskan entri di `prompts.ts`, validasi sumber terhadap hasil pencarian, kuota dan rate limit di server (ASK-1 sampai ASK-7); pertanyaan dan jawaban tidak disimpan dan tidak masuk log, yang tercatat hanya hitungan pemakaian harian (ASK-7); jalur krisis tidak dihitung ke kuota (ASK-5); pesan error ke user berupa kalimat umum tanpa detail internal (PRD §7, AGENTS.md §6)
+- [ ] 7.4 UI Tanya diary-mu dengan state loading, kosong, dan error; jawaban ditampilkan sebagai teks biasa tanpa HTML dan tanpa tautan aktif buatan model, dengan sumber yang bisa dibuka di `/history` (PRD §7). Wireframe dan penempatan navigasi ditambahkan dulu ke `DESIGN.md` dan perlu disetujui user
 - [ ] 7.5 Uji guardrail dengan model sungguhan, hasilnya dicatat: pertanyaan yang jawabannya ada, tidak ada, minta diagnosis, bertanda krisis, entri berisi instruksi tersembunyi (prompt injection), dan dua user dengan entri mirip
 
 **Selesai bila:** user bertanya tentang riwayatnya dan menerima jawaban bersumber tanggal yang benar; pertanyaan tanpa bukti dijawab "tidak menemukan"; tidak ada data lintas user yang bocor.
@@ -134,7 +134,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2.1, 2.2 | Butuh tabel `entries` dan user yang bisa login (1.2 dan 1.4), yang keduanya menunggu kredensial Supabase | Isi tiga variabel Supabase di `.env.local` |
 | 2.3, 2.5 | Butuh `OPENROUTER_API_KEY` dan ID model DeepSeek (Fase 0.3 dan 0.4); tanpa kunci, klien AI tidak bisa dijalankan end-to-end dengan model sungguhan | Buat akun dan API key OpenRouter, lalu pilih varian DeepSeek |
 | 2.6 | Teks respons krisis belum disetujui manusia (Fase 0.7); AI dilarang mengarang nomor layanan | Setujui atau ubah draf di `PRD.md` §7 |
-| 7.1 sampai 7.5 | Metode pencarian, model embedding, kuota per plan, dan persetujuan menyimpan indeks pencarian masih terbuka (`PRD.md` §11); selain itu bergantung pada Fase 2 sampai 6 | Putuskan empat butir ASK di `PRD.md` §11 sebelum Fase 7 dimulai |
+| 7.1 sampai 7.5 | Metode pencarian, model embedding, kuota per plan, dan persetujuan menyimpan indeks pencarian masih terbuka (`PRD.md` §11); selain itu bergantung pada Fase 2 sampai 6. Temuan verifikasi 2026-10-28: katalog OpenRouter (464 model) tidak memuat satu pun model embedding dan keluarga DeepSeek tidak menyediakan embedding, jadi usulan pgvector butuh penyedia embedding di luar keputusan terkunci `AGENTS.md` §4 | Putuskan empat butir ASK di `PRD.md` §11 sebelum Fase 7 dimulai. Pilihan realistis: full-text Postgres (tanpa penyedia baru, lebih lemah untuk pertanyaan parafrase) atau pgvector dengan penyedia embedding baru (mis. OpenAI, Gemini, Cohere langsung, atau model lokal) plus revisi `AGENTS.md` §4 |
 
 ## Catatan keputusan AI
 
@@ -179,6 +179,11 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 0.4 | Syarat "pastikan ada provider yang lolos `data_collection: deny`" terbukti terpenuhi tanpa membuka dashboard: seluruh uji hidup dikirim dengan `provider.data_collection: "deny"` dan dilayani tanpa error, jadi minimal satu provider untuk `deepseek/deepseek-v4.1-flash` memenuhi kebijakan itu. Kalau nanti muncul error "tidak ada provider", itu tanda untuk mengganti model atau provider, bukan alasan melonggarkan setelan (`AGENTS.md` §6). |
 | 2026-10-28 | Fase 2.3 | Ditambahkan `src/lib/ai/openrouter.test.ts` (9 tes, `fetch` di-stub; mock hanya di file tes sesuai 2.3). Tes mengunci: bentuk request (`temperature` 0.2, `response_format: json_object`, `provider.data_collection: deny`), retry sekali saat output tidak valid, gagal setelah dua kali, jalur krisis yang tidak butuh schema penuh, error provider yang membawa status, dan env kosong yang melempar `AiConfigError` tanpa memanggil jaringan. |
 | 2026-10-28 | Fase 2.3 | Total 68 tes unit lulus (32 tanggal, 17 skor, 10 schema, 9 klien). `tsc` dan `lint` lulus. |
+| 2026-10-28 | Dokumen | `PRD.md` naik ke v1.4 dan `AGENTS.md` §6 bertambah dua aturan keamanan (klien tidak dipercaya; setiap endpoint memeriksa kepemilikan data di server). Keduanya ditulis user dan ikut ter-commit di `d38ed36`. Modul ASK pindah dari "Ide ditunda" ke MVP dengan catatan "dikerjakan setelah Fase 6", dan Fase 7 di `TASKS.md` juga dari user. |
+| 2026-10-28 | Dokumen | Saya sempat menambahkan bagian Fase 7 kedua di `TASKS.md` tanpa memeriksa dulu bahwa user sudah membuatnya; bagian duplikat itu dihapus. Butir `PRD.md` yang belum tercantum di Fase 7 versi user ditambahkan sebagai klausa pada 7.2, 7.3, 7.4, dan 6.4, bukan sebagai tugas baru. |
+| 2026-10-28 | Aturan baru | Aturan baru `AGENTS.md` §6 berlaku mulai pekerjaan berikutnya: respons API hanya memuat field yang dibutuhkan layar, pesan error ke user berupa kalimat umum tanpa stack trace, prompt dan ID model tidak sampai ke klien, dan source map produksi tidak diaktifkan. `openrouter.ts` sudah menyimpan ID model di server saja; tugas 2.5 wajib menerjemahkan `AiConfigError`, `AiProviderError`, dan `AiOutputError` menjadi kalimat umum. |
+| 2026-10-28 | Fase 7 | Verifikasi katalog OpenRouter (464 model, 2026-10-28): **nol model embedding**, dan tidak ada embedding dari keluarga DeepSeek. Jadi usulan pgvector di `PRD.md` §11 tidak bisa dijalankan lewat OpenRouter; pilihannya full-text Postgres atau menambah penyedia embedding baru di luar keputusan terkunci. |
+| 2026-10-28 | Fase 7 | Catatan teknis untuk keputusan itu: Postgres tidak punya konfigurasi pencarian teks `indonesian` bawaan, sehingga full-text untuk entri campur Indonesia-Inggris kemungkinan memakai konfigurasi `simple` dan lebih lemah untuk pertanyaan parafrase. Itu justru alasan pgvector menarik, dengan harga berupa penyedia embedding baru. |
 
 ## Ide ditunda
 
