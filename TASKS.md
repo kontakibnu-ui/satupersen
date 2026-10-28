@@ -32,7 +32,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 
 ## Fase 1 — Fondasi dan deploy awal
 
-- [ ] 1.1 `git init` jika belum ada repo. Scaffold Next.js (TypeScript strict, Tailwind, shadcn/ui, vitest, Playwright, `@axe-core/playwright`). Script `npm test` dan `npm run test:ui` jalan. `.gitignore` mencakup `.env*`. `.env.example` berisi semua nama env dari `AGENTS.md` §4.
+- [x] 1.1 `git init` jika belum ada repo. Scaffold Next.js (TypeScript strict, Tailwind, shadcn/ui, vitest, Playwright, `@axe-core/playwright`). Script `npm test` dan `npm run test:ui` jalan. `.gitignore` mencakup `.env*`. `.env.example` berisi semua nama env dari `AGENTS.md` §4. (Selesai 2026-10-28, bukti di laporan: build, lint, tsc, vitest, test:ui 7/7 lulus; commit 7f1073a.)
 - [ ] 1.2 Migrasi SQL 12 tabel sesuai PRD §9, RLS di semua tabel, dan trigger yang membuat `profiles` saat user baru (AUTH-3). Buktikan isolasi: tulis hasil query yang menunjukkan user A tidak bisa membaca data user B.
 - [ ] 1.3 `src/lib/dates.ts` dan tes vitest (timezone Asia/Jakarta, pergantian hari, WITA dan WIT)
 - [ ] 1.4 Login Google dan magic link, middleware proteksi grup `(app)` (AUTH-1, AUTH-2)
@@ -124,6 +124,13 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 1.1 | Scaffold memakai `--empty` agar tidak ada halaman demo berisi konten palsu (`DESIGN.md` §12). `--react-compiler` dan cache components tidak dipakai karena tidak diminta PRD. |
 | 2026-10-28 | Fase 1.1 | `.gitignore` bawaan Next mengabaikan `.env*` termasuk `.env.example`; perlu ditambah `!.env.example` agar template env tetap ikut masuk repo. |
 | 2026-10-28 | Fase 1.1 | Versi paket terbaru di registry npm per 2026-10-28 (periksa ulang saat install): next dan create-next-app 16.4.3, tailwindcss 4.3.3, shadcn 4.23.0, vitest 5.0.5, @playwright/test 1.64.1, @axe-core/playwright 4.14.0, @supabase/ssr 0.12.7, @supabase/supabase-js 2.118.0, zod 4.6.7, recharts 3.10.1, date-fns 4.4.0, date-fns-tz 3.2.0. |
+| 2026-10-28 | Fase 1.1 | `@types/node` dinaikkan dari `^20` ke `^22` karena `vitest@5.0.5` mensyaratkan peer `@types/node@^22 \|\| >=24`, dan `^22` sejalan dengan Node v22.23.2 di mesin ini. |
+| 2026-10-28 | Fase 1.1 | Konfigurasi vitest diberi ekstensi `.mts` agar tidak dibaca sebagai CommonJS (menghilangkan peringatan `configLoader` dari Vite). |
+| 2026-10-28 | Fase 1.1 | Script `test` memakai `--passWithNoTests` sementara; dihapus di 1.3 setelah `src/lib/dates.test.ts` ada, supaya pola include yang salah tidak lolos diam-diam. |
+| 2026-10-28 | Fase 1.1 | shadcn/ui memakai library primitif **Base UI** dan preset `nova` (dipilih user). `shadcn init` menambahkan font Geist di `layout.tsx` dan token netral di `globals.css`; keduanya menyimpang dari `DESIGN.md` §3 dan §4 dan wajib diganti di 1.6. |
+| 2026-10-28 | Fase 1.1 | `npm run test:ui` menjalankan `next dev` lewat `webServer` Playwright (bukan build produksi) untuk kecepatan di mesin ini. Smoke test `e2e/smoke.spec.ts` memeriksa scroll horizontal, axe serius/kritis, dan target sentuh 44 px di 360/768/1280 px mode terang dan gelap; diperluas/diganti di 1.6 sesuai `DESIGN.md` §13. |
+| 2026-10-28 | Fase 1.1 | `shadcn init` bersifat interaktif: butuh `-b <base>` dan `-p <preset>` eksplisit (preset valid: nova, vega, maia, lyra, mira, luma, sera, rhea) agar tidak menggantung di prompt. |
+| 2026-10-28 | Fase 1.1 | `npm install` di dalam OneDrive butuh sekitar 5 menit untuk 357 paket. `node_modules`, `.next`, `test-results`, dan `*.tsbuildinfo` tidak ikut ter-commit. Commit pertama: `7f1073a`. |
 
 ## Ide ditunda
 
