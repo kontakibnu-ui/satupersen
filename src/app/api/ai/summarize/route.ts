@@ -39,6 +39,8 @@ type SummarizeResponse =
       score: number;
       deltaPct: number | null;
       scoreReason: string;
+      /** Scored days behind the percentage, so the screen can say (2/3). */
+      scoredDays: number;
     }
   | { kind: "crisis" }
   | { kind: "error"; message: string };
@@ -227,6 +229,7 @@ export async function POST(request: Request) {
     score: score.score,
     deltaPct,
     scoreReason: summary.score_reason,
+    scoredDays: previousScores.length,
   });
 }
 

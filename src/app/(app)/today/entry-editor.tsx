@@ -24,9 +24,14 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 export function EntryEditor({
   date,
   initialContent,
+  onContentChange,
+  onSaved,
 }: {
   date: string;
   initialContent: string;
+  /** Lets the page know whether the text changed after it was summarised. */
+  onContentChange?: (value: string) => void;
+  onSaved?: (value: string) => void;
 }) {
   const [content, setContent] = useState(initialContent);
   const [state, setState] = useState<SaveState>("idle");
@@ -70,13 +75,14 @@ export function EntryEditor({
         savedContentRef.current = value;
         setState("saved");
         setMessage(undefined);
+        onSaved?.(value);
         return;
       }
 
       setState("error");
       setMessage(result.message);
     },
-    [date],
+    [date, onSaved],
   );
 
   useEffect(() => {
@@ -139,7 +145,10 @@ export function EntryEditor({
         id="entry"
         ref={textareaRef}
         value={content}
-        onChange={(event) => setContent(event.target.value)}
+        onChange={(event) => {
+          setContent(event.target.value);
+          onContentChange?.(event.target.value);
+        }}
         onFocus={() => setWriting(true)}
         onBlur={() => setWriting(false)}
         rows={1}
