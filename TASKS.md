@@ -34,10 +34,13 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 
 - [x] 1.1 `git init` jika belum ada repo. Scaffold Next.js (TypeScript strict, Tailwind, shadcn/ui, vitest, Playwright, `@axe-core/playwright`). Script `npm test` dan `npm run test:ui` jalan. `.gitignore` mencakup `.env*`. `.env.example` berisi semua nama env dari `AGENTS.md` §4. (Selesai 2026-10-28, bukti di laporan: build, lint, tsc, vitest, test:ui 7/7 lulus; commit 7f1073a.)
 - [ ] 1.2 Migrasi SQL 12 tabel sesuai PRD §9, RLS di semua tabel, dan trigger yang membuat `profiles` saat user baru (AUTH-3). Buktikan isolasi: tulis hasil query yang menunjukkan user A tidak bisa membaca data user B.
-- [ ] 1.3 `src/lib/dates.ts` dan tes vitest (timezone Asia/Jakarta, pergantian hari, WITA dan WIT)
+- [x] 1.3 `src/lib/dates.ts` dan tes vitest (timezone Asia/Jakarta, pergantian hari, WITA dan WIT) (Selesai 2026-10-28: 32 tes lulus, commit a46d5c4.)
 - [ ] 1.4 Login Google dan magic link, middleware proteksi grup `(app)` (AUTH-1, AUTH-2)
 - [ ] 1.5 Onboarding: disclaimer, persetujuan privasi, pernyataan usia 18 tahun ke atas, dan deteksi timezone browser (AUTH-3, AUTH-4)
-- [ ] 1.6 Design system dan layout sesuai `DESIGN.md` §3 sampai §5: semua token warna light dan dark di `globals.css` (termasuk `control` dan `primary-foreground`), radius, font Plus Jakarta Sans dan Newsreader, navigasi bawah di HP, rail di tablet, sidebar di laptop, safe-area, `min-h-dvh`. Hanya link ke halaman yang sudah ada. `npm run test:ui` lulus.
+- [ ] 1.6a Token warna light dan dark di `globals.css` sesuai `DESIGN.md` §3 (semua token, termasuk `control` dan `primary-foreground`), radius, dan pemetaan token ke nama token shadcn agar komponen bawaan shadcn ikut patuh.
+- [ ] 1.6b Font Plus Jakarta Sans dan Newsreader lewat `next/font/google`, skala dan berat tipografi `DESIGN.md` §4, dan `lang="id"` pada `<html>`.
+- [ ] 1.6c Shell responsif: `min-h-dvh`, `viewport-fit=cover`, padding safe-area, lebar konten maksimum 680 px (960 px untuk Progres), padding samping 16 px di HP. Verifikasi `npm run test:ui` di 360, 768, dan 1280 px mode terang dan gelap.
+- [ ] 1.6d Navigasi bawah di HP, rail di tablet, sidebar di laptop. **Terblokir:** belum ada satu pun halaman di grup `(app)` yang bisa ditautkan, sedangkan `AGENTS.md` §5 melarang halaman kosong sebagai placeholder dan 1.6 melarang tautan ke halaman yang belum ada. Dikerjakan bersamaan 1.7 saat `/settings` lahir.
 - [ ] 1.7 Halaman Akun dasar (`/settings`): nama, timezone, tema (Sistem, Terang, Gelap), keluar
 - [ ] 1.8 Deploy ke Vercel dengan env production. Login berhasil di URL production.
 
@@ -130,6 +133,11 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 1.1 | shadcn/ui memakai library primitif **Base UI** dan preset `nova` (dipilih user). `shadcn init` menambahkan font Geist di `layout.tsx` dan token netral di `globals.css`; keduanya menyimpang dari `DESIGN.md` §3 dan §4 dan wajib diganti di 1.6. |
 | 2026-10-28 | Fase 1.1 | `npm run test:ui` menjalankan `next dev` lewat `webServer` Playwright (bukan build produksi) untuk kecepatan di mesin ini. Smoke test `e2e/smoke.spec.ts` memeriksa scroll horizontal, axe serius/kritis, dan target sentuh 44 px di 360/768/1280 px mode terang dan gelap; diperluas/diganti di 1.6 sesuai `DESIGN.md` §13. |
 | 2026-10-28 | Fase 1.1 | `shadcn init` bersifat interaktif: butuh `-b <base>` dan `-p <preset>` eksplisit (preset valid: nova, vega, maia, lyra, mira, luma, sera, rhea) agar tidak menggantung di prompt. |
+| 2026-10-28 | Fase 1.3 | Aritmetika kalender (`addDays`, `daysBetween`, `lastNDays`, minggu, bulan) dihitung di ruang UTC (`Date.UTC` + penambahan milidetik), bukan lewat `addDays` date-fns pada waktu lokal, karena fungsi berbasis waktu lokal dapat bergeser bila mesin pengembang berada di zona ber-DST. `date-fns-tz` tetap dipakai untuk konversi instan ke tanggal user (`formatInTimeZone`). |
+| 2026-10-28 | Fase 1.3 | Nilai harapan tes diambil dari `Intl.DateTimeFormat` (ICU) sebagai sumber independen, bukan dari implementasi yang diuji. Mencakup pergantian hari WIB vs WITA vs WIT, zona ber-DST, tahun kabisat, dan tanggal tidak valid (`2026-02-31` ditolak). |
+| 2026-10-28 | Fase 1.3 | Kunci tanggal divalidasi pola `yyyy-MM-dd` dan pemeriksaan bolak-balik; kunci tidak valid melempar error dengan pesan jelas, tidak dikembalikan sebagai `Invalid Date`. |
+| 2026-10-28 | Fase 1.3 | `--passWithNoTests` dihapus dari script `test`. 32 tes lulus, `tsc`, `lint`, dan `build` lulus. Commit `a46d5c4`. |
+| 2026-10-28 | Fase 1.6 | 1.6 dipecah menjadi 1.6a sampai 1.6d karena navigasi tidak punya halaman untuk ditautkan: satu-satunya rute yang ada adalah `/`, sedangkan item navigasi `DESIGN.md` §5 (`/today`, `/habits`, `/expenses`, `/dashboard`, `/settings`) baru lahir di 1.7, 2.1, 2.2, 3.1, 3.5, dan 4.1. Membuat halaman kosong dilarang `AGENTS.md` §5. |
 | 2026-10-28 | Fase 1.1 | `npm install` di dalam OneDrive butuh sekitar 5 menit untuk 357 paket. `node_modules`, `.next`, `test-results`, dan `*.tsbuildinfo` tidak ikut ter-commit. Commit pertama: `7f1073a`. |
 
 ## Ide ditunda
