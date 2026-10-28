@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AppNav } from "@/components/app-nav";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
@@ -41,8 +42,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[680px] flex-col px-4 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-      <div className="flex-1">{children}</div>
+    <div className="min-h-dvh md:pl-[72px] lg:pl-[240px]">
+      <AppNav />
+
+      <div className="mx-auto w-full max-w-[680px] px-4 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-8">
+        {children}
+      </div>
     </div>
   );
 }
