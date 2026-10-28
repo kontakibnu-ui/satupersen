@@ -37,9 +37,9 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 - [x] 1.3 `src/lib/dates.ts` dan tes vitest (timezone Asia/Jakarta, pergantian hari, WITA dan WIT) (Selesai 2026-10-28: 32 tes lulus, commit a46d5c4.)
 - [ ] 1.4 Login Google dan magic link, middleware proteksi grup `(app)` (AUTH-1, AUTH-2)
 - [ ] 1.5 Onboarding: disclaimer, persetujuan privasi, pernyataan usia 18 tahun ke atas, dan deteksi timezone browser (AUTH-3, AUTH-4)
-- [ ] 1.6a Token warna light dan dark di `globals.css` sesuai `DESIGN.md` §3 (semua token, termasuk `control` dan `primary-foreground`), radius, dan pemetaan token ke nama token shadcn agar komponen bawaan shadcn ikut patuh.
-- [ ] 1.6b Font Plus Jakarta Sans dan Newsreader lewat `next/font/google`, skala dan berat tipografi `DESIGN.md` §4, dan `lang="id"` pada `<html>`.
-- [ ] 1.6c Shell responsif: `min-h-dvh`, `viewport-fit=cover`, padding safe-area, lebar konten maksimum 680 px (960 px untuk Progres), padding samping 16 px di HP. Verifikasi `npm run test:ui` di 360, 768, dan 1280 px mode terang dan gelap.
+- [x] 1.6a Token warna light dan dark di `globals.css` sesuai `DESIGN.md` §3 (semua token, termasuk `control` dan `primary-foreground`), radius, dan pemetaan token ke nama token shadcn agar komponen bawaan shadcn ikut patuh. (Selesai 2026-10-28, commit 5cdd519. Bukti: `e2e/design-tokens.spec.ts` mencocokkan nilai rgb setiap token di mode terang dan gelap.)
+- [x] 1.6b Font Plus Jakarta Sans dan Newsreader lewat `next/font/google`, skala dan berat tipografi `DESIGN.md` §4, dan `lang="id"` pada `<html>`. (Selesai 2026-10-28, commit 5cdd519. Font Geist bawaan preset shadcn sudah dihapus.)
+- [ ] 1.6c Shell responsif: `min-h-dvh`, `viewport-fit=cover`, padding safe-area, lebar konten maksimum 680 px (960 px untuk Progres), padding samping 16 px di HP. Verifikasi `npm run test:ui` di 360, 768, dan 1280 px mode terang dan gelap. (Sebagian selesai 2026-10-28: `min-h-dvh`, `viewport-fit=cover`, dan verifikasi `npm run test:ui` sudah jalan. Sisa: lebar maksimum konten dan padding safe-area, menunggu halaman pertama di grup `(app)`.)
 - [ ] 1.6d Navigasi bawah di HP, rail di tablet, sidebar di laptop. **Terblokir:** belum ada satu pun halaman di grup `(app)` yang bisa ditautkan, sedangkan `AGENTS.md` §5 melarang halaman kosong sebagai placeholder dan 1.6 melarang tautan ke halaman yang belum ada. Dikerjakan bersamaan 1.7 saat `/settings` lahir.
 - [ ] 1.7 Halaman Akun dasar (`/settings`): nama, timezone, tema (Sistem, Terang, Gelap), keluar
 - [ ] 1.8 Deploy ke Vercel dengan env production. Login berhasil di URL production.
@@ -116,6 +116,7 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | --- | --- | --- |
 | 1.2, 1.4, 1.5, 1.7 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, dan `SUPABASE_SERVICE_ROLE_KEY` belum ada di `.env.local` | Isi ketiga variabel dari dashboard Supabase langsung di file `.env.local` (jangan ditempel di chat) |
 | 1.8 | Akun Vercel dan domain belum disiapkan (Fase 0.8) | Selesaikan 0.8, lalu beri URL production ke AI |
+| 1.6c (sisa) dan 1.6d | Belum ada halaman di grup `(app)` yang bisa dibungkus kontainer dan ditautkan navigasinya; membuat halaman kosong dilarang `AGENTS.md` §5 | Tidak ada dari manusia. Selesai otomatis begitu 1.7 mengerjakan `/settings`, yang menunggu kredensial Supabase pada baris di atas |
 
 ## Catatan keputusan AI
 
@@ -138,7 +139,13 @@ Jika tool AI-mu tidak otomatis membaca `AGENTS.md`, tempel isinya ke file aturan
 | 2026-10-28 | Fase 1.3 | Kunci tanggal divalidasi pola `yyyy-MM-dd` dan pemeriksaan bolak-balik; kunci tidak valid melempar error dengan pesan jelas, tidak dikembalikan sebagai `Invalid Date`. |
 | 2026-10-28 | Fase 1.3 | `--passWithNoTests` dihapus dari script `test`. 32 tes lulus, `tsc`, `lint`, dan `build` lulus. Commit `a46d5c4`. |
 | 2026-10-28 | Fase 1.6 | 1.6 dipecah menjadi 1.6a sampai 1.6d karena navigasi tidak punya halaman untuk ditautkan: satu-satunya rute yang ada adalah `/`, sedangkan item navigasi `DESIGN.md` §5 (`/today`, `/habits`, `/expenses`, `/dashboard`, `/settings`) baru lahir di 1.7, 2.1, 2.2, 3.1, 3.5, dan 4.1. Membuat halaman kosong dilarang `AGENTS.md` §5. |
+| 2026-10-28 | Fase 1.6a | Token `DESIGN.md` §3 dideklarasikan sekali per mode dengan `light-dark()` dan `color-scheme`, sehingga mode gelap mengikuti sistem secara otomatis, dan pilihan manual cukup menetapkan kelas `light`/`dark` di `<html>` (dipasang di 1.7). Bukti: `e2e/design-tokens.spec.ts` mencocokkan nilai rgb token di kedua mode dan menguji override dua arah. |
+| 2026-10-28 | Fase 1.6a | Token shadcn (`--color-card`, `--color-muted`, `--color-accent`, `--color-destructive`, `--color-input`, `--color-ring`) dipetakan ke token `DESIGN.md` supaya komponen shadcn patuh otomatis tanpa hex di komponen. Radius: sm 8, md 10, lg 12, xl 16 px. |
+| 2026-10-28 | Fase 1.6b | Font Geist dari preset shadcn dihapus, diganti Plus Jakarta Sans dan Newsreader lewat variabel `--font-plus-jakarta-sans` dan `--font-newsreader`; `--font-heading` menunjuk ke Newsreader. `<html lang="id">` karena seluruh teks UI berbahasa Indonesia. |
+| 2026-10-28 | Fase 1.6b | Skala tipografi `DESIGN.md` §4 ditambahkan sebagai `--text-label` (12 px), `--text-title` (24 px), `--text-focus` (40 px), `--text-score` (56 px), dan `--text-editor` (18 px, tinggi baris 1,7). Ukuran 14, 16, dan 18 px memakai skala bawaan Tailwind. |
+| 2026-10-28 | Fase 1.6 | Commit `5cdd519`: `build`, `lint`, `tsc`, 32 tes vitest, dan 12 tes Playwright lulus. Catatan terbuka: komponen shadcn memakai varian `dark:` berbasis kelas `.dark`, sedangkan token mengikuti sistem; kelas `.dark` baru dipasang di 1.7, jadi sebelum itu varian `dark:` di komponen shadcn belum aktif saat sistem gelap. |
 | 2026-10-28 | Fase 1.1 | `npm install` di dalam OneDrive butuh sekitar 5 menit untuk 357 paket. `node_modules`, `.next`, `test-results`, dan `*.tsbuildinfo` tidak ikut ter-commit. Commit pertama: `7f1073a`. |
+| 2026-10-28 | Fase 1.6 | Rute `/` masih berisi teks bawaan scaffold (`--empty`: "Hello world!") karena halaman Hari Ini baru dibuat di 2.1 dan landing page di 6.4. Ini teks bawaan, bukan data contoh buatan AI, dan tidak boleh ditambahi konten palsu. |
 
 ## Ide ditunda
 
