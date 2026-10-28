@@ -29,7 +29,9 @@ export function OnboardingForm() {
     <form action={formAction} className="mt-8 flex flex-col gap-5">
       <input type="hidden" name="timezone" value={timezone} />
 
-      <label className="flex items-start gap-3 text-base text-text">
+      {/* The label is the touch target and is at least 44 px tall; the visible
+          box stays 24 px, the same pattern DESIGN.md §6 uses for habit rows. */}
+      <label className="flex min-h-11 items-start gap-3 py-1 text-base text-text">
         <input
           type="checkbox"
           name="privacy"
@@ -39,7 +41,7 @@ export function OnboardingForm() {
         <span>Saya setuju dengan kebijakan privasi, termasuk bahwa isi catatan saya diproses oleh penyedia model AI untuk membuat ringkasan.</span>
       </label>
 
-      <label className="flex items-start gap-3 text-base text-text">
+      <label className="flex min-h-11 items-start gap-3 py-1 text-base text-text">
         <input
           type="checkbox"
           name="age"

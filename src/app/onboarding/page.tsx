@@ -41,7 +41,7 @@ export default async function OnboardingPage() {
 
       <p className="mt-3 text-base text-text">
         Satu Persen bukan pengganti terapi atau tenaga profesional. Kalau kamu sedang dalam
-        situasi berat, layanan seperti Healing119 di PRD kami siap membantu.
+        situasi berat, ceritakan pada orang yang kamu percaya atau cari bantuan profesional.
       </p>
 
       <OnboardingForm />
