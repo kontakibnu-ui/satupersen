@@ -1,6 +1,6 @@
 # TASKS.md — daftar tugas dan progres
 
-Fase aktif: **Fase 1**
+Fase aktif: **Fase 2**. Dua tugas fase sebelumnya sengaja tertinggal dan menunggu kredensial manusia: 1.2 (menerapkan migrasi yang sama ke project hosted, butuh URI Session pooler) dan 1.8 (deploy Vercel).
 
 **Tidak ada tenggat per fase.** Urutan mengikuti dependensi, bukan kalender. Jika lancar, seluruh fase bisa selesai dalam 1 sampai 2 hari. Penghambat terbesar kemungkinan di luar kendali AI: verifikasi Meta Business dan aktivasi gateway pembayaran, jadi manusia memulainya di Fase 0.
 
