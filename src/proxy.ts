@@ -5,9 +5,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * Keeps the Supabase session fresh and keeps everything outside the public
  * pages behind a login (AUTH-2).
  *
- * Token refreshes have to write cookies from here: pages and Server Components
- * cannot set cookies in Next.js, and @supabase/ssr documents that the
- * middleware must handle it. The `headers` argument carries the no-store cache
+ * Next.js 16 renamed the middleware convention to `proxy` (same behaviour, a
+ * clearer name), which is why this file and its exported function are called
+ * `proxy`. Token refreshes have to write cookies from here: pages and Server
+ * Components cannot set cookies in Next.js, and @supabase/ssr documents that
+ * this layer must handle it. The `headers` argument carries the no-store cache
  * headers that must travel with the new cookies.
  *
  * API routes are not redirected on purpose: /api/whatsapp/webhook and
@@ -25,7 +27,7 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname === path);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
