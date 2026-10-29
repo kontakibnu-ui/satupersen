@@ -30,8 +30,9 @@ export function requireSupabaseAnonKey(): string {
  *
  * `setAll` is deliberately left out: pages and components cannot write cookies
  * in Next.js, and @supabase/ssr documents that the middleware must handle token
- * refreshes in that case. src/middleware.ts does exactly that, which also keeps
- * us clear of an empty catch block (AGENTS.md §3).
+ * refreshes in that case. src/proxy.ts (the Next.js 16 name for middleware)
+ * does exactly that, which also keeps us clear of an empty catch block
+ * (AGENTS.md §3).
  */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();

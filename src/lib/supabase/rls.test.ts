@@ -107,6 +107,16 @@ async function post(path: string, key: string, token: string | undefined, payloa
   return { status: response.status, body: (await response.json().catch(() => null)) as unknown };
 }
 
+async function patch(path: string, key: string, token: string | undefined, payload: unknown) {
+  const response = await fetch(`${url}/rest/v1/${path}`, {
+    method: "PATCH",
+    headers: { ...authHeaders(key, token), Prefer: "return=representation" },
+    body: JSON.stringify(payload),
+  });
+
+  return { status: response.status, body: (await response.json().catch(() => null)) as unknown };
+}
+
 describe.skipIf(!stackIsUp)("isolasi RLS dengan dua user sungguhan", () => {
   beforeAll(async () => {
     idA = await createUser(userA.email, userA.password);
@@ -202,6 +212,107 @@ describe.skipIf(!stackIsUp)("isolasi RLS dengan dua user sungguhan", () => {
       const written = await post(attempt.table, anonKey as string, tokenA, attempt.payload);
       expect(written.status, `tulis ke ${attempt.table}`).toBeGreaterThanOrEqual(400);
     }
+  });
+
+  // The rows below belong to the user, so RLS alone would let the owner write
+  // them. Column and command grants are what keep the browser away from the
+  // values that decide plans, quotas, scores, and WhatsApp verification
+  // (supabase/migrations/20261028230000_restrict_client_writes.sql).
+
+  it("user tidak bisa menaikkan plan-nya sendiri (SUB-2)", async () => {
+    const attempt = await patch(`profiles?id=eq.${idA}`, anonKey as string, tokenA, {
+      plan: "premium",
+      premium_until: "2099-01-01T00:00:00Z",
+    });
+
+    expect(attempt.status).toBeGreaterThanOrEqual(400);
+
+    const { body } = await get("profiles?select=plan,premium_until", anonKey as string, tokenA);
+    expect(body).toEqual([{ plan: "free", premium_until: null }]);
+  });
+
+  it("user tetap bisa mengubah nama dan timezone-nya sendiri", async () => {
+    const updated = await patch(`profiles?id=eq.${idA}`, anonKey as string, tokenA, {
+      name: "Uji A",
+      timezone: "Asia/Makassar",
+    });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body).toEqual([expect.objectContaining({ name: "Uji A", timezone: "Asia/Makassar" })]);
+  });
+
+  it("user tidak bisa menulis ringkasan, skor, atau kuotanya sendiri (SCORE-1, AI-4)", async () => {
+    const forged = await post("daily_summaries", anonKey as string, tokenA, {
+      user_id: idA,
+      date: entryDate,
+      status: "done",
+      score: 100,
+      regen_count: 0,
+    });
+
+    expect(forged.status).toBeGreaterThanOrEqual(400);
+
+    // A row written by the server is readable by its owner, and only by them.
+    const serverRow = await post("daily_summaries", serviceKey as string, undefined, {
+      user_id: idA,
+      date: entryDate,
+      status: "done",
+      score: 70,
+      regen_count: 1,
+    });
+    expect(serverRow.status).toBe(201);
+
+    const reset = await patch(`daily_summaries?user_id=eq.${idA}`, anonKey as string, tokenA, {
+      regen_count: 0,
+      score: 100,
+    });
+    expect(reset.status).toBeGreaterThanOrEqual(400);
+
+    const own = await get("daily_summaries?select=score,regen_count", anonKey as string, tokenA);
+    expect(own.body).toEqual([{ score: 70, regen_count: 1 }]);
+
+    const other = await get("daily_summaries?select=score", anonKey as string, tokenB);
+    expect(other.body).toEqual([]);
+  });
+
+  it("user tidak bisa menulis laporannya sendiri (REPORT-2)", async () => {
+    const forged = await post("reports", anonKey as string, tokenA, {
+      user_id: idA,
+      type: "weekly",
+      period_start: "2026-10-26",
+      period_end: "2026-11-01",
+    });
+
+    expect(forged.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("nomor WhatsApp hanya bisa diverifikasi server, user hanya mengatur pengingat (PRD §6)", async () => {
+    const forged = await post("whatsapp_links", anonKey as string, tokenA, {
+      user_id: idA,
+      phone: "6281200000000",
+      verified_at: new Date().toISOString(),
+      opted_in: true,
+    });
+    expect(forged.status).toBeGreaterThanOrEqual(400);
+
+    const linked = await post("whatsapp_links", serviceKey as string, undefined, {
+      user_id: idA,
+      phone: `62812${String(stamp).slice(-8)}`,
+      verified_at: new Date().toISOString(),
+      opted_in: true,
+    });
+    expect(linked.status).toBe(201);
+
+    const optOut = await patch(`whatsapp_links?user_id=eq.${idA}`, anonKey as string, tokenA, {
+      opted_in: false,
+      reminder_time: "21:00",
+    });
+    expect(optOut.status).toBe(200);
+
+    const swapPhone = await patch(`whatsapp_links?user_id=eq.${idA}`, anonKey as string, tokenA, {
+      phone: "6281299999999",
+    });
+    expect(swapPhone.status).toBeGreaterThanOrEqual(400);
   });
 
   it("menghapus akun ikut menghapus entrinya", async () => {

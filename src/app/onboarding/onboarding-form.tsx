@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
 import { completeOnboarding, type OnboardingResult } from "./actions";
 
 /**
@@ -52,13 +53,9 @@ export function OnboardingForm() {
       </label>
 
       <div className="flex items-center gap-4">
-        <button
-          type="submit"
-          disabled={pending}
-          className="h-11 rounded-md bg-primary px-5 text-base text-primary-foreground disabled:opacity-60"
-        >
+        <Button type="submit" disabled={pending}>
           {pending ? "Menyimpan…" : "Mulai"}
-        </button>
+        </Button>
 
         {state?.message ? (
           <p role="status" className="text-sm text-text-muted">

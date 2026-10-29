@@ -11,7 +11,7 @@ Pemilik produk bekerja dengan vibe coding dan tidak mau menjelaskan ulang kontek
 3. Baca file yang akan kamu ubah dan cari kode serupa yang sudah ada. Pakai ulang, jangan duplikasi.
 4. Kerjakan tugas sampai tuntas, termasuk state loading, error, dan kosong.
 5. Verifikasi (§2). Tempel output perintahnya sebagai bukti di laporanmu.
-6. Centang tugas di `TASKS.md` **hanya** jika semua syarat §2 terpenuhi. Catat keputusan kecil di "Catatan keputusan AI".
+6. Centang tugas di `TASKS.md` **hanya** jika semua syarat §2 terpenuhi. Catat keputusan kecil di "Catatan keputusan AI". Baris tugas tetap pendek: definisi tugas plus satu status singkat (mis. "Kode selesai, menunggu cek visual user"). Bukti, angka tes, dan nama file masuk ke "Catatan keputusan AI", bukan ke baris tugas. Saat penghambat sebuah tugas hilang, hapus barisnya dari "Terblokir".
 7. Lanjut ke tugas berikutnya. Berhenti di akhir fase dan laporkan. Jangan mulai fase baru tanpa disuruh.
 
 Jika tugas terlalu besar, pecah dulu jadi sub-tugas di `TASKS.md`, lalu kerjakan satu per satu.
@@ -70,6 +70,8 @@ Jika env model AI kosong, fitur AI menampilkan error konfigurasi yang jelas. **J
 
 ```
 src/app/(auth)/login
+src/app/auth/callback      URL asli /auth/callback (penukar kode masuk), bukan grup (auth)
+src/app/onboarding         di luar (app) karena layar persetujuan tanpa navigasi
 src/app/(app)/today, history, habits, expenses, dashboard, reports, settings
 src/app/api/ai/summarize
 src/app/api/whatsapp/webhook
@@ -79,11 +81,18 @@ src/lib/ai/        openrouter.ts, prompts.ts, schemas.ts, scoring.ts
 src/lib/whatsapp/  client.ts, handlers.ts, signature.ts
 src/lib/supabase/  server.ts, client.ts, admin.ts
 src/lib/dates.ts
+src/lib/entries.ts         aturan entri yang dipakai klien dan server (mis. batas karakter)
 src/config/crisis.ts
+src/components/ui/         komponen dasar DESIGN.md §6 (tombol); dipakai ulang, tidak ditulis ulang per halaman
+src/components/            komponen yang dipakai lebih dari satu rute
+src/proxy.ts               penyegar sesi dan penjaga login (konvensi Next.js 16, dulu middleware)
 supabase/migrations/
+e2e/                       tes Playwright; e2e/support/ untuk helper login uji
 ```
 
-Folder dibuat hanya saat ada isinya yang sudah jalan. Jangan membuat halaman kosong sebagai placeholder.
+Folder dibuat hanya saat ada isinya yang sudah jalan. Jangan membuat halaman kosong sebagai placeholder. Komponen yang hanya dipakai satu rute tinggal di folder rute itu.
+
+**File env:** pengembangan memakai `.env.local` saja (Supabase lokal, OpenRouter, ID model). Kredensial project hosted untuk mendorong migrasi ada di `.env.hosted`, yang tidak dibaca Next.js. Nilai production diisi di dashboard Vercel. Jangan membuat salinan cadangan file env (`.env.bak` dan sejenisnya).
 
 ## 6. Aturan teknis
 
@@ -147,3 +156,13 @@ Folder dibuat hanya saat ada isinya yang sudah jalan. Jangan membuat halaman kos
 **Sudah diputuskan user (2026-10-28):** nama Satu Persen, keluarga model DeepSeek, usia minimum 18 tahun, batas balasan AI WhatsApp free 1 per hari.
 
 **Keputusan terbuka. Jangan dikerjakan atau ditebak:** domain, ID model DeepSeek yang persis, harga dan gateway pembayaran, teks respons krisis sampai user menyetujuinya, template pengingat WhatsApp. Jika tugas bergantung padanya, tulis di "Terblokir" dan berhenti.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

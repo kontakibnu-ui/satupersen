@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
 import { signOut, updateProfile, type ProfileActionResult } from "./actions";
 
 /**
@@ -147,13 +148,9 @@ export function SettingsForm({
         </div>
 
         <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-11 rounded-md border border-control px-4 text-base text-text disabled:opacity-60"
-          >
+          <Button type="submit" variant="secondary" disabled={pending}>
             {pending ? "Menyimpan…" : "Simpan"}
-          </button>
+          </Button>
 
           {state?.message ? (
             <p role="status" className="text-sm text-text-muted">
@@ -195,12 +192,9 @@ export function SettingsForm({
       </div>
 
       <form action={signOut}>
-        <button
-          type="submit"
-          className="h-11 rounded-md border border-control px-4 text-base text-text"
-        >
+        <Button type="submit" variant="secondary">
           Keluar
-        </button>
+        </Button>
       </form>
     </div>
   );

@@ -1,34 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Satu Persen
 
-## Getting Started
+Web app life tracker: diary harian, ringkasan dan skor dari AI, kebiasaan, mood, pengeluaran, dan curhat lewat WhatsApp.
 
-First, run the development server:
+## Dokumen
+
+Baca berurutan sebelum menyentuh kode:
+
+1. [`AGENTS.md`](AGENTS.md): aturan kerja dan keputusan terkunci
+2. [`PRD.md`](PRD.md): apa yang dibangun dan kriteria penerimaannya
+3. [`DESIGN.md`](DESIGN.md): aturan tampilan (wajib untuk tugas UI)
+4. [`TASKS.md`](TASKS.md): daftar tugas, yang terblokir, dan catatan keputusan
+
+## Menjalankan di komputer sendiri
+
+Butuh Node 22, npm, dan Docker Desktop.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npx supabase start          # database, auth, dan Mailpit lokal (Docker)
+cp .env.example .env.local  # isi nilainya; lihat di bawah
+npm run dev                 # http://127.0.0.1:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka lewat `http://127.0.0.1:3000`, bukan `localhost`: Supabase lokal hanya mengizinkan tautan masuk kembali ke host itu.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## File env
 
-## Learn More
+| File | Isi | Dibaca Next.js |
+| --- | --- | --- |
+| `.env.example` | Daftar nama variabel tanpa nilai. Satu-satunya file env di git. | Tidak |
+| `.env.local` | Nilai untuk pengembangan: Supabase **lokal**, kunci OpenRouter, ID model | Ya |
+| `.env.hosted` | Kredensial project Supabase hosted, hanya untuk mendorong migrasi | Tidak |
 
-To learn more about Next.js, take a look at the following resources:
+Nilai production diisi di dashboard Vercel, bukan di file.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Perintah
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Perintah | Isi |
+| --- | --- |
+| `npm test` | Tes vitest untuk fungsi murni (tanggal, skor, schema AI, klien OpenRouter, filter krisis). Tes RLS di `src/lib/supabase/rls.test.ts` hanya jalan bila env `LOCAL_SUPABASE_*` diisi. |
+| `npm run test:ui` | Playwright + axe di 360, 768, dan 1280 px, mode terang dan gelap. Tes halaman yang butuh login dilewati bila Supabase lokal tidak jalan. |
+| `npm run lint`, `npx tsc --noEmit`, `npm run build` | Wajib lulus sebelum tugas dicentang (`AGENTS.md` §2). |
 
-## Deploy on Vercel
+## Struktur
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/app/(auth)/login        halaman masuk (grup tanpa segmen URL)
+src/app/auth/callback       URL asli /auth/callback, penukar kode masuk
+src/app/onboarding          persetujuan dan usia, di luar (app) karena tanpa navigasi
+src/app/(app)/...           halaman yang butuh login dan persetujuan
+src/app/api/...             route handler server
+src/components/ui           komponen dasar (tombol) sesuai DESIGN.md §6
+src/components              komponen yang dipakai lebih dari satu rute
+src/lib, src/config         logika server, AI, tanggal, Supabase, krisis
+supabase/migrations         satu-satunya tempat perubahan skema
+e2e                         tes Playwright
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Komponen yang hanya dipakai satu rute tinggal di folder rute itu.

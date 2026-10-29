@@ -5,7 +5,11 @@ import {
   endOfMonthKey,
   endOfWeekKey,
   formatDayLabel,
+  formatMonthLabel,
+  isDateKey,
+  isValidTimeZone,
   lastNDays,
+  monthGrid,
   startOfMonthKey,
   startOfWeekKey,
   toDateKey,
@@ -136,6 +140,73 @@ describe("formatDayLabel", () => {
 
   it("menolak kunci yang tidak valid", () => {
     expect(() => formatDayLabel("2026-02-31")).toThrow(/Invalid date key/);
+  });
+});
+
+describe("formatMonthLabel", () => {
+  it("menulis bulan dan tahun dalam Bahasa Indonesia", () => {
+    expect(formatMonthLabel("2026-10-28")).toBe("Oktober 2026");
+    expect(formatMonthLabel("2027-01-01")).toBe("Januari 2027");
+  });
+});
+
+describe("isDateKey", () => {
+  it.each(["2026-10-28", "2028-02-29", "2026-01-01"])("accepts %s", (value) => {
+    expect(isDateKey(value)).toBe(true);
+  });
+
+  it.each(["", "2026-02-29", "2026-13-01", "2026-10-28T00:00", "28-10-2026", "2026-1-01"])(
+    "rejects %s without throwing",
+    (value) => {
+      expect(isDateKey(value)).toBe(false);
+    },
+  );
+});
+
+describe("isValidTimeZone", () => {
+  it.each(["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "UTC", "America/New_York"])(
+    "accepts %s",
+    (zone) => {
+      expect(isValidTimeZone(zone)).toBe(true);
+    },
+  );
+
+  it.each(["", "   ", "Foo/Bar", "Asia/Bandung", "GMT+99"])("rejects %s", (zone) => {
+    expect(isValidTimeZone(zone)).toBe(false);
+  });
+});
+
+describe("monthGrid", () => {
+  it("lays October 2026 out Monday first, with empty cells outside the month", () => {
+    const grid = monthGrid("2026-10-15");
+
+    // 1 October 2026 is a Thursday, so Monday to Wednesday of that week are empty.
+    expect(grid[0]).toEqual([null, null, null, "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"]);
+    // 31 October 2026 is a Saturday, so only Sunday is empty in the last week.
+    expect(grid[grid.length - 1]).toEqual([
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-10-31",
+      null,
+    ]);
+    expect(grid).toHaveLength(5);
+  });
+
+  it("contains every day of the month exactly once", () => {
+    const days = monthGrid("2028-02-10").flat().filter((day) => day !== null);
+
+    expect(days).toHaveLength(29);
+    expect(days[0]).toBe("2028-02-01");
+    expect(days[28]).toBe("2028-02-29");
+  });
+
+  it("always has seven columns", () => {
+    for (const week of monthGrid("2026-03-01")) {
+      expect(week).toHaveLength(7);
+    }
   });
 });
 

@@ -1,3 +1,4 @@
+import { buttonVariants } from "@/components/ui/button";
 import { crisisResponseFor, CRISIS_SERVICE, type CrisisLanguage } from "@/config/crisis";
 
 /**
@@ -28,7 +29,7 @@ export function CrisisView({
 
       <a
         href={`tel:${CRISIS_SERVICE.phone}`}
-        className="mt-4 flex h-11 items-center justify-center rounded-md bg-primary px-5 text-base text-primary-foreground"
+        className={buttonVariants({ variant: "primary", className: "mt-4 w-full" })}
       >
         {isEnglish ? `Call ${CRISIS_SERVICE.phone}` : `Telepon ${CRISIS_SERVICE.phone}`}
       </a>
@@ -38,20 +39,22 @@ export function CrisisView({
           : `Lalu tekan ekstensi ${CRISIS_SERVICE.phoneExtension}.`}
       </p>
 
-      <a
-        href={CRISIS_SERVICE.website}
-        className="mt-3 inline-block h-11 text-base text-text underline"
-        rel="noreferrer noopener"
-        target="_blank"
-      >
-        {CRISIS_SERVICE.name}
-      </a>
-
-      {keepWritingHref ? (
-        <a href={keepWritingHref} className="mt-3 block text-sm text-text-muted underline">
-          {isEnglish ? "Keep writing" : "Lanjut menulis"}
+      <div className="mt-3 flex flex-col items-start">
+        <a
+          href={CRISIS_SERVICE.website}
+          className={buttonVariants({ variant: "link" })}
+          rel="noreferrer noopener"
+          target="_blank"
+        >
+          {CRISIS_SERVICE.name}
         </a>
-      ) : null}
+
+        {keepWritingHref ? (
+          <a href={keepWritingHref} className={buttonVariants({ variant: "link" })}>
+            {isEnglish ? "Keep writing" : "Lanjut menulis"}
+          </a>
+        ) : null}
+      </div>
     </section>
   );
 }

@@ -1,4 +1,14 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * The signed in page tests create users on the local Supabase stack, so they
+ * need the same values `next dev` reads. Without .env.local those tests skip
+ * themselves; the public page tests still run.
+ */
+if (existsSync(".env.local")) {
+  process.loadEnvFile(".env.local");
+}
 
 const PORT = 3000;
 /**

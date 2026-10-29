@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { isValidTimeZone } from "@/lib/dates";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
@@ -13,7 +14,9 @@ import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 const profileInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  timezone: z.string().trim().min(1).max(60),
+  // An unknown zone would break every "today" on the next page load, and an
+  // edited form can send anything, so the zone must be one the runtime knows.
+  timezone: z.string().trim().max(60).refine(isValidTimeZone),
 });
 
 export type ProfileActionResult = { ok: boolean; message: string };

@@ -100,3 +100,73 @@ export function formatDayLabel(key: DateKey): string {
     locale: indonesianLocale,
   });
 }
+
+/** "Oktober 2026" for any day in that month, for the history calendar. */
+export function formatMonthLabel(key: DateKey): string {
+  return formatInTimeZone(parseDateKey(startOfMonthKey(key)), "UTC", "MMMM yyyy", {
+    locale: indonesianLocale,
+  });
+}
+
+/** True for a real calendar day written as "yyyy-MM-dd"; never throws. */
+export function isDateKey(value: string): boolean {
+  if (!DATE_KEY_PATTERN.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  return formatDateKey(new Date(Date.UTC(year, month - 1, day))) === value;
+}
+
+/**
+ * True when the runtime knows the zone. A profile with an unknown zone would
+ * make every "today" calculation throw, so the server checks this before saving
+ * one (AUTH-3). Intl signals an unknown zone with a RangeError; anything else
+ * is unexpected and is rethrown.
+ */
+export function isValidTimeZone(timeZone: string): boolean {
+  if (timeZone.trim() === "") {
+    return false;
+  }
+
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * The weeks of the month that contains `key`, Monday first, for the history
+ * calendar (DESIGN.md §6). Days that belong to the neighbouring months are
+ * null, so the grid keeps seven columns without showing someone else's days.
+ */
+export function monthGrid(key: DateKey): (DateKey | null)[][] {
+  const first = startOfMonthKey(key);
+  const last = endOfMonthKey(key);
+  const gridStart = startOfWeekKey(first);
+  const gridEnd = endOfWeekKey(last);
+  const month = first.slice(0, 7);
+
+  const weeks: (DateKey | null)[][] = [];
+  let cursor = gridStart;
+
+  while (daysBetween(cursor, gridEnd) >= 0) {
+    const week: (DateKey | null)[] = [];
+
+    for (let day = 0; day < 7; day += 1) {
+      week.push(cursor.slice(0, 7) === month ? cursor : null);
+      cursor = addDays(cursor, 1);
+    }
+
+    weeks.push(week);
+  }
+
+  return weeks;
+}

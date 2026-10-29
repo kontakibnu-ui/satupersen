@@ -3,8 +3,11 @@ import { requireSupabaseUrl } from "@/lib/supabase/server";
 
 /**
  * Service role client. Server only, and only for work that cannot be done with
- * the user's own session: creating test users, deleting an account and all of
- * its rows, and the scheduled tick (AGENTS.md §6).
+ * the user's own session: writing server-owned rows (daily summaries, reports,
+ * WhatsApp links, subscriptions) after the server has checked the session and
+ * the limits, deleting an account and all of its rows, the scheduled tick, and
+ * creating test users (AGENTS.md §6). Users cannot write those rows themselves
+ * (supabase/migrations/20261028230000_restrict_client_writes.sql).
  *
  * It bypasses row level security, so it must never be imported from a Client
  * Component and its key must never reach the browser.

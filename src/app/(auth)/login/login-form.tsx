@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Status = { kind: "idle" | "sending" | "sent" | "error"; message?: string };
@@ -66,14 +67,9 @@ export function LoginForm({ failed }: { failed: boolean }) {
 
   return (
     <div className="mt-8">
-      <button
-        type="button"
-        onClick={signInWithGoogle}
-        disabled={busy}
-        className="h-11 w-full rounded-md bg-primary text-base font-normal text-primary-foreground disabled:opacity-60"
-      >
+      <Button onClick={signInWithGoogle} disabled={busy} className="w-full">
         Masuk dengan Google
-      </button>
+      </Button>
 
       <p className="mt-6 text-sm text-text-muted">atau lewat email</p>
 
@@ -92,13 +88,9 @@ export function LoginForm({ failed }: { failed: boolean }) {
           className="mt-1 h-11 w-full rounded-md border border-control bg-surface px-3 text-base text-text"
         />
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-3 h-11 w-full rounded-md border border-control text-base text-text disabled:opacity-60"
-        >
+        <Button type="submit" variant="secondary" disabled={busy} className="mt-3 w-full">
           Kirim tautan masuk
-        </button>
+        </Button>
       </form>
 
       {status.message ? (

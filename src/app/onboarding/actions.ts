@@ -2,15 +2,15 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { isValidTimeZone } from "@/lib/dates";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
  * AUTH-4: both statements are required before the app can be used, and the
  * consent is stored with a timestamp. The time zone comes from the browser and
- * is only accepted when it looks like a real IANA name (AUTH-3).
+ * is only accepted when the runtime knows it (AUTH-3); otherwise the database
+ * default, Asia/Jakarta, stays.
  */
-
-const timezonePattern = /^[A-Za-z_]+(?:\/[A-Za-z0-9_+\-]+)+$/;
 
 const onboardingSchema = z.object({
   privacy: z.literal("set"),
@@ -43,7 +43,7 @@ export async function completeOnboarding(formData: FormData): Promise<Onboarding
   }
 
   const detected = parsed.data.timezone ?? "";
-  const timezone = timezonePattern.test(detected) ? detected : null;
+  const timezone = isValidTimeZone(detected) ? detected : null;
 
   const { error } = await supabase
     .from("profiles")

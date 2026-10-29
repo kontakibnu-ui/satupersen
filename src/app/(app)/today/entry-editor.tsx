@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { MAX_CONTENT_LENGTH } from "@/lib/entries";
 import { saveEntry } from "./actions";
 
@@ -19,7 +20,8 @@ const AUTOSAVE_DELAY_MS = 2000;
 const RETRY_DELAY_MS = 5000;
 const COUNTER_VISIBLE_FROM = 4000;
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+/** "blocked" is an error that saving again cannot fix, so no retry is scheduled. */
+type SaveState = "idle" | "saving" | "saved" | "error" | "blocked";
 
 export function EntryEditor({
   date,
@@ -79,7 +81,7 @@ export function EntryEditor({
         return;
       }
 
-      setState("error");
+      setState(result.retryable === false ? "blocked" : "error");
       setMessage(result.message);
     },
     [date, onSaved],
@@ -121,21 +123,23 @@ export function EntryEditor({
         ? "Tersimpan"
         : state === "error"
           ? (message ?? "Belum tersimpan, mencoba lagi")
-          : "";
+          : state === "blocked"
+            ? (message ?? "Tulisan belum bisa disimpan.")
+            : "";
 
   return (
     <div className="mt-6">
       {writing ? (
-        <button
-          type="button"
+        <Button
+          variant="link"
           onClick={() => {
             textareaRef.current?.blur();
             setWriting(false);
           }}
-          className="fixed top-[calc(env(safe-area-inset-top)+0.5rem)] right-4 z-20 h-11 text-sm text-text underline md:hidden"
+          className="fixed top-[calc(env(safe-area-inset-top)+0.5rem)] right-4 z-20 min-w-11 text-sm md:hidden"
         >
           Selesai
-        </button>
+        </Button>
       ) : null}
 
       <label htmlFor="entry" className="sr-only">
@@ -153,7 +157,7 @@ export function EntryEditor({
         onBlur={() => setWriting(false)}
         rows={1}
         placeholder="Mulai dari satu kalimat: apa satu hal yang terjadi hari ini?"
-        className="w-full resize-none border-b border-transparent bg-transparent font-serif text-editor text-text placeholder:text-text-muted focus:border-control focus:outline-none"
+        className="min-h-11 w-full resize-none border-b border-transparent bg-transparent font-serif text-editor text-text placeholder:text-text-muted focus:border-control focus:outline-none"
       />
 
       <div className="mt-3 flex items-center justify-between gap-4">

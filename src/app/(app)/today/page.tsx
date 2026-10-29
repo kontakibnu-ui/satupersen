@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { addDays, formatDayLabel, lastNDays, todayKey } from "@/lib/dates";
+import { addDays, formatDayLabel, isValidTimeZone, lastNDays, todayKey } from "@/lib/dates";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CrisisView } from "./crisis-view";
 import type { SummaryResult } from "./summary-result";
@@ -41,7 +41,10 @@ export default async function TodayPage({
     throw new Error("Profil tidak bisa dibaca, jadi halaman ini belum bisa ditampilkan");
   }
 
-  const timeZone = profile?.timezone ?? "Asia/Jakarta";
+  // The Akun page only saves zones the runtime knows, but a stored value that
+  // is not one must not take the whole screen down (AUTH-3 fallback).
+  const timeZone =
+    profile?.timezone && isValidTimeZone(profile.timezone) ? profile.timezone : "Asia/Jakarta";
   const date = todayKey(timeZone);
 
   const { data: entry, error: entryError } = await supabase

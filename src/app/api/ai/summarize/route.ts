@@ -8,19 +8,26 @@ import {
   summarizeDay,
 } from "@/lib/ai/openrouter";
 import { computeDailyScore, dailyDeltaPct } from "@/lib/ai/scoring";
-import { addDays, lastNDays } from "@/lib/dates";
+import { addDays, isValidTimeZone, lastNDays, todayKey } from "@/lib/dates";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/ai/summarize (AI-1 to AI-5).
  *
- * The screen sends only the date; the text, the profile, and the previous
- * scores are read here, because a client can be edited (PRD.md §7). The
- * response carries only what the screen shows: never the model id, never a
- * stack trace, and never another user's data.
+ * The screen sends the date it was opened for, and the server checks it is
+ * still today by the profile's time zone ("Rangkum hari ini"). The text, the
+ * profile, and the previous scores are read here, because a client can be
+ * edited (PRD.md §7). The response carries only what the screen shows: never
+ * the model id, never a stack trace, and never another user's data.
  *
  * Regen quota (AI-4): the first summary of a day is always allowed, and after
  * that free accounts get 1 more attempt while premium gets 3.
+ *
+ * Reads use the user's session, so row level security applies. The summary row
+ * is written with the service role, because users may not write it themselves:
+ * otherwise anyone could reset their own quota or set their own score through
+ * the database API (supabase/migrations/20261028230000_restrict_client_writes.sql).
  */
 
 const REGEN_LIMIT = { free: 1, premium: 3 } as const;
@@ -74,6 +81,12 @@ export async function POST(request: Request) {
     return fail(500, "Profilmu belum bisa dibaca. Coba lagi sebentar lagi.");
   }
 
+  const timeZone = isValidTimeZone(profile.timezone) ? profile.timezone : "Asia/Jakarta";
+
+  if (date !== todayKey(timeZone)) {
+    return fail(409, "Hari sudah berganti. Muat ulang halaman ini untuk merangkum hari ini.");
+  }
+
   const { data: entry, error: entryError } = await supabase
     .from("entries")
     .select("content, mood, energy")
@@ -91,12 +104,16 @@ export async function POST(request: Request) {
     return fail(400, "Tulis minimal satu kalimat dulu, lalu tekan Rangkum hari ini.");
   }
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("daily_summaries")
     .select("status, regen_count")
     .eq("user_id", userId)
     .eq("date", date)
     .maybeSingle();
+
+  if (existingError) {
+    return fail(500, "Ringkasan hari ini belum bisa dibaca. Coba lagi sebentar lagi.");
+  }
 
   const plan = profile.plan === "premium" ? "premium" : "free";
   const regenUsed = existing?.regen_count ?? 0;
@@ -113,13 +130,19 @@ export async function POST(request: Request) {
   // The keyword filter runs before the model, so a clear signal never waits for
   // an AI answer, and no AI text is ever shown for it (PRD.md §7).
   if (detectCrisis(content)) {
-    await saveSummary(supabase, {
+    const saved = await saveSummary({
       userId,
       date,
       status: "done",
       riskFlag: true,
       regenCount: regenUsed,
     });
+
+    // The crisis text is shown even if the row could not be written: a person
+    // in crisis must never be held back by a storage error.
+    if (!saved) {
+      console.error("crisis summary not stored", { userId, date });
+    }
 
     return NextResponse.json<SummarizeResponse>({ kind: "crisis" });
   }
@@ -130,7 +153,7 @@ export async function POST(request: Request) {
     result = await summarizeDay({
       date,
       content,
-      timeZone: profile.timezone,
+      timeZone,
       context: {
         mood: entry?.mood ?? null,
         energy: entry?.energy ?? null,
@@ -141,6 +164,22 @@ export async function POST(request: Request) {
   } catch (error) {
     // Only the class of the failure is logged, never the entry text (AGENTS.md §6).
     console.error("summarize failed", { userId, date, kind: (error as Error).name });
+
+    // AI-2: a day without a usable summary is marked failed. A summary that
+    // already exists is kept as it is, so a failed regen never erases it.
+    if (existing?.status !== "done") {
+      const saved = await saveSummary({
+        userId,
+        date,
+        status: "failed",
+        riskFlag: false,
+        regenCount: regenUsed,
+      });
+
+      if (!saved) {
+        console.error("failed status not stored", { userId, date });
+      }
+    }
 
     if (error instanceof AiConfigError) {
       return fail(503, "Fitur AI belum dikonfigurasi. Hubungi pengelola aplikasi.");
@@ -154,13 +193,17 @@ export async function POST(request: Request) {
   }
 
   if (result.kind === "crisis") {
-    await saveSummary(supabase, {
+    const saved = await saveSummary({
       userId,
       date,
       status: "done",
       riskFlag: true,
       regenCount: regenUsed,
     });
+
+    if (!saved) {
+      console.error("crisis summary not stored", { userId, date });
+    }
 
     return NextResponse.json<SummarizeResponse>({ kind: "crisis" });
   }
@@ -196,7 +239,7 @@ export async function POST(request: Request) {
   // SCORE-2: null until three scored days exist, which the screen explains.
   const deltaPct = score.score === null ? null : dailyDeltaPct(score.score, previousScores);
 
-  await saveSummary(supabase, {
+  const saved = await saveSummary({
     userId,
     date,
     status: "done",
@@ -215,6 +258,12 @@ export async function POST(request: Request) {
       model: result.model,
     },
   });
+
+  // A summary that is shown but not stored would vanish on reload and still
+  // cost an AI call, so it is reported instead of being shown.
+  if (!saved) {
+    return fail(500, "Ringkasan belum tersimpan. Tulisanmu aman. Coba lagi.");
+  }
 
   if (score.score === null) {
     return fail(500, "Skor belum bisa dihitung dari catatan hari ini. Coba tambah sedikit cerita.");
@@ -246,18 +295,17 @@ type SummaryPayload = {
   model?: string;
 };
 
-async function saveSummary(
-  supabase: Awaited<ReturnType<typeof createSupabaseActionClient>>,
-  input: {
-    userId: string;
-    date: string;
-    status: "done" | "failed";
-    riskFlag: boolean;
-    regenCount: number;
-    payload?: SummaryPayload;
-  },
-): Promise<void> {
-  const { error } = await supabase.from("daily_summaries").upsert(
+/** Writes the day's summary row with the service role; false when it failed. */
+async function saveSummary(input: {
+  userId: string;
+  date: string;
+  status: "done" | "failed";
+  riskFlag: boolean;
+  regenCount: number;
+  payload?: SummaryPayload;
+}): Promise<boolean> {
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.from("daily_summaries").upsert(
     {
       user_id: input.userId,
       date: input.date,
@@ -271,5 +319,8 @@ async function saveSummary(
 
   if (error) {
     console.error("saving the daily summary failed", { userId: input.userId, date: input.date });
+    return false;
   }
+
+  return true;
 }
