@@ -1,3 +1,4 @@
+import { HeartHandshake, Phone } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { crisisResponseFor, CRISIS_SERVICE, type CrisisLanguage } from "@/config/crisis";
 
@@ -24,22 +25,29 @@ export function CrisisView({
   const isEnglish = language === "en";
 
   return (
-    <section className="mt-6 rounded-lg bg-surface-muted p-4">
-      <p className="whitespace-pre-line text-base text-text">{crisisResponseFor(language)}</p>
+    <section className="mt-6 rounded-3xl border border-border bg-surface-muted p-6">
+      <span
+        aria-hidden="true"
+        className="inline-flex size-12 items-center justify-center rounded-2xl bg-plum-soft text-plum"
+      >
+        <HeartHandshake size={24} strokeWidth={1.8} />
+      </span>
+      <p className="mt-4 whitespace-pre-line text-base leading-relaxed text-text">{crisisResponseFor(language)}</p>
 
       <a
         href={`tel:${CRISIS_SERVICE.phone}`}
-        className={buttonVariants({ variant: "primary", className: "mt-4 w-full" })}
+        className={buttonVariants({ variant: "primary", className: "mt-6 min-h-14 w-full text-lg" })}
       >
+        <Phone aria-hidden="true" size={20} strokeWidth={2} />
         {isEnglish ? `Call ${CRISIS_SERVICE.phone}` : `Telepon ${CRISIS_SERVICE.phone}`}
       </a>
-      <p className="mt-1 text-sm text-text-muted">
+      <p className="mt-2 text-center text-sm text-text-muted">
         {isEnglish
           ? `Then press extension ${CRISIS_SERVICE.phoneExtension}.`
           : `Lalu tekan ekstensi ${CRISIS_SERVICE.phoneExtension}.`}
       </p>
 
-      <div className="mt-3 flex flex-col items-start">
+      <div className="mt-4 flex flex-col items-start">
         <a
           href={CRISIS_SERVICE.website}
           className={buttonVariants({ variant: "link" })}

@@ -5,16 +5,46 @@ import {
   endOfMonthKey,
   endOfWeekKey,
   formatDayLabel,
+  formatDayParts,
   formatMonthLabel,
+  formatWeekdayShort,
   isDateKey,
   isValidTimeZone,
   lastNDays,
   monthGrid,
+  startOfLocalMonth,
   startOfMonthKey,
+  startOfNextMonthKey,
   startOfWeekKey,
   toDateKey,
   todayKey,
 } from "@/lib/dates";
+
+describe("startOfLocalMonth (batas token bulanan, PRD §8)", () => {
+  it("tengah malam tanggal 1 di zona user, sebagai instan UTC", () => {
+    // 2026-11-01 00:00 WIB is 2026-10-31 17:00 UTC.
+    expect(startOfLocalMonth("Asia/Jakarta", new Date("2026-11-15T03:00:00Z")).toISOString()).toBe(
+      "2026-10-31T17:00:00.000Z",
+    );
+  });
+
+  it("memakai bulan lokal, bukan bulan UTC: 1 November 00:30 WIT masih 31 Oktober di UTC", () => {
+    // 2026-11-01 00:30 WIT (UTC+9) is 2026-10-31 15:30 UTC, already November for the user.
+    expect(startOfLocalMonth("Asia/Jayapura", new Date("2026-10-31T15:30:00Z")).toISOString()).toBe(
+      "2026-10-31T15:00:00.000Z",
+    );
+  });
+});
+
+describe("startOfNextMonthKey", () => {
+  it.each([
+    ["2026-11-15", "2026-12-01"],
+    ["2026-12-31", "2027-01-01"],
+    ["2028-02-10", "2028-03-01"],
+  ])("%s -> %s", (key, expected) => {
+    expect(startOfNextMonthKey(key)).toBe(expected);
+  });
+});
 
 describe("toDateKey", () => {
   // Expected values come from Intl.DateTimeFormat (ICU), not from this module.
@@ -140,6 +170,36 @@ describe("formatDayLabel", () => {
 
   it("menolak kunci yang tidak valid", () => {
     expect(() => formatDayLabel("2026-02-31")).toThrow(/Invalid date key/);
+  });
+});
+
+describe("formatDayParts", () => {
+  it("memecah satu hari untuk halaman kalender Hari Ini", () => {
+    expect(formatDayParts("2026-10-28")).toEqual({ day: "28", weekday: "Rabu", monthYear: "Oktober 2026" });
+    expect(formatDayParts("2026-01-01")).toEqual({ day: "1", weekday: "Kamis", monthYear: "Januari 2026" });
+    expect(formatDayParts("2028-02-29")).toEqual({ day: "29", weekday: "Selasa", monthYear: "Februari 2028" });
+  });
+
+  it("menolak kunci yang tidak valid", () => {
+    expect(() => formatDayParts("2026-02-31")).toThrow(/Invalid date key/);
+  });
+});
+
+describe("formatWeekdayShort", () => {
+  it("gives the short Indonesian weekday of a calendar day, whatever the machine's zone", () => {
+    expect(lastNDays("2026-11-08", 7).map(formatWeekdayShort)).toEqual([
+      "Sen",
+      "Sel",
+      "Rab",
+      "Kam",
+      "Jum",
+      "Sab",
+      "Min",
+    ]);
+  });
+
+  it("rejects a day that does not exist", () => {
+    expect(() => formatWeekdayShort("2026-02-31")).toThrow(/Invalid date key/);
   });
 });
 

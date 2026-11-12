@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
-import { addDays, formatDayLabel, isValidTimeZone, lastNDays, todayKey } from "@/lib/dates";
+import { dailyDeltaPoints } from "@/lib/ai/scoring";
+import { loadPreviousScore, type PreviousScore } from "@/lib/ai/summarize-day";
+import {
+  addDays,
+  formatDayLabel,
+  formatDayParts,
+  formatWeekdayShort,
+  isValidTimeZone,
+  lastNDays,
+  todayKey,
+} from "@/lib/dates";
+import { firstName, greetingFor, localHour } from "@/lib/greeting";
+import { loadActiveHabits } from "@/lib/habits";
+import { comparedToLabel } from "@/lib/score-delta";
+import { streakLength } from "@/lib/streak";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CrisisView } from "./crisis-view";
-import type { SummaryResult } from "./summary-result";
+import type { SummaryResult, WeekDay } from "./summary-result";
 import { TodayClient } from "./today-client";
 
 export const metadata: Metadata = {
@@ -13,9 +27,8 @@ export const metadata: Metadata = {
  * DIARY-1: the editor for today, where "today" is the user's own calendar day
  * according to the time zone in their profile, never the server's day.
  *
- * Mood, energy, and the habit list also live on this screen in DESIGN.md §8,
- * but they arrive with their own tasks (3.3 and 3.2) rather than being faked
- * here.
+ * Mood, energy, and the habit checklist live here too (MOOD-1, HABIT-2,
+ * DESIGN.md §8). They are read for the same day and feed the score.
  */
 export default async function TodayPage({
   searchParams,
@@ -33,7 +46,7 @@ export default async function TodayPage({
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("timezone, plan")
+    .select("timezone, plan, name")
     .eq("id", userId)
     .maybeSingle();
 
@@ -49,7 +62,7 @@ export default async function TodayPage({
 
   const { data: entry, error: entryError } = await supabase
     .from("entries")
-    .select("content")
+    .select("content, mood, energy")
     .eq("user_id", userId)
     .eq("date", date)
     .maybeSingle();
@@ -58,17 +71,19 @@ export default async function TodayPage({
     throw new Error("Catatan hari ini tidak bisa dibaca");
   }
 
+  const habits = await loadActiveHabits(supabase, userId, date);
+
   const { data: summary, error: summaryError } = await supabase
     .from("daily_summaries")
     .select(
-      "status, risk_flag, regen_count, summary, strengths, improvements, tomorrow_tip, score, delta_pct, score_reason",
+      "status, risk_flag, regen_count, summary, strengths, improvements, tomorrow_tip, score, score_reason",
     )
     .eq("user_id", userId)
     .eq("date", date)
     .maybeSingle();
 
   if (summaryError) {
-    throw new Error("Ringkasan hari ini tidak bisa dibaca");
+    throw new Error("Analisa hari ini tidak bisa dibaca");
   }
 
   // The crisis screen replaces everything, including the editor (DESIGN.md §9).
@@ -77,8 +92,8 @@ export default async function TodayPage({
   // that neither PRD.md §9 nor the migration defines yet.
   if (summary?.risk_flag && tulis !== "1") {
     return (
-      <main className="py-8">
-        <p className="text-sm text-text-muted">{formatDayLabel(date)}</p>
+      <main className="py-6 md:py-10">
+        <p className="text-sm font-medium text-text-muted">{formatDayLabel(date)}</p>
         <CrisisView language="id" keepWritingHref="/today?tulis=1" />
       </main>
     );
@@ -90,15 +105,55 @@ export default async function TodayPage({
       ? await buildInitialResult(supabase, userId, date, summary)
       : null;
 
+  // PRD.md §5: the "don't miss twice" rule applies to writing too. Only days with
+  // text count; a day with only a mood tap is not a written day.
+  const { data: writtenDays, error: writtenError } = await supabase
+    .from("entries")
+    .select("date")
+    .eq("user_id", userId)
+    .gte("date", addDays(date, -366))
+    .lte("date", date)
+    .neq("content", "")
+    .order("date", { ascending: false })
+    .limit(400);
+
+  if (writtenError) {
+    throw new Error("Riwayat menulis tidak bisa dibaca");
+  }
+
+  const writingStreak = streakLength(
+    (writtenDays ?? []).map((row) => row.date as string),
+    date,
+  );
+  const name = firstName(profile?.name as string | null | undefined);
+  const greeting = greetingFor(localHour(new Date(), timeZone));
+  const parts = formatDayParts(date);
+  const week = await loadWeek(supabase, userId, date);
+
   return (
-    <main className="py-8">
-      <p className="text-sm text-text-muted">{formatDayLabel(date)}</p>
-      <h1 className="mt-1 font-serif text-title text-text">Gimana harimu?</h1>
+    <main className="py-6 md:py-10">
+      {/* DESIGN.md §6 (version 4): no calendar page any more; the day itself is
+          written in the notebook heading inside the writing sheet. */}
+      <header>
+        <h1 className="font-heading text-title font-bold text-text">
+          Gimana harimu{name ? `, ${name}` : ""}?
+        </h1>
+        <p className="mt-1 text-sm text-text-muted">
+          {greeting}.
+          {writingStreak > 0 ? ` Sudah ${writingStreak} hari kamu menulis beruntun.` : ""}
+        </p>
+      </header>
 
       <TodayClient
         date={date}
+        weekday={parts.weekday}
+        fullDate={`${parts.day} ${parts.monthYear}`}
+        week={week}
         initialContent={entry?.content ?? ""}
         initialResult={initialResult}
+        initialMood={entry?.mood ?? null}
+        initialEnergy={entry?.energy ?? null}
+        initialHabits={habits}
         regenLeft={Math.max(0, regenLimit - (summary?.regen_count ?? 0))}
       />
     </main>
@@ -106,9 +161,44 @@ export default async function TodayPage({
 }
 
 /**
- * A summary saved on an earlier visit still has to draw its percentage, and the
- * percentage needs to know how many scored days sit behind it. One indexed
- * count is cheaper than storing that number on every row.
+ * The last seven days, today included, for the week strip under the analysis:
+ * each with its short weekday and its score, or null when that day has no
+ * finished analysis. The strip takes today's score from the result itself, so
+ * a fresh analysis shows without a reload. The scores only set bar heights; the
+ * number is never shown (SCORE-2, user decision 2026-11-01).
+ */
+async function loadWeek(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  date: string,
+): Promise<WeekDay[]> {
+  const days = lastNDays(date, 7);
+  const { data, error } = await supabase
+    .from("daily_summaries")
+    .select("date, score")
+    .eq("user_id", userId)
+    .eq("status", "done")
+    .gte("date", days[0])
+    .lte("date", days[days.length - 1]);
+
+  if (error) {
+    throw new Error("Skor minggu ini tidak bisa dibaca");
+  }
+
+  const scores = new Map((data ?? []).map((row) => [row.date as string, row.score as number | null]));
+
+  return days.map((day) => ({
+    date: day,
+    label: formatWeekdayShort(day),
+    score: scores.get(day) ?? null,
+  }));
+}
+
+/**
+ * A summary saved on an earlier visit still has to say which day it is
+ * compared with (SCORE-2). The change is worked out again from the last scored
+ * day rather than read from `delta_pct`, because rows written before
+ * 2026-11-01 hold the old ratio against the 7 day average.
  */
 async function buildInitialResult(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
@@ -120,7 +210,6 @@ async function buildInitialResult(
     improvements: string[] | null;
     tomorrow_tip: string | null;
     score: number | null;
-    delta_pct: number | null;
     score_reason: string | null;
   },
 ): Promise<SummaryResult | null> {
@@ -128,13 +217,15 @@ async function buildInitialResult(
     return null;
   }
 
-  const { count } = await supabase
-    .from("daily_summaries")
-    .select("date", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .in("date", lastNDays(addDays(date, -1), 7))
-    .eq("status", "done")
-    .not("score", "is", null);
+  let previous: PreviousScore | null;
+
+  try {
+    previous = await loadPreviousScore(supabase, userId, date);
+  } catch {
+    throw new Error("Skor hari sebelumnya tidak bisa dibaca");
+  }
+
+  const delta = dailyDeltaPoints(summary.score, previous?.score ?? null);
 
   return {
     summary: summary.summary,
@@ -142,8 +233,8 @@ async function buildInitialResult(
     improvements: summary.improvements ?? [],
     tomorrowTip: summary.tomorrow_tip ?? "",
     score: summary.score,
-    deltaPct: summary.delta_pct,
+    delta,
+    comparedTo: previous === null ? null : comparedToLabel(date, previous.date),
     scoreReason: summary.score_reason ?? "",
-    scoredDays: count ?? 0,
   };
 }

@@ -51,7 +51,7 @@ Jika salah satu tidak bisa dipenuhi, tugas **belum selesai**. Jangan mencentang.
 | Framework | Next.js App Router, versi stabil terbaru saat scaffold, dikunci di `package.json`. |
 | Package manager | npm |
 | Styling | Tailwind CSS + shadcn/ui. Mobile-first, lebar minimum 360 px. Token warna, font, dan komponen mengikuti `DESIGN.md`; dilarang menulis hex atau font sendiri di komponen. |
-| Database dan auth | Supabase Postgres + Supabase Auth (Google, magic link) lewat `@supabase/ssr`. |
+| Database dan auth | Supabase Postgres + Supabase Auth (email dan password, Google) lewat `@supabase/ssr`. |
 | Validasi | zod untuk semua input API dan semua output AI. |
 | Grafik | Recharts |
 | Tanggal | `date-fns` dan `date-fns-tz`. Hari user = tanggal lokal menurut timezone profil. |
@@ -155,7 +155,9 @@ Folder dibuat hanya saat ada isinya yang sudah jalan. Jangan membuat halaman kos
 
 **Sudah diputuskan user (2026-10-28):** nama Satu Persen, keluarga model DeepSeek, usia minimum 18 tahun, batas balasan AI WhatsApp free 1 per hari.
 
-**Keputusan terbuka. Jangan dikerjakan atau ditebak:** domain, ID model DeepSeek yang persis, harga dan gateway pembayaran, teks respons krisis sampai user menyetujuinya, template pengingat WhatsApp. Jika tugas bergantung padanya, tulis di "Terblokir" dan berhenti.
+**Diubah atau diputuskan user (2026-11-01):** pernyataan usia 18+ dihapus (risiko UU PDP data anak tetap dicatat di PRD §7); login email + password menggantikan magic link; harga paket premium 1/3/6/12 bulan dan batas token AI bulanan yang lunak ada di `src/config/plans.ts` (PRD §8); tanpa trial; gateway pembayaran ditunda; landing dirombak (DESIGN.md §10, §12).
+
+**Keputusan terbuka. Jangan dikerjakan atau ditebak:** domain, ID model DeepSeek yang persis, gateway pembayaran, teks respons krisis sampai user menyetujuinya, template pengingat WhatsApp. Jika tugas bergantung padanya, tulis di "Terblokir" dan berhenti.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -5,14 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design tokens from DESIGN.md §3. Each value is declared once per mode with
- * light-dark(), so the page follows the system preference by default and the
- * manual choice on <html> overrides it through color-scheme (set in 1.7).
+ * Design tokens from DESIGN.md §3 (version 4, "Buku tulis"). Each value is
+ * declared once per mode with light-dark(). Day mode is the default whatever
+ * the system prefers; the `dark` class on <html>, set from the theme cookie,
+ * switches to night.
  */
 @theme inline {
   --font-sans: var(--font-plus-jakarta-sans);
-  --font-serif: var(--font-newsreader);
-  --font-heading: var(--font-newsreader);
+  --font-serif: var(--font-lora);
+  --font-heading: var(--font-plus-jakarta-sans);
+  --font-wordmark: var(--font-newsreader);
 
   --color-background: var(--background);
   --color-surface: var(--surface);
@@ -26,6 +28,35 @@
   --color-primary-soft: var(--primary-soft);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
+  --color-rule: var(--rule);
+
+  /*
+   * Version 4 keeps one ink for every highlight (user, 2026-11-08: "terlalu
+   * warna warni"). The older names below still exist so screens built on them
+   * keep working, but they all resolve to the ink or its soft tint.
+   */
+  --color-accent-warm: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-plum: var(--plum);
+  --color-plum-soft: var(--plum-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+
+  --color-mood-1: var(--mood-1);
+  --color-mood-2: var(--mood-2);
+  --color-mood-3: var(--mood-3);
+  --color-mood-4: var(--mood-4);
+  --color-mood-5: var(--mood-5);
+  --color-mood-1-soft: var(--mood-1-soft);
+  --color-mood-2-soft: var(--mood-2-soft);
+  --color-mood-3-soft: var(--mood-3-soft);
+  --color-mood-4-soft: var(--mood-4-soft);
+  --color-mood-5-soft: var(--mood-5-soft);
+  --color-on-mood: var(--on-mood);
+
+  /* Paper does not float: one faint shadow for things that sit above the page (sheet, knob). */
+  --shadow-card: 0 1px 2px var(--shadow-soft);
+  --shadow-float: 0 1px 2px var(--shadow-soft), 0 16px 36px -20px var(--shadow-strong);
 
   /* Names shadcn components expect, mapped onto the tokens above. */
   --color-foreground: var(--text);
@@ -44,59 +75,106 @@
   --color-input: var(--control);
   --color-ring: var(--primary);
 
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
-  --radius-3xl: 24px;
-  --radius-4xl: 28px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 24px;
 
   /* Type scale, DESIGN.md §4. Tailwind already covers 14, 16, and 18 px. */
   --text-label: 12px;
   --text-label--line-height: 1.5;
-  --text-title: 24px;
-  --text-title--line-height: 1.5;
-  --text-focus: 40px;
-  --text-focus--line-height: 1.5;
-  --text-score: 56px;
-  --text-score--line-height: 1.5;
+  --text-title: 28px;
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.02em;
+  --text-focus: 48px;
+  --text-focus--line-height: 1.05;
+  --text-focus--letter-spacing: -0.02em;
+  --text-score: 60px;
+  --text-score--line-height: 1;
+  --text-display: 84px;
+  --text-display--line-height: 0.85;
+  --text-display--letter-spacing: -0.03em;
   --text-editor: 18px;
-  --text-editor--line-height: 1.7;
+  --text-editor--line-height: 34px;
 }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
-  --background: light-dark(#fbf8f3, #16130f);
-  --surface: light-dark(#ffffff, #1f1b16);
-  --surface-muted: light-dark(#f3eee6, #2a251f);
-  --border: light-dark(#e6dfd3, #3a332b);
-  --control: light-dark(#8f8579, #7a7064);
-  --text: light-dark(#221e1a, #f1ebe2);
-  --text-muted: light-dark(#6b635a, #a89f92);
-  --primary: light-dark(#2e6b4f, #6fbf95);
-  --primary-foreground: light-dark(#ffffff, #0f1f17);
-  --primary-soft: light-dark(#e3f0e8, #1e3328);
-  --danger: light-dark(#b3412f, #e07a66);
+  /*
+   * DESIGN.md §3, version 4 ("Buku tulis", user 2026-11-08): a school notebook
+   * written in one ballpoint ink. Day is off-white paper with pale blue rules
+   * and blue ink; night is a dark neutral page with a light blue ink. Contrast
+   * is checked for every text pair (AA or better).
+   */
+  --background: light-dark(#f6f4ee, #14161b);
+  --surface: light-dark(#fffdf8, #1c1f26);
+  --surface-muted: light-dark(#ece9e1, #262a33);
+  --border: light-dark(#e4e0d6, #2f343e);
+  --rule: light-dark(#d6deeb, #2e3850);
+  --control: light-dark(#8a8577, #7f8796);
+  --text: light-dark(#1f2330, #e8e6e1);
+  --text-muted: light-dark(#5e6372, #a3a8b5);
+  --primary: light-dark(#22355e, #a9bde6);
+  --primary-foreground: light-dark(#ffffff, #14161b);
+  --primary-soft: light-dark(#e9edf5, #263048);
+  --danger: light-dark(#a3392b, #f0907f);
   --danger-foreground: light-dark(#ffffff, #1a0e0b);
+
+  /* Older highlight names, all on the one ink (see the note in @theme above). */
+  --accent: var(--primary);
+  --accent-soft: var(--primary-soft);
+  --plum: var(--primary);
+  --plum-soft: var(--primary-soft);
+  --sage: var(--primary);
+  --sage-soft: var(--primary-soft);
+
+  --mood-1: var(--primary);
+  --mood-2: var(--primary);
+  --mood-3: var(--primary);
+  --mood-4: var(--primary);
+  --mood-5: var(--primary);
+  --mood-1-soft: var(--primary-soft);
+  --mood-2-soft: var(--primary-soft);
+  --mood-3-soft: var(--primary-soft);
+  --mood-4-soft: var(--primary-soft);
+  --mood-5-soft: var(--primary-soft);
+  --on-mood: var(--primary-foreground);
+
+  --shadow-soft: light-dark(rgb(31 35 48 / 0.06), rgb(0 0 0 / 0.35));
+  --shadow-strong: light-dark(rgb(31 35 48 / 0.16), rgb(0 0 0 / 0.6));
+
+  /*
+   * Paper grain: fractal noise in the ink colour at a few percent. It sits in
+   * the background image under everything, so the contrast of every text is
+   * still measured against the plain token colour.
+   */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .11 0 0 0 0 .14 0 0 0 0 .2 0 0 0 .1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --glow: rgb(255 255 255 / 0.55);
 }
 
-/* The manual choice in Akun pins one mode; without a class the system decides. */
-html.light {
-  color-scheme: only light;
-}
-
+/* Night mode: chosen with the switch, stored in the theme cookie (src/lib/theme.ts). */
 html.dark {
-  color-scheme: only dark;
+  color-scheme: dark;
+
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .93 0 0 0 0 .9 0 0 0 0 .85 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --glow: rgb(169 189 230 / 0.05);
 }
 
 /*
- * DESIGN.md §5: while the diary editor has focus on a phone, the bottom
- * navigation is hidden so the keyboard does not cover the text. Tablets and
- * laptops keep their rail and sidebar.
+ * DESIGN.md §5: while the diary editor has focus on a phone or tablet, the
+ * bottom navigation is hidden so the keyboard does not cover the text, and the
+ * writing bar covers the header. Scrolling to the caret keeps clear of that
+ * bar. From 1024 px the navigation lives in the header and stays.
  */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
+  html[data-writing="true"] {
+    scroll-padding-top: calc(env(safe-area-inset-top) + 5rem);
+  }
+
   html[data-writing="true"] [data-app-nav] {
     display: none;
   }
@@ -113,11 +191,24 @@ html.dark {
 
   body {
     @apply bg-background text-text;
+
+    /* Grain over the whole canvas and one soft light at the top, like a lamp
+     * on the page by day and moonlight by night (DESIGN.md §1). */
+    background-image:
+      var(--grain),
+      radial-gradient(60rem 30rem at 50% -14rem, var(--glow), transparent 70%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
   }
 
   :focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--text);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -129,5 +220,118 @@ html.dark {
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/*
+ * Ruled paper behind the diary editor: one pale blue rule per line of text, like
+ * a school notebook. The step equals the editor's line height (34 px), and
+ * `local` makes the lines scroll with the text.
+ */
+@utility paper-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 33px,
+    var(--rule) 33px,
+    var(--rule) 34px
+  );
+  background-attachment: local;
+  line-height: 34px;
+}
+
+/* The page rises in once when a screen opens; switched off by prefers-reduced-motion above. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-rise {
+  animation: rise-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/*
+ * The landing page's motion and shapes (DESIGN.md §10). The motif is the round
+ * "1%" stamp of the brand mark. Nothing here hides content without script:
+ * `.landing-reveal` only waits while the root carries data-reveal="ready",
+ * which RevealRoot sets in the browser. The prefers-reduced-motion rule in the
+ * base layer shortens every transition; the block at the end drops the travel.
+ */
+@layer components {
+  .landing-reveal {
+    transition:
+      opacity 640ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms),
+      transform 720ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--reveal-delay, 0ms);
+  }
+
+  :root[data-reveal="ready"] .landing-reveal:not([data-shown]) {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  /* The hero stamp is pressed onto the page once, like ink. */
+  .landing-stamp {
+    animation: stamp-in 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms both;
+  }
+
+  /* A card that lifts a little under the pointer or keyboard focus. */
+  .landing-lift {
+    transition: transform 180ms ease-out;
+  }
+
+  .landing-lift:hover,
+  .landing-lift:focus-within {
+    transform: translateY(-6px);
+  }
+
+  /* The dial's arc follows the slider smoothly. */
+  .landing-arc {
+    transition: stroke-dashoffset 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  /* FAQ: index cards filed in a drawer, each with a tab that steps to the right. */
+  .landing-faq-card {
+    margin-left: calc(var(--tab-step, 0) * 1px);
+  }
+
+  .landing-faq-card + .landing-faq-card {
+    margin-top: -12px;
+  }
+
+  .landing-faq-tab {
+    border-radius: 16px 16px 0 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root[data-reveal="ready"] .landing-reveal:not([data-shown]) {
+      opacity: 1;
+      transform: none;
+    }
+
+    .landing-stamp {
+      animation: none;
+    }
+
+    .landing-lift:hover,
+    .landing-lift:focus-within {
+      transform: none;
+    }
+  }
+}
+
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
   }
 }

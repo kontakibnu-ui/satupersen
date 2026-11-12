@@ -13,8 +13,12 @@ const WEEKDAYS = [
   { short: "Min", full: "Minggu" },
 ];
 
+/**
+ * A chosen day jumps to the reading sheet under the calendar (`#entri`), so on
+ * a phone the entry is on screen right after the tap instead of below the fold.
+ */
 export function historyHref(month: string, day?: string): string {
-  return day ? `/history?month=${month}&day=${day}` : `/history?month=${month}`;
+  return day ? `/history?month=${month}&day=${day}#entri` : `/history?month=${month}`;
 }
 
 /**
@@ -48,8 +52,8 @@ export function MonthCalendar({
   const canGoForward = nextMonth <= today.slice(0, 7);
 
   return (
-    <div className="mt-6">
-      <div className="flex items-center justify-between">
+    <div className="mt-6 rounded-3xl border border-border bg-surface px-0 py-4 sm:px-3 md:p-6">
+      <div className="flex items-center justify-between px-2 sm:px-0">
         <Link
           href={historyHref(previousMonth)}
           aria-label={`Bulan sebelumnya, ${formatMonthLabel(`${previousMonth}-01`)}`}
@@ -58,7 +62,7 @@ export function MonthCalendar({
           <ChevronLeft aria-hidden="true" size={20} strokeWidth={1.5} />
         </Link>
 
-        <h2 className="text-base font-semibold text-text">{formatMonthLabel(first)}</h2>
+        <h2 className="font-serif text-xl font-medium text-text">{formatMonthLabel(first)}</h2>
 
         {canGoForward ? (
           <Link
@@ -78,7 +82,7 @@ export function MonthCalendar({
           <abbr
             key={weekday.short}
             title={weekday.full}
-            className="pb-2 text-sm text-text-muted no-underline"
+            className="pb-2 text-sm font-semibold text-text-muted no-underline"
           >
             {weekday.short}
           </abbr>
@@ -143,18 +147,20 @@ function DayCell({
       aria-current={isSelected ? "date" : undefined}
       className={`relative flex size-11 items-center justify-center rounded-full text-base tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
         isSelected
-          ? "bg-primary text-primary-foreground"
+          ? "bg-primary font-semibold text-primary-foreground"
           : isToday
-            ? "border border-control text-text"
-            : "text-text"
+            ? "border-2 border-primary font-semibold text-text"
+            : hasEntry
+              ? "bg-primary-soft text-text hover:brightness-95"
+              : "text-text hover:bg-surface-muted"
       }`}
     >
       {number}
       {hasEntry ? (
         <span
           aria-hidden="true"
-          className={`absolute bottom-1.5 left-1/2 size-1 -translate-x-1/2 rounded-full ${
-            isSelected ? "bg-primary-foreground" : "bg-text-muted"
+          className={`absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full ${
+            isSelected ? "bg-primary-foreground" : "bg-primary"
           }`}
         />
       ) : null}

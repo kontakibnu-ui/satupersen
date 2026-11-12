@@ -133,3 +133,205 @@ export async function seedSummary(
 ): Promise<void> {
   await rest("daily_summaries", "POST", { user_id: user.id, date, status: "done", ...fields });
 }
+
+/** A habit made the way the server would, so a test can start from a known list. */
+export async function seedHabit(
+  user: TestUser,
+  name: string,
+  identity?: string,
+): Promise<string> {
+  const response = await fetch(`${url}/rest/v1/habits`, {
+    method: "POST",
+    headers: { ...serviceHeaders(), Prefer: "return=representation" },
+    body: JSON.stringify({ user_id: user.id, name, identity: identity ?? null }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Seeding a habit failed with ${response.status}`);
+  }
+
+  const rows = (await response.json()) as { id: string }[];
+  return rows[0].id;
+}
+
+export async function seedHabitLog(user: TestUser, habitId: string, date: string): Promise<void> {
+  await rest("habit_logs", "POST", { habit_id: habitId, user_id: user.id, date });
+}
+
+/** Plan changes belong to the payment webhook in production; tests set it directly. */
+export async function setPlan(user: TestUser, plan: "free" | "premium"): Promise<void> {
+  await rest(`profiles?id=eq.${user.id}`, "PATCH", { plan });
+}
+
+/** Onboarding stores the browser's zone; tests set one directly to stage a mismatch. */
+export async function setTimezone(user: TestUser, timezone: string): Promise<void> {
+  await rest(`profiles?id=eq.${user.id}`, "PATCH", { timezone });
+}
+
+/** A day with a finished score, for the Progres screen. */
+export async function seedScoredDay(
+  user: TestUser,
+  date: string,
+  score: number,
+  dimensions: { name: string; value: number; weight: number }[] = [],
+): Promise<void> {
+  await rest("daily_summaries", "POST", {
+    user_id: user.id,
+    date,
+    status: "done",
+    score,
+    score_dimensions: dimensions,
+    summary: "ringkasan uji",
+    strengths: [],
+    improvements: [],
+    tomorrow_tip: "tip uji",
+    ai_dimension_score: Math.round(score / 10),
+    score_reason: "alasan uji",
+    risk_flag: false,
+    regen_count: 0,
+  });
+}
+
+export async function seedExpense(
+  user: TestUser,
+  date: string,
+  amount: number,
+  category: string,
+  note?: string,
+): Promise<void> {
+  await rest("expenses", "POST", { user_id: user.id, date, amount, category, note: note ?? null });
+}
+
+/** An income entry: the same table as an expense, with `type` set to income (EXP-5). */
+export async function seedIncome(
+  user: TestUser,
+  date: string,
+  amount: number,
+  category: string,
+  note?: string,
+): Promise<void> {
+  await rest("expenses", "POST", {
+    user_id: user.id,
+    date,
+    type: "income",
+    amount,
+    category,
+    note: note ?? null,
+  });
+}
+
+/** A budget row, written the way the server writes it (service role). */
+export async function seedBudget(user: TestUser, month: string, amount: number): Promise<void> {
+  await rest("budgets", "POST", { user_id: user.id, month, amount });
+}
+
+/** A report row, written the way the tick writes it (service role). */
+export async function seedReport(
+  user: TestUser,
+  type: "weekly" | "monthly",
+  periodStart: string,
+  periodEnd: string,
+  content: Record<string, unknown>,
+): Promise<void> {
+  await rest("reports", "POST", {
+    user_id: user.id,
+    type,
+    period_start: periodStart,
+    period_end: periodEnd,
+    content,
+  });
+}
+
+/** Mood and energy for a day, without any diary text. */
+export async function seedMood(
+  user: TestUser,
+  date: string,
+  mood: number | null,
+  energy: number | null,
+): Promise<void> {
+  await rest("entries", "POST", { user_id: user.id, date, mood, energy });
+}
+
+/** Whole days before `date`, as a "yyyy-MM-dd" key. */
+export function daysBefore(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** Many scored days in one request, newest first by offset: offset 0 is `endDate`. */
+export async function seedScoreHistory(
+  user: TestUser,
+  endDate: string,
+  scoreForOffset: (offset: number) => number,
+  days: number,
+  dimensions: { name: string; value: number; weight: number }[] = [],
+): Promise<void> {
+  const rows = Array.from({ length: days }, (_, offset) => ({
+    user_id: user.id,
+    date: daysBefore(endDate, offset),
+    status: "done",
+    score: scoreForOffset(offset),
+    score_dimensions: dimensions,
+    summary: "ringkasan uji",
+    strengths: [],
+    improvements: [],
+    tomorrow_tip: "tip uji",
+    ai_dimension_score: 5,
+    score_reason: "alasan uji",
+    risk_flag: false,
+    regen_count: 0,
+  }));
+
+  await rest("daily_summaries", "POST", rows);
+}
+
+/** A verified WhatsApp link, written the way the webhook writes it (service role). */
+export async function seedWhatsAppLink(
+  user: TestUser,
+  phone: string,
+  options: { optedIn?: boolean } = {},
+): Promise<void> {
+  await rest("whatsapp_links", "POST", {
+    user_id: user.id,
+    phone,
+    verified_at: new Date().toISOString(),
+    opted_in: options.optedIn ?? true,
+  });
+}
+
+/** Rows of a table filtered the PostgREST way, read with the service role. */
+export async function readRows<T>(table: string, filter: string): Promise<T[]> {
+  const response = await fetch(`${url}/rest/v1/${table}?${filter}`, { headers: serviceHeaders() });
+
+  if (!response.ok) {
+    throw new Error(`Reading ${table} failed with ${response.status}`);
+  }
+
+  return (await response.json()) as T[];
+}
+
+/** Removes a user made through the real sign-in flow, found by the email it used. */
+export async function deleteUserByEmail(email: string): Promise<void> {
+  const response = await fetch(`${url}/auth/v1/admin/users?per_page=1000`, { headers: serviceHeaders() });
+
+  if (!response.ok) {
+    throw new Error(`Listing users failed with ${response.status}`);
+  }
+
+  const { users } = (await response.json()) as { users: { id: string; email?: string }[] };
+  const match = users.find((candidate) => candidate.email === email);
+
+  if (match) {
+    await deleteTestUser({ id: match.id, email });
+  }
+}
+
+/** One metered AI call, written the way src/lib/ai/usage.ts writes it (service role). */
+export async function seedAiUsage(user: TestUser, promptTokens: number, completionTokens = 0): Promise<void> {
+  await rest("ai_usage", "POST", {
+    user_id: user.id,
+    feature: "daily",
+    model: "uji",
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+  });
+}

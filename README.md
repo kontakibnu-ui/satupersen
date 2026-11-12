@@ -38,8 +38,8 @@ Nilai production diisi di dashboard Vercel, bukan di file.
 
 | Perintah | Isi |
 | --- | --- |
-| `npm test` | Tes vitest untuk fungsi murni (tanggal, skor, schema AI, klien OpenRouter, filter krisis). Tes RLS di `src/lib/supabase/rls.test.ts` hanya jalan bila env `LOCAL_SUPABASE_*` diisi. |
-| `npm run test:ui` | Playwright + axe di 360, 768, dan 1280 px, mode terang dan gelap. Tes halaman yang butuh login dilewati bila Supabase lokal tidak jalan. |
+| `npm test` | Tes vitest untuk fungsi murni (tanggal, skor, streak, progres, schema AI, prompt, klien OpenRouter, filter krisis, signature WhatsApp). Tes yang memakai database (RLS, laporan terjadwal, pesan WhatsApp, ringkasan otomatis) hanya jalan bila env `LOCAL_SUPABASE_URL`, `LOCAL_SUPABASE_ANON_KEY`, dan `LOCAL_SUPABASE_SERVICE_KEY` diisi dengan nilai stack lokal (`npx supabase start`); tanpa itu dilewati. |
+| `npm run test:ui` | Playwright + axe di 360, 768, dan 1280 px, mode terang dan gelap, plus alur tiap layar, endpoint tick dan webhook, dan header keamanan. Tes yang butuh login dilewati bila Supabase lokal tidak jalan. Webhook dan tick memakai `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, dan `CRON_SECRET` di `.env.local` (nilai lokal acak; jangan isi `WHATSAPP_ACCESS_TOKEN` untuk tes agar tidak ada yang dikirim ke Meta). Untuk uji produksi: `npm run build`, `npm run start`, lalu `npm run test:ui`. |
 | `npm run lint`, `npx tsc --noEmit`, `npm run build` | Wajib lulus sebelum tugas dicentang (`AGENTS.md` §2). |
 
 ## Struktur

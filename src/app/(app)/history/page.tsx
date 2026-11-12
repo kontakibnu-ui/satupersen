@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -99,22 +100,27 @@ export default async function HistoryPage({
   const isToday = selected === today;
 
   return (
-    <main className="py-8">
-      <h1 className="font-serif text-title text-text">Riwayat</h1>
+    <main className="py-6 md:py-10">
+      <PageHeader title="Riwayat" description="Hari yang kamu tulis ditandai titik." />
 
       <MonthCalendar monthKey={monthKey} today={today} selected={selected} entryDays={entryDays} />
 
-      <section aria-live="polite" className="mt-8">
+      {/* The reading sheet: the chosen day as a diary page, read only (DIARY-4). */}
+      <section
+        id="entri"
+        aria-live="polite"
+        className="mt-4 scroll-mt-4 rounded-3xl border border-border bg-surface p-5 md:p-6"
+      >
         {selected === null ? (
           <p className="text-base text-text-muted">
             {entryDays.size === 0 ? "Belum ada entri di bulan ini." : "Pilih tanggal yang bertitik untuk membaca entrinya."}
           </p>
         ) : (
           <>
-            <h2 className="text-sm font-semibold text-text">{formatDayLabel(selected)}</h2>
+            <h2 className="font-serif text-xl font-medium text-text">{formatDayLabel(selected)}</h2>
 
             {selectedContent ? (
-              <p className="mt-2 whitespace-pre-line font-serif text-editor text-text">{selectedContent}</p>
+              <p className="paper-lines mt-3 max-w-[65ch] whitespace-pre-line font-serif text-editor font-[350] text-text">{selectedContent}</p>
             ) : (
               <p className="mt-2 text-base text-text-muted">
                 {isToday ? "Belum ada entri. Mulai dari satu kalimat saja." : "Tidak ada entri di tanggal ini."}

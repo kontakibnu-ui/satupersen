@@ -1,83 +1,89 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { BASE_URL } from "./support/test-users";
 
-// Expected values are the DESIGN.md §3 hex values converted to rgb by hand.
-const themes = [
-  {
-    name: "light",
-    colorScheme: "light" as const,
-    background: "rgb(251, 248, 243)",
-    text: "rgb(34, 30, 26)",
-    primary: "rgb(46, 107, 79)",
-    textMuted: "rgb(107, 99, 90)",
-    control: "rgb(143, 133, 121)",
-  },
-  {
-    name: "dark",
-    colorScheme: "dark" as const,
-    background: "rgb(22, 19, 15)",
-    text: "rgb(241, 235, 226)",
-    primary: "rgb(111, 191, 149)",
-    textMuted: "rgb(168, 159, 146)",
-    control: "rgb(122, 112, 100)",
-  },
-];
+// Expected values are the DESIGN.md §3 (version 4) hex values converted to rgb by hand.
+const DAY = {
+  background: "rgb(246, 244, 238)",
+  text: "rgb(31, 35, 48)",
+  primary: "rgb(34, 53, 94)",
+  textMuted: "rgb(94, 99, 114)",
+  control: "rgb(138, 133, 119)",
+};
 
-for (const theme of themes) {
-  test(`system ${theme.name}: DESIGN.md tokens reach the page`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: theme.colorScheme });
-    await page.goto("/");
+const NIGHT = {
+  background: "rgb(20, 22, 27)",
+  text: "rgb(232, 230, 225)",
+  primary: "rgb(169, 189, 230)",
+  textMuted: "rgb(163, 168, 181)",
+  control: "rgb(127, 135, 150)",
+};
 
-    const body = await page.evaluate(() => {
-      const styles = window.getComputedStyle(document.body);
-      return { background: styles.backgroundColor, text: styles.color };
-    });
+async function readTokens(page: Page) {
+  return page.evaluate(() => {
+    const body = window.getComputedStyle(document.body);
+    const probe = document.createElement("div");
+    probe.style.backgroundColor = "var(--primary)";
+    probe.style.color = "var(--text-muted)";
+    probe.style.borderColor = "var(--control)";
+    document.body.append(probe);
 
-    expect(body.background).toBe(theme.background);
-    expect(body.text).toBe(theme.text);
-
-    const tokens = await page.evaluate(() => {
-      const probe = document.createElement("div");
-      probe.style.backgroundColor = "var(--primary)";
-      probe.style.color = "var(--text-muted)";
-      probe.style.borderColor = "var(--control)";
-      document.body.append(probe);
-
-      const styles = window.getComputedStyle(probe);
-      return {
-        primary: styles.backgroundColor,
-        textMuted: styles.color,
-        control: styles.borderColor,
-      };
-    });
-
-    expect(tokens.primary).toBe(theme.primary);
-    expect(tokens.textMuted).toBe(theme.textMuted);
-    expect(tokens.control).toBe(theme.control);
+    const styles = window.getComputedStyle(probe);
+    const tokens = {
+      background: body.backgroundColor,
+      text: body.color,
+      primary: styles.backgroundColor,
+      textMuted: styles.color,
+      control: styles.borderColor,
+    };
+    probe.remove();
+    return tokens;
   });
 }
 
-test("manual light choice wins over a dark system", async ({ page }) => {
+test("mode siang adalah bawaan, juga saat sistem memilih gelap", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
-  await page.evaluate(() => document.documentElement.classList.add("light"));
 
-  const background = await page.evaluate(
-    () => window.getComputedStyle(document.body).backgroundColor,
-  );
-
-  expect(background).toBe("rgb(251, 248, 243)");
+  expect(await readTokens(page)).toEqual(DAY);
+  await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
 });
 
-test("manual dark choice wins over a light system", async ({ page }) => {
-  await page.emulateMedia({ colorScheme: "light" });
+test("cookie mode malam melukis halaman malam sejak byte pertama", async ({ page }) => {
+  await page.context().addCookies([{ name: "satupersen-theme", value: "dark", url: BASE_URL }]);
   await page.goto("/");
-  await page.evaluate(() => document.documentElement.classList.add("dark"));
 
-  const background = await page.evaluate(
-    () => window.getComputedStyle(document.body).backgroundColor,
-  );
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  expect(await readTokens(page)).toEqual(NIGHT);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#14161B");
+});
 
-  expect(background).toBe("rgb(22, 19, 15)");
+test("nilai cookie yang tidak dikenal tetap memberi mode siang", async ({ page }) => {
+  await page.context().addCookies([{ name: "satupersen-theme", value: "gelap-banget", url: BASE_URL }]);
+  await page.goto("/");
+
+  expect(await readTokens(page)).toEqual(DAY);
+});
+
+test("tombol mode malam bisa dinyalakan dan dimatikan, dan pilihannya diingat", async ({ page }) => {
+  await page.goto("/");
+  const toggle = page.getByRole("switch", { name: "Mode malam" });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#14161B");
+
+  await page.reload();
+  await expect(page.getByRole("switch", { name: "Mode malam" })).toHaveAttribute("aria-checked", "true");
+  expect(await readTokens(page)).toEqual(NIGHT);
+
+  await page.getByRole("switch", { name: "Mode malam" }).click();
+  await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+
+  await page.reload();
+  await expect(page.getByRole("switch", { name: "Mode malam" })).toHaveAttribute("aria-checked", "false");
+  expect(await readTokens(page)).toEqual(DAY);
 });
 
 test("layout uses the locked fonts and language", async ({ page }) => {
@@ -87,11 +93,11 @@ test("layout uses the locked fonts and language", async ({ page }) => {
     const html = window.getComputedStyle(document.documentElement);
     return {
       sans: html.fontFamily,
-      headingVariable: html.getPropertyValue("--font-newsreader").trim(),
+      serifVariable: html.getPropertyValue("--font-lora").trim(),
     };
   });
 
   expect(fonts.sans).toContain("Plus Jakarta Sans");
-  expect(fonts.headingVariable.length).toBeGreaterThan(0);
+  expect(fonts.serifVariable).toContain("Lora");
   await expect(page.locator("html")).toHaveAttribute("lang", "id");
 });

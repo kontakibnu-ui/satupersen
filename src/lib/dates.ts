@@ -1,5 +1,5 @@
 import { id as indonesianLocale } from "date-fns/locale";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 /**
  * A calendar day in the user's time zone, formatted as "yyyy-MM-dd".
@@ -91,6 +91,19 @@ export function endOfMonthKey(key: DateKey): DateKey {
 }
 
 /**
+ * The instant the user's current calendar month began (midnight on the 1st in
+ * their zone), where monthly counts such as the AI token cap start.
+ */
+export function startOfLocalMonth(timeZone: string, now: Date = new Date()): Date {
+  return fromZonedTime(`${startOfMonthKey(todayKey(timeZone, now))}T00:00:00`, timeZone);
+}
+
+/** The first day of the user's next month, when monthly counts start again. */
+export function startOfNextMonthKey(key: DateKey): DateKey {
+  return addDays(endOfMonthKey(key), 1);
+}
+
+/**
  * "Selasa, 28 Oktober" for a date key, as DESIGN.md §4 asks. The key is a
  * calendar day, so it is formatted in UTC to keep the machine's own time zone
  * out of the result.
@@ -99,6 +112,22 @@ export function formatDayLabel(key: DateKey): string {
   return formatInTimeZone(parseDateKey(key), "UTC", "EEEE, d MMMM", {
     locale: indonesianLocale,
   });
+}
+
+/**
+ * The pieces of a day for the calendar page at the top of Hari Ini:
+ * { day: "29", weekday: "Kamis", monthYear: "Oktober 2026" }.
+ */
+export function formatDayParts(key: DateKey): { day: string; weekday: string; monthYear: string } {
+  const instant = parseDateKey(key);
+  const format = (pattern: string) => formatInTimeZone(instant, "UTC", pattern, { locale: indonesianLocale });
+
+  return { day: format("d"), weekday: format("EEEE"), monthYear: format("MMMM yyyy") };
+}
+
+/** The short weekday under each day of the week strip on Hari Ini: "Sen", "Rab", "Min". */
+export function formatWeekdayShort(key: DateKey): string {
+  return formatInTimeZone(parseDateKey(key), "UTC", "EEE", { locale: indonesianLocale });
 }
 
 /** "Oktober 2026" for any day in that month, for the history calendar. */

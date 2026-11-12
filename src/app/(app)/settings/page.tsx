@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PageHeader } from "@/components/page-header";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SettingsForm } from "./settings-form";
 
@@ -31,8 +32,8 @@ export default async function SettingsPage() {
   }
 
   return (
-    <main className="py-8">
-      <h1 className="font-serif text-title text-text">Akun</h1>
+    <main className="py-6 md:py-10">
+      <PageHeader title="Akun" description="Profil, tampilan, koneksi, dan datamu." />
 
       <SettingsForm
         name={profile?.name ?? ""}

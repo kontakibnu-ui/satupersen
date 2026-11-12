@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
+import { THEME_COOKIE } from "../../src/lib/theme";
 
 /** The three sizes and two modes DESIGN.md §13 asks every UI task to pass. */
 export const viewports = [
@@ -10,6 +11,21 @@ export const viewports = [
 
 export const colorSchemes = ["light", "dark"] as const;
 
+/**
+ * Day mode is the default whatever the system prefers (DESIGN.md §3), so a
+ * test reaches night mode the way the switch does: the theme cookie for the
+ * next request and the class on <html> for the page already open. Call it
+ * after the page has navigated, so the cookie lands on the page's own origin.
+ */
+export async function applyColorScheme(page: Page, scheme: (typeof colorSchemes)[number]): Promise<void> {
+  await page
+    .context()
+    .addCookies([{ name: THEME_COOKIE, value: scheme, url: new URL(page.url()).origin }]);
+  await page.evaluate((dark) => {
+    document.documentElement.classList.toggle("dark", dark);
+  }, scheme === "dark");
+}
+
 export async function expectNoHorizontalScroll(page: Page): Promise<void> {
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -19,22 +35,45 @@ export async function expectNoHorizontalScroll(page: Page): Promise<void> {
 
 export async function expectNoSeriousAxeViolations(page: Page): Promise<void> {
   // Switching the colour scheme starts the 200 ms colour transitions DESIGN.md
-  // §13 allows, and axe would otherwise measure a colour halfway between the
-  // two modes. Only transitions are awaited: they always end, unlike a looping
-  // animation. A cancelled transition settles too, so allSettled is used.
-  await page.evaluate(() =>
-    Promise.allSettled(
-      document
+  // §13 allows, and cards fade in once when a screen opens; axe would otherwise
+  // measure a colour halfway through either. A switch can cancel a running
+  // transition and start a new one, so waiting on the ones seen first is not
+  // enough: this polls until nothing that ends is still running. Looping
+  // animations are ignored, because they never stop.
+  // The new colour scheme reaches the page a frame or two after the class
+  // changes, so the check starts only after two frames have been painted.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await page.waitForFunction(
+    () => {
+      // Reading a computed style makes the browser apply pending style changes,
+      // which is when any new transition is created.
+      void getComputedStyle(document.body).color;
+
+      return document
         .getAnimations()
-        .filter((animation) => animation instanceof CSSTransition)
-        .map((animation) => animation.finished),
-    ),
+        .every(
+          (animation) =>
+            animation.playState !== "running" || animation.effect?.getTiming().iterations === Infinity,
+        );
+    },
+    null,
+    { timeout: 5_000 },
   );
 
   const results = await new AxeBuilder({ page }).analyze();
   const blocking = results.violations
     .filter((violation) => violation.impact === "serious" || violation.impact === "critical")
-    .map((violation) => `${violation.id} (${violation.nodes.length})`);
+    // The first node and axe's own summary make a failure readable without a rerun.
+    .map(
+      (violation) =>
+        `${violation.id} (${violation.nodes.length}): ${violation.nodes[0]?.html.slice(0, 120)} | ${(
+          violation.nodes[0]?.failureSummary ?? ""
+        )
+          .replace(/\s+/g, " ")
+          .slice(0, 200)}`,
+    );
   expect(blocking, "axe violations with serious or critical impact").toEqual([]);
 }
 

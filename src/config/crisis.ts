@@ -14,8 +14,7 @@
 
 export type CrisisLanguage = "id" | "en" | "mixed";
 
-const CRISIS_PHRASES: readonly string[] = [
-  // Indonesian
+const INDONESIAN_PHRASES: readonly string[] = [
   "bunuh diri",
   "mengakhiri hidup",
   "akhiri hidup",
@@ -32,7 +31,9 @@ const CRISIS_PHRASES: readonly string[] = [
   "nggak mau hidup",
   "udah gak kuat hidup",
   "overdosis",
-  // English
+];
+
+const ENGLISH_PHRASES: readonly string[] = [
   "suicide",
   "suicidal",
   "kill myself",
@@ -49,6 +50,8 @@ const CRISIS_PHRASES: readonly string[] = [
   "no reason to live",
   "better off dead",
 ];
+
+const CRISIS_PHRASES: readonly string[] = [...INDONESIAN_PHRASES, ...ENGLISH_PHRASES];
 
 /**
  * Lowercases and collapses everything that is not a letter or a digit into a
@@ -94,3 +97,16 @@ export const CRISIS_SERVICE = {
   phoneExtension: "8",
   website: "https://healing119.id",
 } as const;
+
+/**
+ * Which fixed text fits a message the keyword filter caught: English when the
+ * phrase that matched is English, Indonesian otherwise (PRD.md §7: the version
+ * that matches the language of the user's message).
+ */
+export function crisisLanguageOf(text: string): "id" | "en" {
+  const normalised = ` ${normalise(text)} `;
+  const hit = (phrases: readonly string[]) =>
+    phrases.some((phrase) => normalised.includes(` ${normalise(phrase)} `));
+
+  return hit(ENGLISH_PHRASES) && !hit(INDONESIAN_PHRASES) ? "en" : "id";
+}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthShell } from "@/components/auth-shell";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
@@ -36,15 +37,8 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[680px] flex-col justify-center px-4 py-12">
-      <h1 className="font-serif text-title text-text">Sebelum mulai</h1>
-
-      <p className="mt-3 text-base text-text">
-        Satu Persen bukan pengganti terapi atau tenaga profesional. Kalau kamu sedang dalam
-        situasi berat, ceritakan pada orang yang kamu percaya atau cari bantuan profesional.
-      </p>
-
+    <AuthShell title="Sebelum mulai">
       <OnboardingForm />
-    </main>
+    </AuthShell>
   );
 }

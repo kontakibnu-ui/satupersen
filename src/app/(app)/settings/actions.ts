@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isValidTimeZone } from "@/lib/dates";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
@@ -50,6 +51,36 @@ export async function updateProfile(formData: FormData): Promise<ProfileActionRe
   return { ok: true, message: "Tersimpan." };
 }
 
+/**
+ * Switches only the time zone, for the banner that offers the device's zone
+ * (AUTH-3). The user confirms it; nothing here runs without a tap.
+ */
+export async function updateTimezone(input: { timezone: string }): Promise<ProfileActionResult> {
+  const parsed = profileInputSchema.shape.timezone.safeParse(input?.timezone);
+
+  if (!parsed.success) {
+    return { ok: false, message: "Timezone dari perangkatmu tidak dikenali." };
+  }
+
+  const supabase = await createSupabaseActionClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+
+  if (!userId) {
+    return { ok: false, message: "Sesi kamu sudah berakhir. Masuk lagi dulu." };
+  }
+
+  const { error } = await supabase.from("profiles").update({ timezone: parsed.data }).eq("id", userId);
+
+  if (error) {
+    return { ok: false, message: "Timezone belum berubah. Coba lagi sebentar lagi." };
+  }
+
+  revalidatePath("/", "layout");
+
+  return { ok: true, message: "Tersimpan." };
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createSupabaseActionClient();
   const { error } = await supabase.auth.signOut();
@@ -59,4 +90,51 @@ export async function signOut(): Promise<void> {
   }
 
   redirect("/login");
+}
+
+export type DeleteAccountResult = { ok: false; message: string };
+
+/** The word the user types to confirm; anything else leaves the account alone. */
+const DELETE_CONFIRMATION = "HAPUS";
+
+/**
+ * Deletes the account and everything stored for it (PRD.md §7: for every plan,
+ * with no condition). Removing the user in Supabase Auth cascades through every
+ * table, because each one references `auth.users` with ON DELETE CASCADE, so
+ * the diary, habits, expenses, summaries, reports, WhatsApp link and messages
+ * go together. The user is read from the session, never from the request.
+ *
+ * Only a failure is returned: on success the session is closed and the user is
+ * sent to the front page.
+ */
+export async function deleteAccount(input: { confirmation: string }): Promise<DeleteAccountResult> {
+  if (typeof input?.confirmation !== "string" || input.confirmation.trim().toUpperCase() !== DELETE_CONFIRMATION) {
+    return { ok: false, message: `Ketik ${DELETE_CONFIRMATION} untuk memastikan.` };
+  }
+
+  const supabase = await createSupabaseActionClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const userId = claims?.claims?.sub;
+
+  if (!userId) {
+    return { ok: false, message: "Sesi kamu sudah berakhir. Masuk lagi dulu." };
+  }
+
+  const { error } = await createSupabaseAdminClient().auth.admin.deleteUser(userId);
+
+  if (error) {
+    console.error("deleting an account failed", { userId });
+
+    return { ok: false, message: "Akun belum bisa dihapus. Coba lagi sebentar lagi." };
+  }
+
+  // The user is gone, so closing the session may find nothing to revoke; the
+  // cookies are cleared either way, and a failure here changes nothing for them.
+  const { error: signOutError } = await supabase.auth.signOut();
+
+  if (signOutError) {
+    console.error("closing the session after deleting an account failed", { kind: signOutError.name });
+  }
+
+  redirect("/");
 }

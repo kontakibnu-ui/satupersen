@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeDailyScore, dailyDeltaPct, DIMENSION_WEIGHTS } from "@/lib/ai/scoring";
+import { computeDailyScore, dailyDeltaPoints, DIMENSION_WEIGHTS } from "@/lib/ai/scoring";
 
 const baseInput = {
   activeHabitCount: 0,
@@ -9,6 +9,8 @@ const baseInput = {
   energy: null,
   spentToday: 0,
   monthlyBudget: null,
+  monthIncomeToDate: 0,
+  monthSpentToDate: 0,
   daysInMonth: 30,
 };
 
@@ -112,6 +114,41 @@ describe("computeDailyScore", () => {
     expect(result.dimensions).toEqual([{ name: "finance", weight: 1, value: expected }]);
   });
 
+  it.each([
+    { income: 5_000_000, spent: 0, expected: 100 },
+    { income: 5_000_000, spent: 4_000_000, expected: 100 },
+    { income: 5_000_000, spent: 4_500_000, expected: 50 },
+    { income: 5_000_000, spent: 5_000_000, expected: 0 },
+    { income: 5_000_000, spent: 7_000_000, expected: 0 },
+  ])(
+    "finance score keeps a fifth of $income as the full mark: spent $spent -> $expected (EXP-5)",
+    ({ income, spent, expected }) => {
+      const result = computeDailyScore({
+        ...baseInput,
+        monthIncomeToDate: income,
+        monthSpentToDate: spent,
+      });
+
+      expect(result.dimensions).toEqual([{ name: "finance", weight: 1, value: expected }]);
+    },
+  );
+
+  it("income logged this month wins over the budget; no income falls back to the budget (EXP-4, EXP-5)", () => {
+    const withBudget = { ...baseInput, spentToday: 250_000, monthlyBudget: 1_500_000 };
+
+    expect(computeDailyScore(withBudget).dimensions).toEqual([{ name: "finance", weight: 1, value: 0 }]);
+    expect(
+      computeDailyScore({ ...withBudget, monthIncomeToDate: 5_000_000, monthSpentToDate: 250_000 })
+        .dimensions,
+    ).toEqual([{ name: "finance", weight: 1, value: 100 }]);
+  });
+
+  it("income alone, with no budget, gives a finance dimension for a free account", () => {
+    const result = computeDailyScore({ ...baseInput, monthIncomeToDate: 1_000_000 });
+
+    expect(result.dimensions).toEqual([{ name: "finance", weight: 1, value: 100 }]);
+  });
+
   it("rejects input that cannot come from the database", () => {
     expect(() => computeDailyScore({ ...baseInput, mood: 6 })).toThrow(/mood/);
     expect(() => computeDailyScore({ ...baseInput, mood: 0 })).toThrow(/mood/);
@@ -124,34 +161,53 @@ describe("computeDailyScore", () => {
     );
     expect(() => computeDailyScore({ ...baseInput, spentToday: -1 })).toThrow(/spentToday/);
     expect(() => computeDailyScore({ ...baseInput, monthlyBudget: 0 })).toThrow(/monthlyBudget/);
+    expect(() => computeDailyScore({ ...baseInput, monthIncomeToDate: -1 })).toThrow(/monthIncomeToDate/);
+    expect(() => computeDailyScore({ ...baseInput, monthSpentToDate: 1.5 })).toThrow(/monthSpentToDate/);
     expect(() => computeDailyScore({ ...baseInput, daysInMonth: 0 })).toThrow(/daysInMonth/);
     expect(() => computeDailyScore({ ...baseInput, daysInMonth: 32 })).toThrow(/daysInMonth/);
   });
 });
 
-describe("dailyDeltaPct", () => {
-  it("compares against the average of the previous days", () => {
-    // (74 - 70) / 70 * 100 = 5.714... -> 5.7
-    expect(dailyDeltaPct(74, [60, 70, 80])).toBe(5.7);
-    expect(dailyDeltaPct(60, [50, 50, 50])).toBe(20);
-    expect(dailyDeltaPct(50, [60, 60, 60])).toBe(-16.7);
+describe("dailyDeltaPoints", () => {
+  it("is the difference in points from the previous scored day (SCORE-2)", () => {
+    expect(dailyDeltaPoints(78, 76)).toBe(2);
+    expect(dailyDeltaPoints(77, 80)).toBe(-3);
+    expect(dailyDeltaPoints(70, 70)).toBe(0);
   });
 
-  it("returns null until three scored days exist (SCORE-2)", () => {
-    expect(dailyDeltaPct(74, [])).toBeNull();
-    expect(dailyDeltaPct(74, [70])).toBeNull();
-    expect(dailyDeltaPct(74, [70, 70])).toBeNull();
-    expect(dailyDeltaPct(74, [70, 70, 70])).toBe(5.7);
+  it("stays modest where a ratio would not: 30 to 60 is 30, not 100", () => {
+    expect(dailyDeltaPoints(60, 30)).toBe(30);
+    expect(dailyDeltaPoints(60, 1)).toBe(59);
+    expect(dailyDeltaPoints(60, 0)).toBe(60);
   });
 
-  it("returns null when the average is too small for a percentage", () => {
-    expect(dailyDeltaPct(60, [0, 0, 0])).toBeNull();
-    expect(dailyDeltaPct(60, [1, 1, 1])).toBe(5900);
+  it("returns null when there is no earlier scored day", () => {
+    expect(dailyDeltaPoints(74, null)).toBeNull();
   });
 
   it("rejects scores outside 0 to 100", () => {
-    expect(() => dailyDeltaPct(101, [70, 70, 70])).toThrow(/todayScore/);
-    expect(() => dailyDeltaPct(-1, [70, 70, 70])).toThrow(/todayScore/);
-    expect(() => dailyDeltaPct(74, [70, 120, 70])).toThrow(/previousScores/);
+    expect(() => dailyDeltaPoints(101, 70)).toThrow(/todayScore/);
+    expect(() => dailyDeltaPoints(-1, 70)).toThrow(/todayScore/);
+    expect(() => dailyDeltaPoints(74, 120)).toThrow(/previousScore/);
+  });
+});
+
+describe("habit counts beyond the free plan", () => {
+  it("scores an account with more than 50 active habits instead of throwing (HABIT-3 is free only)", () => {
+    const result = computeDailyScore({
+      activeHabitCount: 60,
+      completedHabitCount: 30,
+      aiDimensionScore: null,
+      mood: null,
+      energy: null,
+      spentToday: 0,
+      monthlyBudget: null,
+      monthIncomeToDate: 0,
+      monthSpentToDate: 0,
+      daysInMonth: 30,
+    });
+
+    expect(result.score).toBe(50);
+    expect(result.dimensions).toEqual([{ name: "habits", weight: 1, value: 50 }]);
   });
 });

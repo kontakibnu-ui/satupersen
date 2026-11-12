@@ -1,46 +1,98 @@
+import { Sprout } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { deltaFigure } from "@/lib/score-delta";
+
 /**
- * The score ring from DESIGN.md §6: 160 px on phones, 184 px on desktop, an
- * 8 px stroke, `border` as the track and `primary` as the arc whatever the
- * score is. A bad day never turns red, and the number is the only thing that
- * gets the 56 px Newsreader treatment.
+ * The score of DESIGN.md §6, drawn like a round ink stamp: a thin outer ring,
+ * the score arc in the gold ink, and a dotted inner ring. 160 px on phones and
+ * 184 px from 768 px up. The arc is the same gold whatever the score is, so a
+ * bad day never turns red.
+ *
+ * Inside sits the change against the last scored day ("+2%", "dari kemarin"),
+ * never the 0 to 100 score itself (SCORE-2, user decision 2026-11-01). On the
+ * first analysis there is nothing to compare with, so a sprout stands in.
+ *
+ * The stamp is decorative: the sentence next to it says the same in words.
  */
-export function ScoreRing({ score, size = 160 }: { score: number; size?: number }) {
-  const stroke = 8;
-  const radius = (size - stroke) / 2;
+export function ScoreRing({
+  score,
+  delta,
+  comparedTo,
+  size = 160,
+}: {
+  score: number;
+  delta: number | null;
+  comparedTo: string | null;
+  size?: number;
+}) {
+  const stroke = 7;
+  const center = size / 2;
+  const outer = center - 1;
+  const radius = center - 10;
+  const inner = radius - stroke - 5;
   const circumference = 2 * Math.PI * radius;
   const filled = (Math.min(100, Math.max(0, score)) / 100) * circumference;
+  const figure = delta === null || comparedTo === null ? null : deltaFigure(delta);
 
   return (
-    <div
-      className="relative"
-      style={{ width: size, height: size }}
-      role="img"
-      aria-label={`Skor hari ini ${score} dari 100`}
-    >
-      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+    <div className="relative" style={{ width: size, height: size }} aria-hidden="true">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={center} cy={center} r={outer} fill="none" strokeWidth={1} className="stroke-accent-warm/60" />
         <circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={center}
+          cy={center}
           r={radius}
           fill="none"
           strokeWidth={stroke}
-          className="stroke-border"
+          className="stroke-surface-muted"
         />
         <circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={center}
+          cy={center}
           r={radius}
           fill="none"
           strokeWidth={stroke}
-          strokeLinecap="round"
           strokeDasharray={`${filled} ${circumference - filled}`}
-          className="stroke-primary motion-safe:transition-[stroke-dasharray] motion-safe:duration-[600ms] motion-safe:ease-out"
+          className="stroke-accent-warm motion-safe:transition-[stroke-dasharray] motion-safe:duration-[600ms] motion-safe:ease-out"
+        />
+        <circle
+          cx={center}
+          cy={center}
+          r={inner}
+          fill="none"
+          strokeWidth={1}
+          strokeDasharray="1.5 4"
+          strokeLinecap="round"
+          className="stroke-control"
         />
       </svg>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-serif text-score text-text tabular-nums">{score}</span>
-        <span className="text-sm text-text-muted">/100</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        {figure === null ? (
+          <>
+            <Sprout size={size >= 150 ? 40 : 28} strokeWidth={1.5} className="text-accent-warm" />
+            <span className="mt-1 font-serif text-sm italic text-text-muted">analisa pertama</span>
+          </>
+        ) : (
+          <>
+            <span
+              className={cn(
+                "font-serif font-light leading-none text-text tabular-nums",
+                // A signed figure is wider than the old two digits, so it steps
+                // down from 60 px to stay inside the dotted ring.
+                size >= 150 ? (figure.length <= 3 ? "text-5xl" : "text-4xl") : "text-3xl",
+              )}
+            >
+              {figure}
+            </span>
+            {/* The small stamp has no room for the caption; the sentence beside it carries it. */}
+            {size >= 150 ? (
+              <span className="mt-1.5 max-w-[70%] font-serif text-sm italic leading-tight text-text-muted">
+                dari {comparedTo}
+              </span>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

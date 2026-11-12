@@ -17,7 +17,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * route checks its own signature or secret (AGENTS.md §6).
  */
 
-const PUBLIC_PATHS = ["/", "/login", "/privacy", "/terms", "/auth/callback"];
+const PUBLIC_PATHS = ["/", "/login", "/privacy", "/terms", "/auth/callback", "/manifest.webmanifest"];
 
 function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/")) {

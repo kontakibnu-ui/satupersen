@@ -315,6 +315,157 @@ describe.skipIf(!stackIsUp)("isolasi RLS dengan dua user sungguhan", () => {
     expect(swapPhone.status).toBeGreaterThanOrEqual(400);
   });
 
+  // HABIT-1 and HABIT-3. The limit is checked by a trigger, so it holds for a
+  // browser that talks to PostgREST directly and never touches the server action
+  // (supabase/migrations/20261029000000_habit_rules.sql).
+  it("free hanya boleh 3 habit aktif, arsip tidak memakai slot, premium tanpa batas (HABIT-3)", async () => {
+    const add = (name: string) =>
+      post("habits", anonKey as string, tokenB, { user_id: idB, name });
+
+    const first = await add("Olahraga");
+    const second = await add("Baca");
+    const third = await add("Minum air");
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(third.status).toBe(201);
+
+    const fourth = await add("Meditasi");
+    expect(fourth.status).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(fourth.body)).toContain("habit_limit_reached");
+
+    // Archiving frees a slot; bringing it back while full is refused again.
+    const firstId = (first.body as { id: string }[])[0].id;
+    const archived = await patch(`habits?id=eq.${firstId}`, anonKey as string, tokenB, {
+      archived_at: new Date().toISOString(),
+    });
+    expect(archived.status).toBe(200);
+
+    const replacement = await add("Meditasi");
+    expect(replacement.status).toBe(201);
+
+    const restore = await patch(`habits?id=eq.${firstId}`, anonKey as string, tokenB, {
+      archived_at: null,
+    });
+    expect(restore.status).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(restore.body)).toContain("habit_limit_reached");
+
+    // A rename never trips the limit, even when the account is at it.
+    const renamed = await patch(`habits?id=eq.${(second.body as { id: string }[])[0].id}`, anonKey as string, tokenB, {
+      name: "Baca buku",
+    });
+    expect(renamed.status).toBe(200);
+
+    // Premium is set by the server only; the user cannot do it themselves.
+    await patch(`profiles?id=eq.${idB}`, serviceKey as string, undefined, { plan: "premium" });
+    const fifth = await add("Jurnal syukur");
+    expect(fifth.status).toBe(201);
+  });
+
+  it("budget hanya ditulis server: user biasa tidak bisa membuat, mengubah, atau menghapusnya (EXP-4, SUB-1)", async () => {
+    const created = await post("budgets", anonKey as string, tokenA, {
+      user_id: idA,
+      month: "2026-10-01",
+      amount: 1000000,
+    });
+    expect(created.status).toBeGreaterThanOrEqual(400);
+
+    // The server writes one, and the owner can read it but still cannot change it.
+    const seeded = await post("budgets", serviceKey as string, undefined, {
+      user_id: idA,
+      month: "2026-10-01",
+      amount: 1000000,
+    });
+    expect(seeded.status).toBe(201);
+
+    const read = await get("budgets?select=amount", anonKey as string, tokenA);
+    expect(read.body).toEqual([{ amount: 1000000 }]);
+
+    const raised = await patch(`budgets?user_id=eq.${idA}`, anonKey as string, tokenA, { amount: 9 });
+    const afterPatch = await get("budgets?select=amount", serviceKey as string);
+    expect(raised.status === 200 ? raised.body : []).toEqual([]);
+    expect((afterPatch.body as { amount: number }[]).some((row) => row.amount === 9)).toBe(false);
+
+    // Another user sees nothing of it.
+    const other = await get("budgets?select=amount", anonKey as string, tokenB);
+    expect(other.body).toEqual([]);
+  });
+
+  it("user B tidak bisa membaca, mengubah, atau menghapus kebiasaan, centang, dan pengeluaran milik user A (uji ganti ID)", async () => {
+    const habit = await post("habits", anonKey as string, tokenA, { user_id: idA, name: "Milik A" });
+    expect(habit.status).toBe(201);
+    const habitId = (habit.body as { id: string }[])[0].id;
+
+    const log = await post("habit_logs", anonKey as string, tokenA, { habit_id: habitId, user_id: idA, date: "2026-10-29" });
+    expect(log.status).toBe(201);
+
+    const expense = await post("expenses", anonKey as string, tokenA, {
+      user_id: idA,
+      date: "2026-10-29",
+      amount: 12345,
+      category: "makan",
+    });
+    expect(expense.status).toBe(201);
+    const expenseId = (expense.body as { id: string }[])[0].id;
+
+    // B asks for A's rows by their exact ids: nothing comes back.
+    for (const path of [
+      `habits?id=eq.${habitId}`,
+      `habit_logs?habit_id=eq.${habitId}`,
+      `expenses?id=eq.${expenseId}`,
+    ]) {
+      const read = await get(path, anonKey as string, tokenB);
+      expect(read.body, path).toEqual([]);
+    }
+
+    // B cannot change or remove them either; the rows are untouched afterwards.
+    await patch(`habits?id=eq.${habitId}`, anonKey as string, tokenB, { name: "Dibajak" });
+    await patch(`expenses?id=eq.${expenseId}`, anonKey as string, tokenB, { amount: 1 });
+    await fetch(`${url}/rest/v1/expenses?id=eq.${expenseId}`, {
+      method: "DELETE",
+      headers: authHeaders(anonKey as string, tokenB),
+    });
+    await fetch(`${url}/rest/v1/habit_logs?habit_id=eq.${habitId}`, {
+      method: "DELETE",
+      headers: authHeaders(anonKey as string, tokenB),
+    });
+
+    const stillA = await get(`expenses?id=eq.${expenseId}&select=amount`, serviceKey as string);
+    expect(stillA.body).toEqual([{ amount: 12345 }]);
+    const habitAfter = await get(`habits?id=eq.${habitId}&select=name`, serviceKey as string);
+    expect(habitAfter.body).toEqual([{ name: "Milik A" }]);
+    const logAfter = await get(`habit_logs?habit_id=eq.${habitId}&select=date`, serviceKey as string);
+    expect(logAfter.body).toEqual([{ date: "2026-10-29" }]);
+
+    // B cannot attach a log to A's habit, which would distort A's streak.
+    const forged = await post("habit_logs", anonKey as string, tokenB, {
+      habit_id: habitId,
+      user_id: idB,
+      date: "2026-10-28",
+    });
+    expect(forged.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("habit tidak bisa dihapus dari browser, hanya diarsipkan (HABIT-1)", async () => {
+    const created = await post("habits", anonKey as string, tokenA, { user_id: idA, name: "Jalan sore" });
+    expect(created.status).toBe(201);
+    const habitId = (created.body as { id: string }[])[0].id;
+
+    const removal = await fetch(`${url}/rest/v1/habits?id=eq.${habitId}`, {
+      method: "DELETE",
+      headers: { ...authHeaders(anonKey as string, tokenA), Prefer: "return=representation" },
+    });
+    expect(removal.status).toBeGreaterThanOrEqual(400);
+
+    const { body } = await get(`habits?select=id&id=eq.${habitId}`, anonKey as string, tokenA);
+    expect(body).toEqual([{ id: habitId }]);
+
+    // Columns that are not part of the edit form stay out of the user's reach.
+    const reassign = await patch(`habits?id=eq.${habitId}`, anonKey as string, tokenA, {
+      user_id: idB,
+    });
+    expect(reassign.status).toBeGreaterThanOrEqual(400);
+  });
+
   it("menghapus akun ikut menghapus entrinya", async () => {
     await deleteUser(idA);
 

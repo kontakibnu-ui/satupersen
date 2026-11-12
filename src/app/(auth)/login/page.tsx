@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
+import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
   title: "Masuk · Satu Persen",
 };
+
+/**
+ * Only a path inside this app is a valid place to go after signing in: one slash
+ * first, and not "//" or "/\" which a browser reads as another host.
+ */
+function safeNext(value: string | undefined): string {
+  return value !== undefined && /^\/(?![/\\])/.test(value) ? value : "/today";
+}
 
 /**
  * One screen, one focus (DESIGN.md §2): the way in. Nothing else is competing
@@ -12,18 +21,21 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; mode?: string; next?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, mode, next } = await searchParams;
+  const signingUp = mode === "daftar";
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[680px] flex-col justify-center px-4 py-12">
-      <h1 className="font-serif text-title text-text">Masuk ke Satu Persen</h1>
-      <p className="mt-2 text-base text-text-muted">
-        Masuk dulu supaya catatanmu tersimpan di akunmu sendiri.
-      </p>
-
-      <LoginForm failed={status === "gagal"} />
-    </main>
+    <AuthShell
+      title={signingUp ? "Buat akun Satu Persen" : "Masuk ke Satu Persen"}
+      description={
+        signingUp
+          ? "Pakai email dan password pilihanmu."
+          : "Masuk dengan email dan passwordmu."
+      }
+    >
+      <LoginForm mode={signingUp ? "daftar" : "masuk"} next={safeNext(next)} failed={status === "gagal"} />
+    </AuthShell>
   );
 }

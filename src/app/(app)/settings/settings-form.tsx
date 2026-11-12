@@ -1,53 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useSyncExternalStore } from "react";
+import { ChevronRight, Gem, LogOut, MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { useActionState, useSyncExternalStore } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { Card, Chip, IconBadge } from "@/components/ui/card";
+import { AccountData } from "./account-data";
 import { signOut, updateProfile, type ProfileActionResult } from "./actions";
 
-/**
- * Theme is a display preference, not user data: it lives in localStorage and is
- * applied to <html> as the light/dark class that globals.css understands
- * ("system" removes both, so the system preference decides). No column is added
- * to the database for it, because PRD.md §9 locks the table shape.
- *
- * Reading it goes through a tiny external store so React can tell the server
- * snapshot ("system") apart from the real client value without setting state
- * inside an effect.
- */
-const THEME_KEY = "satupersen-theme";
-
-type ThemeChoice = "system" | "light" | "dark";
-
-const THEME_LABELS: { value: ThemeChoice; label: string }[] = [
-  { value: "system", label: "Sistem" },
-  { value: "light", label: "Terang" },
-  { value: "dark", label: "Gelap" },
-];
-
 const EMPTY_ZONES: string[] = [];
-
-const themeListeners = new Set<() => void>();
-
-function subscribeTheme(listener: () => void): () => void {
-  themeListeners.add(listener);
-
-  return () => {
-    themeListeners.delete(listener);
-  };
-}
-
-function readTheme(): ThemeChoice {
-  const stored = window.localStorage.getItem(THEME_KEY);
-
-  return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
-}
-
-const readThemeOnServer = (): ThemeChoice => "system";
-
-function writeTheme(next: ThemeChoice): void {
-  window.localStorage.setItem(THEME_KEY, next);
-  themeListeners.forEach((listener) => listener());
-}
 
 const subscribeNever = () => () => {};
 
@@ -68,15 +30,6 @@ function readZones(): string[] {
 
 const readZonesOnServer = (): string[] => EMPTY_ZONES;
 
-function applyTheme(choice: ThemeChoice): void {
-  const root = document.documentElement;
-  root.classList.remove("light", "dark");
-
-  if (choice !== "system") {
-    root.classList.add(choice);
-  }
-}
-
 async function submitProfile(
   _previous: ProfileActionResult | null,
   formData: FormData,
@@ -96,106 +49,124 @@ export function SettingsForm({
   email: string;
 }) {
   const [state, formAction, pending] = useActionState(submitProfile, null);
-  const theme = useSyncExternalStore(subscribeTheme, readTheme, readThemeOnServer);
   const zones = useSyncExternalStore(subscribeNever, readZones, readZonesOnServer);
-  const zoneOptions = zones.length === 0 || zones.includes(timezone) ? zones : [timezone, ...zones];
+  // The saved zone is always an option, even before the browser list arrives,
+  // so the field never shows (and never saves) a zone the user did not pick.
+  const zoneOptions = zones.includes(timezone) ? zones : [timezone, ...zones];
 
-  // Touching the DOM is exactly what effects are for; no state is written here.
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  function changeTheme(next: ThemeChoice): void {
-    writeTheme(next);
-  }
+  const initial = (name.trim()[0] ?? email.trim()[0] ?? "S").toUpperCase();
 
   return (
-    <div className="mt-6 flex flex-col gap-8">
-      <form action={formAction} className="flex flex-col gap-6">
-        <div>
-          <label htmlFor="name" className="block text-sm text-text-muted">
-            Nama
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            defaultValue={name}
-            autoComplete="name"
-            className="mt-1 h-11 w-full rounded-md border border-control bg-surface px-3 text-base text-text"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="timezone" className="block text-sm text-text-muted">
-            Timezone
-          </label>
-          <select
-            id="timezone"
-            name="timezone"
-            defaultValue={timezone}
-            className="mt-1 h-11 w-full rounded-md border border-control bg-surface px-3 text-base text-text"
-          >
-            {zoneOptions.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-sm text-text-muted">
-            Hari baru dimulai mengikuti timezone ini.
-          </p>
-        </div>
-
+    <div className="mt-6 flex flex-col gap-4">
+      <Card aria-label="Profil">
         <div className="flex items-center gap-4">
-          <Button type="submit" variant="secondary" disabled={pending}>
-            {pending ? "Menyimpan…" : "Simpan"}
-          </Button>
-
-          {state?.message ? (
-            <p role="status" className="text-sm text-text-muted">
-              {state.message}
-            </p>
-          ) : null}
+          <span
+            aria-hidden="true"
+            className="inline-flex size-14 shrink-0 items-center justify-center rounded-full bg-primary font-serif text-2xl font-medium text-primary-foreground"
+          >
+            {initial}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-text">{name || "Tanpa nama"}</p>
+            <p className="truncate text-sm text-text-muted">Email: {email}</p>
+          </div>
+          <Chip tone={plan === "premium" ? "accent" : "neutral"} className="ml-auto shrink-0">
+            Paket: {plan === "premium" ? "Premium" : "Gratis"}
+          </Chip>
         </div>
-      </form>
 
-      <fieldset>
-        <legend className="text-sm text-text-muted">Tema</legend>
-        <div className="mt-2 flex gap-2">
-          {THEME_LABELS.map((option) => (
-            <label
-              key={option.value}
-              className={`flex h-11 items-center rounded-full border px-4 text-base ${
-                theme === option.value
-                  ? "border-control bg-primary-soft text-text"
-                  : "border-control text-text-muted"
-              }`}
-            >
-              <input
-                type="radio"
-                name="theme"
-                value={option.value}
-                checked={theme === option.value}
-                onChange={() => changeTheme(option.value)}
-                className="sr-only"
-              />
-              {option.label}
+        <form action={formAction} className="mt-6 flex flex-col gap-5">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-text-muted">
+              Nama
             </label>
-          ))}
+            <input
+              id="name"
+              name="name"
+              type="text"
+              defaultValue={name}
+              autoComplete="name"
+              className="mt-1 min-h-12 w-full rounded-2xl border border-control bg-surface px-4 text-base text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="timezone" className="block text-sm font-medium text-text-muted">
+              Timezone
+            </label>
+            <select
+              // A new key once the full list arrives, so defaultValue applies to the real options.
+              key={zoneOptions.length}
+              id="timezone"
+              name="timezone"
+              defaultValue={timezone}
+              className="mt-1 min-h-12 w-full rounded-2xl border border-control bg-surface px-4 text-base text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+              {zoneOptions.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-sm text-text-muted">Hari baru dimulai mengikuti timezone ini.</p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button type="submit" variant="secondary" disabled={pending}>
+              {pending ? "Menyimpan…" : "Simpan"}
+            </Button>
+
+            {state?.message ? (
+              <p role="status" className="text-sm text-text-muted">
+                {state.message}
+              </p>
+            ) : null}
+          </div>
+        </form>
+      </Card>
+
+      <Card as="div" className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-serif text-xl font-medium text-text">Mode malam</p>
+          <p className="mt-0.5 text-sm text-text-muted">Bawaannya mode siang. Pilihanmu diingat di browser ini.</p>
         </div>
-      </fieldset>
+        <ThemeToggle />
+      </Card>
 
-      <div className="text-sm text-text-muted">
-        <p>Email: {email}</p>
-        <p>Paket: {plan === "premium" ? "Premium" : "Gratis"}</p>
-      </div>
+      <nav aria-label="Pengaturan lain" className="flex flex-col gap-4">
+        <Link
+          href="/settings/plan"
+          className="flex min-h-11 items-center gap-4 rounded-3xl border border-border bg-surface p-5 transition-colors duration-200 hover:bg-surface-muted"
+        >
+          <IconBadge icon={Gem} tone="accent" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold text-text">Paket</span>
+            <span className="block text-sm text-text-muted">Kuota AI bulan ini dan pilihan premium</span>
+          </span>
+          <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="text-text-muted" />
+        </Link>
+        <Link
+          href="/settings/whatsapp"
+          className="flex min-h-11 items-center gap-4 rounded-3xl border border-border bg-surface p-5 transition-colors duration-200 hover:bg-surface-muted"
+        >
+          <IconBadge icon={MessageCircle} tone="primary" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold text-text">WhatsApp</span>
+            <span className="block text-sm text-text-muted">Curhat lewat chat, masuk ke diary</span>
+          </span>
+          <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="text-text-muted" />
+        </Link>
+      </nav>
 
-      <form action={signOut}>
-        <Button type="submit" variant="secondary">
-          Keluar
-        </Button>
-      </form>
+      <Card as="div" className="flex flex-col gap-2">
+        <form action={signOut}>
+          <Button type="submit" variant="secondary" className="w-full">
+            <LogOut aria-hidden="true" size={18} strokeWidth={2} />
+            Keluar
+          </Button>
+        </form>
+
+        <AccountData />
+      </Card>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { todayKey } from "@/lib/dates";
 import { MAX_CONTENT_LENGTH } from "@/lib/entries";
+import { getActionContext } from "@/lib/session";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
@@ -72,6 +73,57 @@ export async function saveEntry(input: { date: string; content: string }): Promi
 
   if (error) {
     return { ok: false, message: "Tulisan belum tersimpan. Coba lagi." };
+  }
+
+  return { ok: true };
+}
+
+const moodInputSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  field: z.enum(["mood", "energy"]),
+  value: z.number().int().min(1).max(5),
+});
+
+/**
+ * MOOD-1: one tap saves mood or energy, 1 to 5, and the same day can be changed
+ * again. It writes only the one column it was asked for, so it never touches
+ * the diary text that auto-save owns, and saving the text never touches these.
+ * Like the text, only today by the profile's time zone can be written.
+ */
+export async function saveMoodEnergy(input: {
+  date: string;
+  field: "mood" | "energy";
+  value: number;
+}): Promise<SaveEntryResult> {
+  const parsed = moodInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, message: "Pilihannya belum bisa disimpan.", retryable: false };
+  }
+
+  const context = await getActionContext();
+
+  if (!context) {
+    return { ok: false, message: "Sesi kamu sudah berakhir. Masuk lagi dulu." };
+  }
+
+  if (parsed.data.date !== todayKey(context.timeZone)) {
+    return {
+      ok: false,
+      message: "Hari sudah berganti. Muat ulang halaman ini dulu.",
+      retryable: false,
+    };
+  }
+
+  const { error } = await context.supabase
+    .from("entries")
+    .upsert(
+      { user_id: context.userId, date: parsed.data.date, [parsed.data.field]: parsed.data.value },
+      { onConflict: "user_id,date" },
+    );
+
+  if (error) {
+    return { ok: false, message: "Pilihannya belum tersimpan. Coba lagi." };
   }
 
   return { ok: true };

@@ -1,12 +1,26 @@
 import {
+  buildChatUserPrompt,
   buildDailySummaryUserPrompt,
+  buildReportUserPrompt,
   DAILY_SUMMARY_SYSTEM_PROMPT,
+  REPORT_BRIEF_SYSTEM_PROMPT,
+  REPORT_FULL_SYSTEM_PROMPT,
+  WHATSAPP_CHAT_SYSTEM_PROMPT,
+  type ChatTurn,
   type DailySummaryPromptInput,
+  type ReportPromptInput,
 } from "@/lib/ai/prompts";
 import {
+  parseBriefReport,
+  parseChatReply,
   parseCrisisSignal,
   parseDailySummary,
+  parseFullReport,
+  parseTokenUsage,
+  type BriefReportText,
+  type ChatReply,
   type DailySummary,
+  type FullReportText,
   type SummaryLanguage,
 } from "@/lib/ai/schemas";
 
@@ -79,8 +93,23 @@ type ChatMessage = { role: "system" | "user"; content: string };
 
 type ChatCompletionResponse = {
   choices?: { message?: { content?: string } }[];
+  usage?: unknown;
   error?: { message?: string } | string;
 };
+
+/** Tokens of one billed call to the model (PRD.md §8). */
+export type TokenUsage = {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  costUsd: number | null;
+};
+
+/**
+ * Called once per answered request, retries included, because each attempt is
+ * billed. The caller decides where the numbers go (src/lib/ai/usage.ts).
+ */
+export type UsageSink = (usage: TokenUsage) => void;
 
 const shorten = (value: string, max = 300): string =>
   value.length > max ? `${value.slice(0, max)}...` : value;
@@ -99,7 +128,11 @@ function describeProviderError(payload: ChatCompletionResponse, rawBody: string)
   return shorten(rawBody);
 }
 
-async function requestCompletion(model: string, messages: ChatMessage[]): Promise<string> {
+async function requestCompletion(
+  model: string,
+  messages: ChatMessage[],
+  onUsage?: UsageSink,
+): Promise<string> {
   const apiKey = getApiKey();
 
   let response: Response;
@@ -117,6 +150,8 @@ async function requestCompletion(model: string, messages: ChatMessage[]): Promis
         temperature: TEMPERATURE,
         response_format: { type: "json_object" },
         provider: { data_collection: "deny" },
+        // Token counts and the USD cost come back in `usage`, for the meter.
+        usage: { include: true },
       }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
@@ -144,6 +179,13 @@ async function requestCompletion(model: string, messages: ChatMessage[]): Promis
     );
   }
 
+  // Counted before the content is checked: an empty or unusable answer is still billed.
+  const usage = parseTokenUsage(payload.usage);
+
+  if (usage && onUsage) {
+    onUsage({ model, ...usage });
+  }
+
   const content = payload.choices?.[0]?.message?.content;
 
   if (typeof content !== "string" || content.trim() === "") {
@@ -166,7 +208,10 @@ export type DailySummaryResult =
  * must satisfy the full summary schema, and unusable output is retried once
  * before the caller marks the day as failed (AI-2).
  */
-export async function summarizeDay(input: DailySummaryPromptInput): Promise<DailySummaryResult> {
+export async function summarizeDay(
+  input: DailySummaryPromptInput,
+  onUsage?: UsageSink,
+): Promise<DailySummaryResult> {
   const model = getModelFor("daily");
   const messages: ChatMessage[] = [
     { role: "system", content: DAILY_SUMMARY_SYSTEM_PROMPT },
@@ -176,7 +221,7 @@ export async function summarizeDay(input: DailySummaryPromptInput): Promise<Dail
   let lastOutputError: Error | null = null;
 
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
-    const content = await requestCompletion(model, messages);
+    const content = await requestCompletion(model, messages, onUsage);
 
     let signal: { risk_flag: boolean; language: SummaryLanguage };
 
@@ -200,6 +245,83 @@ export async function summarizeDay(input: DailySummaryPromptInput): Promise<Dail
 
   throw new AiOutputError(
     `The model did not return a usable summary after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+export type GeneratedReport =
+  | { variant: "brief"; text: BriefReportText; model: string }
+  | { variant: "full"; text: FullReportText; model: string };
+
+/**
+ * Writes the words of a report (REPORT-3). The numbers are computed by the
+ * caller and passed in; the model only describes them. Output that does not
+ * fit the schema is retried once, then reported as an error so the caller can
+ * mark the report failed instead of storing something made up (AI-2).
+ */
+export async function generateReport(
+  input: ReportPromptInput,
+  onUsage?: UsageSink,
+): Promise<GeneratedReport> {
+  const model = getModelFor("report");
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: input.variant === "brief" ? REPORT_BRIEF_SYSTEM_PROMPT : REPORT_FULL_SYSTEM_PROMPT,
+    },
+    { role: "user", content: buildReportUserPrompt(input) },
+  ];
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return input.variant === "brief"
+        ? { variant: "brief", text: parseBriefReport(content), model }
+        : { variant: "full", text: parseFullReport(content), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return a usable report after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+export type ChatReplyResult = ChatReply & { model: string };
+
+/**
+ * The WhatsApp answer to one message (PRD.md §6). Unusable output is retried
+ * once, then raised so the caller can say it could not answer instead of
+ * sending something made up.
+ */
+export async function chatReply(turns: ChatTurn[], onUsage?: UsageSink): Promise<ChatReplyResult> {
+  const model = getModelFor("chat");
+  const messages: ChatMessage[] = [
+    { role: "system", content: WHATSAPP_CHAT_SYSTEM_PROMPT },
+    { role: "user", content: buildChatUserPrompt(turns) },
+  ];
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return { ...parseChatReply(content), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return a usable chat reply after ${ATTEMPTS} attempts: ${
       lastOutputError?.message ?? "unknown reason"
     }`,
   );

@@ -32,28 +32,18 @@ export function OnboardingForm() {
 
       {/* The label is the touch target and is at least 44 px tall; the visible
           box stays 24 px, the same pattern DESIGN.md §6 uses for habit rows. */}
-      <label className="flex min-h-11 items-start gap-3 py-1 text-base text-text">
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface-muted/60 p-4 text-base text-text transition-colors duration-200 has-checked:border-primary has-checked:bg-primary-soft">
         <input
           type="checkbox"
           name="privacy"
           value="set"
-          className="mt-1 h-6 w-6 shrink-0 rounded-sm border border-control"
+          className="mt-0.5 h-6 w-6 shrink-0 rounded-sm border border-control accent-primary"
         />
         <span>Saya setuju dengan kebijakan privasi, termasuk bahwa isi catatan saya diproses oleh penyedia model AI untuk membuat ringkasan.</span>
       </label>
 
-      <label className="flex min-h-11 items-start gap-3 py-1 text-base text-text">
-        <input
-          type="checkbox"
-          name="age"
-          value="set"
-          className="mt-1 h-6 w-6 shrink-0 rounded-sm border border-control"
-        />
-        <span>Saya berusia 18 tahun ke atas.</span>
-      </label>
-
       <div className="flex items-center gap-4">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
           {pending ? "Menyimpan…" : "Mulai"}
         </Button>
 

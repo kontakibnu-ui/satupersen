@@ -1,21 +1,32 @@
 "use client";
 
+import { RefreshCw, Stamp } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
+import { HabitChecklist } from "@/components/habit-checklist";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { HabitView } from "@/lib/habits";
 import { EntryEditor } from "./entry-editor";
-import { SummaryResultView, type SummaryResult } from "./summary-result";
+import { MoodEnergy } from "./mood-energy";
+import { SummaryResultView, type SummaryResult, type WeekDay } from "./summary-result";
 
 /**
  * The states of DESIGN.md §7. The page already replaced the whole screen for
  * the crisis state, so what is left here is:
  * 1. empty: the button stays enabled and pressing it explains what to do;
- * 2. writing: the editor's own focus mode;
- * 3. summarising: the button says "Merangkum…" and a still skeleton shows;
- * 4. result: the result on top and the writing folded below, with no primary
- *    button (DESIGN.md §2);
- * 5. changed after the summary: a quiet line with "Rangkum ulang (sisa N)";
+ * 2. writing: the editor's own writing mode;
+ * 3. analysing: the button says "Menganalisa…" and a still skeleton shows;
+ * 4. result: the analysis on top and the writing folded below, with no
+ *    primary button (DESIGN.md §2);
+ * 5. changed after the analysis: a quiet line with "Analisa ulang (sisa N)";
  * 6. failed: what happened, plus a secondary "Coba lagi" when trying again
  *    can help.
+ *
+ * The page reads in the order a day is closed (DESIGN.md §8): the writing
+ * first, because it is the focus, then mood and energy, the habits, and the one
+ * primary button at the end. Version 4 ("Buku tulis") keeps one sheet of paper
+ * for the writing and lays the rest straight on the page, without cards.
  */
 type Phase = "idle" | "summarizing" | "failed";
 
@@ -24,18 +35,47 @@ const FINAL_STATUSES = new Set([400, 409, 429]);
 
 export function TodayClient({
   date,
+  weekday,
+  fullDate,
+  week,
   initialContent,
   initialResult,
+  initialMood,
+  initialEnergy,
+  initialHabits,
   regenLeft: initialRegenLeft,
 }: {
   date: string;
+  /** "Minggu", for the notebook heading. */
+  weekday: string;
+  /** "8 November 2026", for the notebook heading. */
+  fullDate: string;
+  week: WeekDay[];
   initialContent: string;
   initialResult: SummaryResult | null;
+  initialMood: number | null;
+  initialEnergy: number | null;
+  initialHabits: HabitView[];
   regenLeft: number;
 }) {
   const [content, setContent] = useState(initialContent);
+  const [mood, setMood] = useState(initialMood);
+  const [energy, setEnergy] = useState(initialEnergy);
+  const [habits, setHabits] = useState(initialHabits);
+
+  // What the score was built from besides the text: mood, energy, and which
+  // habits were checked. A change in any of them makes the summary out of date.
+  const inputsKey = `${mood ?? ""}|${energy ?? ""}|${habits
+    .filter((habit) => habit.doneDates.includes(date))
+    .map((habit) => habit.id)
+    .sort()
+    .join(",")}`;
+
   const [summarisedText, setSummarisedText] = useState<string | null>(
     initialResult ? initialContent : null,
+  );
+  const [summarisedInputs, setSummarisedInputs] = useState<string | null>(
+    initialResult ? inputsKey : null,
   );
   const [result, setResult] = useState<SummaryResult | null>(initialResult);
   const [regenLeft, setRegenLeft] = useState(initialRegenLeft);
@@ -46,7 +86,10 @@ export function TodayClient({
   const [blankHint, setBlankHint] = useState(false);
 
   const isBlank = content.trim() === "";
-  const changed = result !== null && summarisedText !== null && content !== summarisedText;
+  const textChanged = result !== null && summarisedText !== null && content !== summarisedText;
+  const inputsChanged =
+    result !== null && summarisedInputs !== null && inputsKey !== summarisedInputs;
+  const changed = textChanged || inputsChanged;
   const showEditor = result === null || editing;
 
   const summarise = useCallback(async () => {
@@ -95,11 +138,12 @@ export function TodayClient({
         improvements: body.improvements,
         tomorrowTip: body.tomorrowTip,
         score: body.score,
-        deltaPct: body.deltaPct,
+        delta: body.delta,
+        comparedTo: body.comparedTo,
         scoreReason: body.scoreReason,
-        scoredDays: body.scoredDays,
       });
       setSummarisedText(content);
+      setSummarisedInputs(inputsKey);
       setEditing(false);
       setPhase("idle");
     } catch {
@@ -107,88 +151,160 @@ export function TodayClient({
       setMessage("Koneksi terputus. Tulisanmu aman. Coba lagi.");
       setRetryable(true);
     }
-  }, [content, date, result]);
+  }, [content, date, inputsKey, result]);
+
+  const moodBlock = (
+    <MoodEnergy date={date} mood={mood} energy={energy} setMood={setMood} setEnergy={setEnergy} />
+  );
+
+  const doneToday = habits.filter((habit) => habit.doneDates.includes(date)).length;
+
+  // DESIGN.md §8: the checklist sits under the writing; with no habits yet it is
+  // only a quiet invitation, because Hari Ini is not where habits are made.
+  const habitBlock =
+    habits.length > 0 ? (
+      <section aria-labelledby="habit-heading">
+        <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2">
+          <h2 id="habit-heading" className="font-heading text-base font-bold text-text">
+            Kebiasaan
+          </h2>
+          <p className="text-sm text-text-muted tabular-nums">
+            {doneToday} dari {habits.length}
+            <span className="sr-only"> selesai hari ini</span>
+          </p>
+        </div>
+        <HabitChecklist date={date} habits={habits} setHabits={setHabits} />
+      </section>
+    ) : (
+      <section aria-label="Kebiasaan" className="flex flex-wrap items-center justify-between gap-x-3 border-y border-border py-2">
+        <p className="text-sm text-text-muted">Belum ada kebiasaan. Mulai dari satu yang kecil.</p>
+        <Link
+          href="/habits"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline"
+        >
+          Tambah kebiasaan
+        </Link>
+      </section>
+    );
+
+  const writingBlock = showEditor ? (
+    <Card as="div" className="transition-colors duration-200 focus-within:border-primary">
+      <NotebookHeading weekday={weekday} fullDate={fullDate} />
+      <EntryEditor
+        date={date}
+        initialContent={content}
+        onContentChange={(value) => {
+          setContent(value);
+
+          if (value.trim() !== "") {
+            setBlankHint(false);
+          }
+        }}
+      />
+    </Card>
+  ) : (
+    <section aria-labelledby="writing-heading">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="writing-heading" className="font-heading text-base font-bold text-text">
+          Tulisanmu
+        </h2>
+        <Button variant="link" onClick={() => setEditing(true)} className="text-sm font-semibold text-primary">
+          Ubah tulisan
+        </Button>
+      </div>
+      <p className="line-clamp-4 whitespace-pre-line font-serif text-lg leading-relaxed text-primary">{content}</p>
+    </section>
+  );
 
   return (
-    <>
-      {result ? <SummaryResultView result={result} /> : null}
+    <div className="mt-6 flex flex-col gap-6">
+      {result ? <SummaryResultView result={result} week={week} /> : null}
 
-      {showEditor ? (
-        <EntryEditor
-          date={date}
-          initialContent={content}
-          onContentChange={(value) => {
-            setContent(value);
+      {writingBlock}
 
-            if (value.trim() !== "") {
-              setBlankHint(false);
-            }
-          }}
-        />
-      ) : (
-        <section aria-label="Tulisanmu hari ini" className="mt-8">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold text-text">Tulisanmu hari ini</h2>
-            <Button variant="link" onClick={() => setEditing(true)}>
-              Ubah tulisan
-            </Button>
-          </div>
-          <p className="mt-1 line-clamp-3 whitespace-pre-line font-serif text-editor text-text-muted">
-            {content}
-          </p>
-        </section>
-      )}
+      {moodBlock}
 
-      <div className="mt-6">
+      {habitBlock}
+
+      <div className="flex flex-col gap-3">
         {result === null ? (
-          <Button onClick={summarise} disabled={phase === "summarizing"} className="w-full">
-            {phase === "summarizing" ? "Merangkum…" : "Rangkum hari ini"}
-          </Button>
+          <>
+            <Button onClick={summarise} disabled={phase === "summarizing"} className="min-h-14 w-full text-lg">
+              {phase === "summarizing" ? "Menganalisa…" : "Analisa hari ini"}
+            </Button>
+            {phase === "idle" && !blankHint ? (
+              <p className="text-center text-sm text-text-muted">
+                AI membaca tulisan, mood, dan kebiasaanmu, lalu menulis analisanya.
+              </p>
+            ) : null}
+          </>
         ) : null}
 
         {blankHint && isBlank ? (
-          <p aria-live="polite" className="mt-2 text-sm text-text-muted">
+          <p aria-live="polite" className="text-center text-sm font-medium text-text">
             Tulis minimal satu kalimat dulu
           </p>
         ) : null}
 
         {phase === "summarizing" ? (
-          <div className="mt-4">
-            <p aria-live="polite" className="text-sm text-text-muted">
+          <Card as="div">
+            <p aria-live="polite" className="flex items-center gap-2 text-sm font-medium text-text-muted">
+              <Stamp aria-hidden="true" size={16} strokeWidth={1.7} className="text-primary" />
               Sedang membaca harimu…
             </p>
-            <div aria-hidden="true" className="mt-3 flex flex-col gap-2">
-              <div className="h-4 w-3/4 rounded-sm bg-surface-muted" />
-              <div className="h-4 w-full rounded-sm bg-surface-muted" />
-              <div className="h-4 w-2/3 rounded-sm bg-surface-muted" />
+            <div aria-hidden="true" className="mt-4 flex flex-col gap-2.5">
+              <div className="h-4 w-3/4 rounded-full bg-surface-muted" />
+              <div className="h-4 w-full rounded-full bg-surface-muted" />
+              <div className="h-4 w-2/3 rounded-full bg-surface-muted" />
             </div>
-          </div>
+          </Card>
         ) : null}
 
         {phase === "failed" ? (
-          <div className="mt-2" aria-live="polite">
-            <p className="text-sm text-text-muted">{message}</p>
+          <Card as="div" aria-live="polite">
+            <p className="text-base text-text">{message}</p>
             {retryable ? (
-              <Button variant="secondary" onClick={summarise} className="mt-2">
+              <Button variant="secondary" onClick={summarise} className="mt-3">
                 Coba lagi
               </Button>
             ) : null}
-          </div>
+          </Card>
         ) : null}
 
         {phase === "idle" && changed ? (
-          <p className="text-sm text-text-muted">
-            Tulisanmu berubah sejak dirangkum.{" "}
-            {regenLeft > 0 ? (
-              <Button variant="link" size="inline" onClick={summarise}>
-                Rangkum ulang (sisa {regenLeft})
-              </Button>
-            ) : (
-              <span>Rangkum ulang hari ini sudah terpakai.</span>
-            )}
-          </p>
+          <div className="flex items-start gap-3 rounded-3xl border border-dashed border-control p-4">
+            <RefreshCw aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0 text-text-muted" />
+            <p className="text-sm text-text-muted">
+              {textChanged
+                ? "Tulisanmu berubah sejak dianalisa."
+                : "Mood, energi, atau kebiasaanmu berubah sejak dianalisa."}{" "}
+              {regenLeft > 0 ? (
+                <Button variant="link" size="inline" onClick={summarise} className="font-semibold text-primary">
+                  Analisa ulang (sisa {regenLeft})
+                </Button>
+              ) : (
+                <span>Analisa ulang hari ini sudah terpakai.</span>
+              )}
+            </p>
+          </div>
         ) : null}
       </div>
-    </>
+    </div>
+  );
+}
+
+/**
+ * The printed heading of an Indonesian school notebook page, "Hari" and
+ * "Tanggal", filled in with today's day in ink (DESIGN.md §6, version 4). It is
+ * the only place the date shows on Hari Ini.
+ */
+function NotebookHeading({ weekday, fullDate }: { weekday: string; fullDate: string }) {
+  return (
+    <dl className="mb-3 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 border-b-[1.5px] border-rule pb-3">
+      <dt className="text-sm text-text-muted">Hari</dt>
+      <dd className="border-b border-dotted border-control/50 font-serif text-lg italic text-primary">{weekday}</dd>
+      <dt className="text-sm text-text-muted">Tanggal</dt>
+      <dd className="border-b border-dotted border-control/50 font-serif text-lg italic text-primary">{fullDate}</dd>
+    </dl>
   );
 }

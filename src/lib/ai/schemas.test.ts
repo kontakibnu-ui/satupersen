@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { parseDailySummary } from "@/lib/ai/schemas";
+import { parseBriefReport, parseDailySummary, parseFullReport, parseTokenUsage } from "@/lib/ai/schemas";
+
+describe("parseTokenUsage (meter token, PRD §8)", () => {
+  it("membaca bentuk usage yang dikirim OpenRouter (dicek dengan panggilan sungguhan 2026-11-01)", () => {
+    expect(
+      parseTokenUsage({
+        prompt_tokens: 63,
+        completion_tokens: 39,
+        total_tokens: 102,
+        cost: 0.0000065043,
+        completion_tokens_details: { reasoning_tokens: 32 },
+      }),
+    ).toEqual({ promptTokens: 63, completionTokens: 39, costUsd: 0.0000065043 });
+  });
+
+  it("biaya boleh tidak ada", () => {
+    expect(parseTokenUsage({ prompt_tokens: 10, completion_tokens: 5 })).toEqual({
+      promptTokens: 10,
+      completionTokens: 5,
+      costUsd: null,
+    });
+  });
+
+  it.each([undefined, null, {}, { prompt_tokens: -1, completion_tokens: 2 }, { prompt_tokens: 1.5, completion_tokens: 2 }])(
+    "usage yang tidak bisa dipakai menjadi null: %j",
+    (raw) => {
+      expect(parseTokenUsage(raw)).toBeNull();
+    },
+  );
+});
 
 const validSummary = {
   summary: "Hari ini kamu menyelesaikan laporan yang tertunda dan tetap jalan pagi.",
@@ -63,5 +92,43 @@ describe("parseDailySummary", () => {
   it("keeps a true risk flag", () => {
     const raw = JSON.stringify({ ...validSummary, risk_flag: true });
     expect(parseDailySummary(raw).risk_flag).toBe(true);
+  });
+});
+
+describe("report schemas (REPORT-3)", () => {
+  it("accepts the short weekly report: a trend and a focus", () => {
+    expect(parseBriefReport('{"trend":"Naik pelan.","focus":"Tidur lebih awal."}')).toEqual({
+      trend: "Naik pelan.",
+      focus: "Tidur lebih awal.",
+    });
+  });
+
+  it("reads a report the model wrapped in a code fence or a sentence", () => {
+    const wrapped = 'Ini laporannya:\n```json\n{"trend":"Stabil.","focus":"Jalan sore."}\n```';
+    expect(parseBriefReport(wrapped).focus).toBe("Jalan sore.");
+  });
+
+  it("requires two or three patterns in the full report, never one and never four", () => {
+    const report = (patterns: string[]) =>
+      JSON.stringify({ trend: "t", patterns, focus: "f", insights: [] });
+
+    expect(() => parseFullReport(report(["satu"]))).toThrow(/report schema/);
+    expect(parseFullReport(report(["satu", "dua"])).patterns).toHaveLength(2);
+    expect(parseFullReport(report(["a", "b", "c"])).patterns).toHaveLength(3);
+    expect(() => parseFullReport(report(["a", "b", "c", "d"]))).toThrow(/report schema/);
+  });
+
+  it("allows at most two cross-area insights", () => {
+    const withInsights = (insights: string[]) =>
+      JSON.stringify({ trend: "t", patterns: ["a", "b"], focus: "f", insights });
+
+    expect(parseFullReport(withInsights(["x", "y"])).insights).toHaveLength(2);
+    expect(() => parseFullReport(withInsights(["x", "y", "z"]))).toThrow(/report schema/);
+  });
+
+  it("rejects an empty trend or focus, and text that is not JSON", () => {
+    expect(() => parseBriefReport('{"trend":"","focus":"f"}')).toThrow(/report schema/);
+    expect(() => parseBriefReport('{"trend":"t"}')).toThrow(/report schema/);
+    expect(() => parseBriefReport("maaf, tidak bisa")).toThrow(/JSON/);
   });
 });

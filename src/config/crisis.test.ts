@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  crisisLanguageOf,
   crisisResponseFor,
   CRISIS_RESPONSE_EN,
   CRISIS_RESPONSE_ID,
@@ -75,5 +76,20 @@ describe("CRISIS_SERVICE", () => {
     expect(CRISIS_SERVICE.phone).toBe("119");
     expect(CRISIS_SERVICE.phoneExtension).toBe("8");
     expect(CRISIS_SERVICE.website).toBe("https://healing119.id");
+  });
+});
+
+describe("crisisLanguageOf", () => {
+  it("picks the language of the phrase that matched", () => {
+    expect(crisisLanguageOf("I want to die")).toBe("en");
+    expect(crisisLanguageOf("aku pengen mati")).toBe("id");
+  });
+
+  it("uses Indonesian when both languages appear, because the product is Indonesian", () => {
+    expect(crisisLanguageOf("I feel suicidal, aku ingin mati")).toBe("id");
+  });
+
+  it("defaults to Indonesian when nothing matched", () => {
+    expect(crisisLanguageOf("hari ini biasa saja")).toBe("id");
   });
 });

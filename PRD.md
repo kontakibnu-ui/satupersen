@@ -6,7 +6,7 @@
 
 ## 1. Ringkasan
 
-Satu Persen adalah web app life tracker untuk anak muda Indonesia. User menulis diary singkat tiap hari, lewat web atau lewat chat WhatsApp. AI meringkas hari itu (kelebihan, hal yang bisa diperbaiki, saran besok) dan memberi skor 0 sampai 100 beserta alasannya, lalu menunjukkan seberapa lebih baik user dibanding rata-rata 7 hari terakhir.
+Satu Persen adalah web app life tracker untuk anak muda Indonesia. User menulis diary singkat tiap hari, lewat web atau lewat chat WhatsApp. AI meringkas hari itu (kelebihan, hal yang bisa diperbaiki, saran besok) dan memberi skor 0 sampai 100 beserta alasannya, lalu menunjukkan seberapa lebih baik user dibanding hari sebelumnya ("Kamu 2% lebih baik dibanding kemarin").
 
 - **Masalah:** anak muda ingin berubah tapi tidak tahu apakah benar-benar maju. Diary biasa hanya menyimpan, tidak memberi umpan balik.
 - **Pembeda:** (1) skor selalu disertai alasan, (2) insight lintas modul (diary, habit, mood, expense), (3) pendekatan Atomic Habits (identitas, bukan sekadar streak), (4) curhat lewat WhatsApp, (5) paham Bahasa Indonesia, bahasa Inggris, dan campuran.
@@ -14,7 +14,7 @@ Satu Persen adalah web app life tracker untuk anak muda Indonesia. User menulis 
 
 ## 2. Target user
 
-Usia 18 sampai 25 (produk hanya untuk 18 tahun ke atas): mahasiswa, pelajar, pekerja yang ingin berubah, pencari kerja. Akses terutama lewat HP. Menulis dengan bahasa campur Indonesia dan Inggris. Sensitif harga. Berhenti kalau input terasa ribet, jadi input harian harus selesai dalam 1 sampai 2 menit.
+Terutama usia 18 sampai 25: mahasiswa, pelajar, pekerja yang ingin berubah, pencari kerja. Akses terutama lewat HP. Menulis dengan bahasa campur Indonesia dan Inggris. Sensitif harga. Berhenti kalau input terasa ribet, jadi input harian harus selesai dalam 1 sampai 2 menit.
 
 ## 3. Scope
 
@@ -51,10 +51,10 @@ Pesan suara WhatsApp, catat expense atau habit lewat WhatsApp, scan struk, aplik
 Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika semua kriteria modulnya terpenuhi (aturan lengkap di `AGENTS.md` §2).
 
 **AUTH**
-- AUTH-1: Login dengan Google dan magic link email.
+- AUTH-1: Daftar dan masuk dengan email dan password, atau dengan Google. Daftar dan masuk satu form di `/login`, dua mode (keputusan user, 2026-11-01: magic link dihapus). Password baru minimal 8 karakter. Lupa password belum ada.
 - AUTH-2: Semua halaman di grup `(app)` mengarahkan ke `/login` jika belum login.
 - AUTH-3: Login pertama membuat baris `profiles` otomatis dengan plan `free`. Onboarding mendeteksi timezone browser (mis. `Asia/Makassar` untuk WITA) dan menyimpannya; `Asia/Jakarta` hanya dipakai bila deteksi gagal. Timezone bisa diubah di Akun.
-- AUTH-4: Onboarding satu layar: disclaimer "bukan pengganti terapi atau tenaga profesional" dan dua checkbox wajib sebelum masuk aplikasi: persetujuan kebijakan privasi, dan pernyataan "Saya berusia 18 tahun ke atas". Tanpa keduanya user tidak bisa lanjut.
+- AUTH-4: Onboarding satu layar: satu checkbox wajib sebelum masuk aplikasi, yaitu persetujuan kebijakan privasi. Tanpa itu user tidak bisa lanjut. (Pernyataan usia 18+ dihapus atas keputusan user, 2026-11-01.)
 
 **DIARY**
 - DIARY-1: `/today` menampilkan editor untuk tanggal hari ini menurut timezone user.
@@ -63,15 +63,15 @@ Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika 
 - DIARY-4: `/history` menampilkan kalender yang menandai tanggal yang punya entri. Entri tanggal lampau hanya bisa dibaca; hanya hari ini yang bisa diedit.
 
 **AI** (ringkasan harian)
-- AI-1: Tombol "Rangkum hari ini" menyimpan entri lalu memanggil `POST /api/ai/summarize`. Auto-save tidak pernah memanggil AI. Jika tulisan kosong, tampilkan petunjuk dan jangan memanggil AI. State layar mengikuti `DESIGN.md` §7.
+- AI-1: Tombol "Analisa hari ini" (sebelumnya "Rangkum hari ini"; istilah di UI diganti user 2026-10-31) menyimpan entri lalu memanggil `POST /api/ai/summarize`. Auto-save tidak pernah memanggil AI. Jika tulisan kosong, tampilkan petunjuk dan jangan memanggil AI. State layar mengikuti `DESIGN.md` §7.
 - AI-2: Output divalidasi terhadap schema §5. Tidak valid: coba ulang 1x. Masih gagal: status `failed`, tombol "Coba lagi", entri tetap tersimpan.
 - AI-3: Saat diproses tampil loading yang jelas. Tidak ada hasil palsu.
-- AI-4: Ringkasan pertama tiap hari selalu boleh. Setelah itu, rangkum ulang per hari: free 1x, premium 3x. Kuota dipakai bersama oleh web, perintah `selesai` di WhatsApp, dan ringkasan otomatis. Dicek di server.
+- AI-4: Analisa pertama tiap hari selalu boleh. Setelah itu, analisa ulang per hari: free 1x, premium 3x. Kuota dipakai bersama oleh web, perintah `selesai` di WhatsApp, dan ringkasan otomatis. Dicek di server.
 - AI-5: Jika `risk_flag` true, ikuti §7.
 
 **SCORE**
 - SCORE-1: Skor dihitung di kode (`scoring.ts`), bukan oleh AI. AI hanya memberi `ai_dimension_score` 0 sampai 10.
-- SCORE-2: `delta_pct` bernilai null jika kurang dari 3 entri berskor dalam 7 hari sebelumnya, atau jika rata-ratanya di bawah 1 (mencegah pembagian dengan nol). UI menampilkan "Persen muncul setelah 3 hari menulis".
+- SCORE-2 (diubah user 2026-11-01): perbandingan harian = skor hari ini dikurangi skor hari berskor terakhir sebelumnya, dalam poin, ditampilkan sebagai kalimat "Kamu 2% lebih baik dibanding kemarin" (atau "hari Kamis", atau tanggalnya bila lebih dari seminggu). Angka skor 0 sampai 100 tidak ditampilkan di Hari Ini dan WhatsApp; grafik Progres tetap memakainya. `delta_pct` menyimpan poin itu, null bila belum ada hari berskor sebelumnya, dan UI menampilkan "Ini analisa pertamamu".
 - SCORE-3: Skor tidak pernah tampil tanpa alasannya.
 
 **HABIT**
@@ -87,6 +87,8 @@ Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika 
 - EXP-2: Daftar per hari, total harian dan bulanan, edit dan hapus.
 - EXP-3: Kategori bawaan: makan, transport, kuliah atau kerja, hiburan, tagihan, lainnya.
 - EXP-4: Budget bulanan (premium), menjadi input dimensi keuangan skor.
+- EXP-5: Tambah pemasukan (nominal integer, kategori, catatan opsional) di tabel yang sama dengan pengeluaran, dibedakan kolom `type`. Kategori bawaan pemasukan: gaji, uang saku, usaha atau freelance, bonus atau hadiah, lainnya. Layar Uang menampilkan sisa uang bulan itu (masuk dikurangi keluar), total masuk, dan total keluar; jenis entri tidak bisa diubah setelah dibuat. Diputuskan user 2026-11-01.
+- EXP-6: Perbandingan perkembangan: bulan ini lawan bulan sebelumnya (pengeluaran dan sisa uang; bulan yang masih berjalan dibandingkan dengan hari-hari yang sama di bulan lalu) dan grafik masuk lawan keluar untuk 6 bulan yang berakhir di bulan yang dibuka. Tanpa warna baik atau buruk.
 
 **DASH**
 - DASH-1: Menampilkan rata-rata skor periode terpilih, persen vs periode sebelumnya, dan "sejak mulai" (§5). Hierarki tampilan mengikuti `DESIGN.md` §2.
@@ -120,12 +122,12 @@ Skor harian 0 sampai 100, separuh lebih berasal dari data objektif. Bobot adalah
 | Kebiasaan | 30% | Persentase habit aktif yang selesai hari itu |
 | Produktivitas dan progres | 30% | `ai_dimension_score` (0 sampai 10, rubrik tetap) |
 | Mood dan energi | 25% | Rata-rata mood dan energi yang diinput user |
-| Keuangan | 15% | Pengeluaran hari itu vs budget harian (budget bulanan dibagi hari) |
+| Keuangan | 15% | Jika ada pemasukan bulan itu: rasio tabungan bulan berjalan, (masuk dikurangi keluar sampai hari itu) dibagi masuk, penuh di 20% atau lebih dan 0 di 0% atau kurang (EXP-5). Jika tidak ada pemasukan: pengeluaran hari itu vs budget harian (budget bulanan dibagi hari; premium) |
 
 Dimensi tanpa data (mis. user belum punya habit atau budget) dikeluarkan dan bobotnya dibagi ulang ke dimensi lain.
 
 **Persen lebih baik**
-- Harian = (skor hari ini − rata-rata skor 7 hari sebelumnya) / rata-rata tersebut × 100. Pembanding rata-rata 7 hari, bukan kemarin, agar satu hari yang buruk tidak membuat angka melompat.
+- Harian = skor hari ini − skor hari berskor terakhir sebelumnya, dalam poin (keputusan user 2026-11-01, menggantikan rasio terhadap rata-rata 7 hari). Selisih poin dipilih agar angkanya tidak berlebihan: skor 30 lalu 60 tampil 30%, bukan 100%.
 - Mingguan = rata-rata minggu ini vs minggu lalu. Minggu = Senin sampai Minggu.
 - Bulanan = rata-rata bulan ini vs bulan lalu.
 - **Sejak mulai** = rata-rata 7 hari berskor terakhir vs rata-rata 7 hari berskor pertama. Muncul setelah minimal 14 hari berskor, tersedia untuk semua plan. Inilah jawaban "berapa persen lebih baik dalam sebulan atau setahun".
@@ -184,7 +186,7 @@ Dimensi tanpa data (mis. user belum punya habit atau budget) dikeluarkan dan bob
 - Setiap pesan WhatsApp masuk juga diperiksa filter kata kunci krisis (Indonesia dan Inggris) di `src/config/crisis.ts` **sebelum** memanggil AI.
 - Jika terdeteksi: skor dan persen tidak ditampilkan, balasan AI dibuang, dan user menerima **teks tetap** yang sudah ditulis manusia (empatik, mengajak bicara dengan orang tepercaya atau profesional, memuat layanan krisis). Bukan hasil generasi AI.
 - Nomor dan nama layanan krisis diisi dan diverifikasi manusia di `src/config/crisis.ts`. AI dilarang mengarang nomor telepon.
-- Disclaimer "bukan pengganti terapi atau tenaga profesional" ada di onboarding dan footer.
+- Disclaimer "bukan pengganti terapi atau tenaga profesional" tidak dipasang di onboarding, footer, FAQ, maupun syarat layanan (keputusan user, 2026-11-01: Satu Persen diposisikan sebagai life tracker). Teks krisis di atas tetap berlaku.
 - Kandidat layanan (belum diverifikasi manusia): Healing119 dari Kemenkes, telepon 119 ext. 8 atau `healing119.id` (situsnya punya opsi chat WhatsApp), dan 119 untuk bahaya langsung. Sumber: [FAQ Healing119 Kemenkes](https://kesprimkom.kemkes.go.id/assets/uploads/contents/others/FAQ_Cegah_Bunuh_Diri%2C_Dukung_Kesehatan_Jiwa__Kenali_Layanan_Healing119.id.pdf). Cek ulang nomor dan jam layanan di `healing119.id` sebelum launch.
 
 **Draf teks respons krisis** (status: menunggu persetujuan user; setelah disetujui disimpan di `crisis.ts`). Pakai versi yang sesuai bahasa pesan user.
@@ -202,7 +204,7 @@ Dimensi tanpa data (mis. user belum punya habit atau budget) dikeluarkan dan bob
 - Seluruh lalu lintas HTTPS. Isi diary dan pesan tidak boleh masuk log.
 - User bisa export data (JSON) dan menghapus akun beserta seluruh datanya, tanpa syarat premium.
 - Panggilan ke OpenRouter memakai `data_collection: deny`, sehingga hanya provider yang tidak mengumpulkan data yang dipakai. Jika tidak ada provider yang memenuhi untuk model terpilih, OpenRouter mengembalikan error. Itu tanda untuk memilih model atau provider lain, bukan alasan mematikan pengaturan ini.
-- Usia minimum 18 tahun, dengan pernyataan wajib saat onboarding. Alasan: UU PDP Pasal 25 mewajibkan persetujuan orang tua atau wali untuk pemrosesan data anak, dan curhat dari anak jauh lebih sensitif. Ini bukan saran hukum; tinjau dengan ahli sebelum menurunkan batas.
+- Tidak ada batas atau pernyataan usia di aplikasi (keputusan user, 2026-11-01; sebelumnya 18+). Risiko yang tetap berlaku: UU PDP Pasal 25 mewajibkan persetujuan orang tua atau wali untuk pemrosesan data anak, dan curhat dari anak jauh lebih sensitif. Ini bukan saran hukum; tinjau dengan ahli sebelum launch.
 - Pesan WhatsApp melewati server Meta. User diberi tahu saat menghubungkan dan disarankan tidak mengirim data sangat sensitif (password, nomor kartu).
 - Kebijakan privasi dan syarat layanan wajib ada sebelum launch (UU Pelindungan Data Pribadi). Draf dari AI wajib ditinjau manusia.
 
@@ -242,7 +244,20 @@ Semua yang dikirim ke browser bisa dilihat lewat Inspect, tab Network, bundle Ja
 
 ## 8. Monetisasi
 
-Harga usulan: Rp 29.000 per bulan atau Rp 249.000 per tahun, trial premium 7 hari tanpa kartu. **Harga dan gateway belum final** (§11).
+**Paket premium (keputusan user 2026-11-01: dihitung dari biaya token AI; 1 tahun dibuat paling untung, 3 bulan tetap terasa hemat untuk yang mencoba; tanpa trial):**
+
+| Paket | Harga | Per bulan | Hemat vs bulanan |
+| --- | --- | --- | --- |
+| 1 bulan | Rp 29.000 | Rp 29.000 | 0% |
+| 3 bulan | Rp 74.000 | Rp 24.666 | 15% |
+| 6 bulan | Rp 129.000 | Rp 21.500 | 26% |
+| 12 bulan | Rp 199.000 | Rp 16.583 | 43% |
+
+Sumber angka satu-satunya: `src/config/plans.ts` (landing, halaman Paket, dan cek server membaca file itu). **Gateway pembayaran ditunda** (§11); tombol bayar menunggu.
+
+**Dasar hitungan biaya (2026-11-01):** harga publik OpenRouter untuk model di `AI_MODEL_*` dengan provider menengah yang lolos `data_collection: deny` (asumsi USD 0,30 per juta token input dan 1,20 per juta output, kurs Rp 16.500 per USD). Satu analisa harian sungguhan tercatat 659 token input dan 718 token output (termasuk token berpikir model), biaya USD 0,00059, sekitar Rp 10. Bulan premium normal sekitar 360 ribu token (sekitar Rp 2.500). Biaya gateway per transaksi belum diketahui, diasumsikan sekitar Rp 4.500; paket panjang hanya kena satu kali.
+
+**Batas token AI bulanan (lunak, keputusan user 2026-11-01):** gratis 150.000 token, premium 1.200.000 token per bulan kalender lokal, dihitung dari token yang dilaporkan OpenRouter dan dicatat di `ai_usage`. Lewat batas: analisa pertama tiap hari tetap jalan; analisa ulang dan balasan chat AI di WhatsApp berhenti (satu pemberitahuan per hari) sampai tanggal 1. Laporan terjadwal tetap dibuat. Batas premium menjaga bulan terberat di bawah separuh harga efektif paket 12 bulan.
 
 | Fitur | Gratis | Premium |
 | --- | --- | --- |
@@ -256,11 +271,13 @@ Harga usulan: Rp 29.000 per bulan atau Rp 249.000 per tahun, trial premium 7 har
 | Laporan mingguan | Ringkas | Lengkap |
 | Laporan bulanan | Tidak | Ya |
 | Tanya diary-mu (usulan, belum final) | 3 per hari, 30 hari terakhir | 20 per hari, seluruh riwayat |
+| Kuota AI per bulan (batas lunak) | 150.000 token | 1.200.000 token |
 | Export dan hapus data | Ya | Ya |
 
 - **SUB-1:** Batas plan dicek di server, tidak hanya di UI.
 - **SUB-2:** Status langganan berubah hanya lewat webhook gateway yang tanda tangannya terverifikasi.
-- **SUB-3:** Saat langganan berakhir, data tetap utuh; hanya fitur premium yang terkunci.
+- **SUB-3:** Saat langganan berakhir, data tetap utuh; hanya fitur premium yang terkunci. Tick terjadwal menurunkan `plan` ke `free` begitu `premium_until` lewat.
+- **SUB-4:** Setiap panggilan AI dicatat di `ai_usage` (token dan biaya dari OpenRouter, tanpa isi), dan batas token bulanan dicek di server sebelum analisa ulang dan balasan chat.
 
 ## 9. Data model
 
@@ -272,11 +289,12 @@ Dua belas tabel. Semua tabel data user punya `user_id` dan RLS `user_id = auth.u
 | entries | id uuid, user_id, date, content text, mood smallint, energy smallint, updated_at | UNIQUE (user_id, date); mood dan energy 1 sampai 5 atau null; content maks 5000 |
 | habits | id, user_id, name text, identity text, archived_at, created_at | |
 | habit_logs | id, habit_id, user_id, date | UNIQUE (habit_id, date); baris ada = selesai, hapus baris = batal |
-| expenses | id, user_id, date, amount integer, category text, note text, created_at | amount > 0 (rupiah) |
+| expenses | id, user_id, date, type text, amount integer, category text, note text, created_at | amount > 0 (rupiah); type in (expense, income), default expense. Nama tabel tetap `expenses`; satu baris = satu catatan uang masuk atau keluar |
 | budgets | user_id, month date, amount integer | PK (user_id, month); month = tanggal 1 |
 | daily_summaries | id, user_id, date, status text, summary, strengths jsonb, improvements jsonb, tomorrow_tip, ai_dimension_score smallint, score smallint, score_dimensions jsonb, delta_pct numeric, score_reason, risk_flag boolean, model text, regen_count smallint | UNIQUE (user_id, date); status in (pending, done, failed) |
 | reports | id, user_id, type text, period_start date, period_end date, content jsonb, created_at | UNIQUE (user_id, type, period_start); type in (weekly, monthly) |
 | subscriptions (server) | id, user_id, provider text, provider_ref text, plan text, status text, current_period_end | UNIQUE provider_ref |
+| ai_usage (server) | id, user_id, feature text, model text, prompt_tokens int, completion_tokens int, cost_usd numeric, created_at | feature in (daily, chat, report); satu baris per panggilan model termasuk percobaan ulang; user hanya membaca miliknya; jumlah bulanan lewat RPC `ai_tokens_since` |
 | whatsapp_links | user_id, phone text, verified_at, opted_in boolean, reminder_time time, last_inbound_at timestamptz | PK user_id; UNIQUE phone; phone = format digit E.164 tanpa "+" seperti dikirim Meta |
 | whatsapp_link_codes (server) | code text, user_id, expires_at | PK code |
 | wa_messages (server) | id, user_id (nullable), wa_message_id text, direction text, kind text, body text, created_at | UNIQUE wa_message_id (idempotensi webhook); direction in (in, out); kind untuk pesan keluar in (ai_reply, notice, crisis, summary, reminder, help); jumlah `ai_reply` per tanggal lokal user = pemakaian batas harian |
@@ -309,10 +327,11 @@ Tugas yang bergantung pada hal ini harus berhenti dan ditulis di `TASKS.md` bagi
 
 - [x] Nama: Satu Persen (2026-10-28)
 - [x] Keluarga model: DeepSeek lewat OpenRouter (2026-10-28). ID model persisnya masih harus dipilih dan diuji (`TASKS.md` 0.4)
-- [x] Batas usia: 18 tahun ke atas (2026-10-28)
+- [x] Batas usia: tidak ada pernyataan usia (2026-11-01; sebelumnya 18 tahun ke atas, 2026-10-28)
 - [x] Batas balasan AI WhatsApp untuk free: 1 per hari (2026-10-28)
 - [ ] Domain
-- [ ] Harga final dan gateway pembayaran (belum daftar; `TASKS.md` 6.2 terblokir sampai diputuskan)
+- [x] Harga paket premium 1/3/6/12 bulan, batas token lunak, tanpa trial (2026-11-01, §8)
+- [ ] Gateway pembayaran (ditunda user 2026-11-01; `TASKS.md` 6.2 terblokir sampai diputuskan)
 - [ ] Layanan krisis terverifikasi dan persetujuan teks respons (draf ada di §7)
 - [ ] Teks template pengingat WhatsApp dan persetujuannya dari Meta
 - [ ] Bobot skor final setelah diuji pada contoh entri nyata

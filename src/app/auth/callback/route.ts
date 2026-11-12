@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
- * Landing point for both login flows: Google and the magic link email send the
- * user here with a code that is exchanged for a session (AUTH-1).
+ * Landing point for the flows that leave the app: Google, and the link in the
+ * sign-up confirmation email, send the user here with a code that is exchanged
+ * for a session (AUTH-1).
  */
 /**
  * The redirect target is built from the Host header, not from request.url:

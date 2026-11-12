@@ -36,6 +36,9 @@ export type DailyScoreInput = {
   spentToday: number;
   /** Monthly budget in rupiah, or null for plans without a budget. */
   monthlyBudget: number | null;
+  /** Income and spending from the 1st of the month through that day (EXP-5). */
+  monthIncomeToDate: number;
+  monthSpentToDate: number;
   /** Days in the month of that date, from the helpers in dates.ts. */
   daysInMonth: number;
 };
@@ -93,12 +96,23 @@ function productivityValue(input: DailyScoreInput): number | null {
   return input.aiDimensionScore === null ? null : input.aiDimensionScore * 10;
 }
 
+/** Keeping a fifth of the month's income counts as a full finance dimension. */
+export const SAVINGS_TARGET = 0.2;
+
 /**
- * Spending is compared to the daily share of the monthly budget (PRD.md §5).
- * At or under budget the dimension is full; it falls linearly to zero at twice
- * the daily budget. PRD.md §11 has not fixed this curve yet.
+ * With income logged this month, the dimension is the share of it still unspent
+ * so far, 0 at nothing kept (or less) and full at the savings target (PRD.md §5,
+ * EXP-5). Without income it falls back to the budget: spending is compared to
+ * the daily share of the monthly budget, full at or under it and linearly down
+ * to zero at twice the daily budget. PRD.md §11 has not fixed these curves yet.
  */
 function financeValue(input: DailyScoreInput): number | null {
+  if (input.monthIncomeToDate > 0) {
+    const kept = (input.monthIncomeToDate - input.monthSpentToDate) / input.monthIncomeToDate;
+
+    return clampTo100((kept / SAVINGS_TARGET) * 100);
+  }
+
   if (input.monthlyBudget === null) {
     return null;
   }
@@ -113,13 +127,15 @@ function financeValue(input: DailyScoreInput): number | null {
 }
 
 export function computeDailyScore(input: DailyScoreInput): DailyScore {
-  assertIntegerInRange("activeHabitCount", input.activeHabitCount, 0, 50);
-  assertIntegerInRange("completedHabitCount", input.completedHabitCount, 0, 50);
+  assertIntegerInRange("activeHabitCount", input.activeHabitCount, 0, 1000);
+  assertIntegerInRange("completedHabitCount", input.completedHabitCount, 0, 1000);
   assertNullableIntegerInRange("aiDimensionScore", input.aiDimensionScore, 0, 10);
   assertNullableIntegerInRange("mood", input.mood, 1, 5);
   assertNullableIntegerInRange("energy", input.energy, 1, 5);
   assertIntegerInRange("spentToday", input.spentToday, 0, 2_000_000_000);
   assertIntegerInRange("daysInMonth", input.daysInMonth, 1, 31);
+  assertIntegerInRange("monthIncomeToDate", input.monthIncomeToDate, 0, Number.MAX_SAFE_INTEGER);
+  assertIntegerInRange("monthSpentToDate", input.monthSpentToDate, 0, Number.MAX_SAFE_INTEGER);
 
   if (input.monthlyBudget !== null) {
     assertIntegerInRange("monthlyBudget", input.monthlyBudget, 1, 2_000_000_000);
@@ -166,28 +182,19 @@ export function computeDailyScore(input: DailyScoreInput): DailyScore {
 }
 
 /**
- * SCORE-2: comparison against the average of the previous 7 days, not against
- * yesterday, so a single bad day does not make the number jump. Returns null
- * when fewer than 3 scored days are available, or when that average is below 1
- * where a percentage would be meaningless.
+ * SCORE-2 (user decision 2026-11-01): today against the last scored day
+ * before it, as a difference in points on the 0 to 100 scale, shown as "2%
+ * lebih baik". Points rather than a ratio keep the number modest: 30 to 60 is
+ * 30%, not 100%. Null when there is no earlier scored day.
  */
-export function dailyDeltaPct(todayScore: number, previousScores: number[]): number | null {
+export function dailyDeltaPoints(todayScore: number, previousScore: number | null): number | null {
   assertIntegerInRange("todayScore", todayScore, 0, 100);
 
-  for (const previousScore of previousScores) {
-    assertIntegerInRange("previousScores entry", previousScore, 0, 100);
-  }
-
-  if (previousScores.length < 3) {
+  if (previousScore === null) {
     return null;
   }
 
-  const average =
-    previousScores.reduce((total, score) => total + score, 0) / previousScores.length;
+  assertIntegerInRange("previousScore", previousScore, 0, 100);
 
-  if (average < 1) {
-    return null;
-  }
-
-  return roundTo1(((todayScore - average) / average) * 100);
+  return todayScore - previousScore;
 }
