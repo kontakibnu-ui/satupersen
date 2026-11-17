@@ -1,0 +1,5 @@
+# Files that must stay byte for byte as committed, whatever core.autocrlf says:
+# the upstream foliate-js copy, whose hashes are listed in vendor/foliate-js/README.md,
+# and the test books, where a PDF's cross reference counts bytes.
+vendor/** -text
+e2e/fixtures/books/* -text
