@@ -36,6 +36,35 @@ const TABLES = [
     columns: "feature, model, prompt_tokens, completion_tokens, created_at",
     order: "created_at",
   },
+  // Belajar (LEARN-8). Ids are kept so questions and reviews can be matched to
+  // their material; the quota rows (study_checks) and rate limit counts are
+  // bookkeeping, not the user's data, and stay out.
+  {
+    key: "study_materials",
+    table: "study_materials",
+    columns: "id, title, source, explanation, feedback, status, created_at, activated_at",
+    order: "created_at",
+  },
+  {
+    key: "study_questions",
+    table: "study_questions",
+    columns: "id, material_id, position, prompt, answer, kind, step, due_date, created_at",
+    order: "created_at",
+  },
+  {
+    key: "study_reviews",
+    table: "study_reviews",
+    columns: "material_id, question_id, reviewed_on, answer, rating, feedback, created_at",
+    order: "created_at",
+  },
+  // Ruang baca (READ-10): the list of books and where the user is in each. The
+  // files themselves stay out; the user downloaded them in the first place.
+  {
+    key: "books",
+    table: "books",
+    columns: "title, format, size_bytes, status, location, progress, created_at, ready_at, opened_at",
+    order: "created_at",
+  },
 ] as const;
 
 export async function GET() {

@@ -72,25 +72,29 @@ export function MoneyChart({ months, description }: { months: MonthBar[]; descri
         </ResponsiveContainer>
       </div>
 
-      <table className="sr-only">
-        <caption>{description}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Bulan</th>
-            <th scope="col">Masuk</th>
-            <th scope="col">Keluar</th>
-          </tr>
-        </thead>
-        <tbody>
-          {months.map((month) => (
-            <tr key={month.fullLabel}>
-              <th scope="row">{month.fullLabel}</th>
-              <td>{formatRupiah(month.income)}</td>
-              <td>{formatRupiah(month.expense)}</td>
+      {/* sr-only sits on a wrapper: a table never shrinks below its content, so a hidden
+          table that is wider than the screen would still scroll the page sideways at 360 px. */}
+      <div className="sr-only">
+        <table>
+          <caption>{description}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Bulan</th>
+              <th scope="col">Masuk</th>
+              <th scope="col">Keluar</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {months.map((month) => (
+              <tr key={month.fullLabel}>
+                <th scope="row">{month.fullLabel}</th>
+                <td>{formatRupiah(month.income)}</td>
+                <td>{formatRupiah(month.expense)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

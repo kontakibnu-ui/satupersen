@@ -21,6 +21,8 @@ const COMPARISON: { feature: string; free: string; premium: string }[] = [
   { feature: "Analisa ulang per hari", free: "1x", premium: "3x" },
   { feature: "Balasan AI di WhatsApp", free: "1 per hari", premium: "30 per hari" },
   { feature: "Kebiasaan aktif", free: "3", premium: "Tanpa batas" },
+  { feature: "Materi Belajar", free: "1 materi", premium: "Tanpa batas" },
+  { feature: "Pemeriksaan AI di Belajar", free: "1x per hari", premium: "10x per materi per hari" },
   { feature: "Budget bulanan", free: "Tidak", premium: "Ya" },
   { feature: "Riwayat grafik", free: "30 hari", premium: "365 hari" },
   { feature: "Laporan mingguan", free: "Ringkas", premium: "Lengkap" },

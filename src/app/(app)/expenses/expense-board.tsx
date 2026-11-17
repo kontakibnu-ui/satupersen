@@ -13,6 +13,7 @@ import {
   HandCoins,
   Plus,
   Receipt,
+  ScanText,
   Store,
   Target,
   TrendingDown,
@@ -22,15 +23,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, IconBadge, type IconTone } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
+import { formatDayLabel } from "@/lib/dates";
 import {
   categoriesFor,
   categoryLabel,
+  earliestEntryDate,
+  isAllowedEntryDate,
+  isCategoryOf,
   MAX_NOTE_LENGTH,
   netOf,
   parseAmount,
@@ -38,8 +43,11 @@ import {
   type MonthComparison,
 } from "@/lib/expenses";
 import { formatRupiah } from "@/lib/format";
-import { addExpense, clearBudget, deleteExpense, setBudget, updateExpense } from "./actions";
+import { hasReadableText, prepareReceiptText, type ReceiptDraft } from "@/lib/receipt";
+import { cn } from "@/lib/utils";
+import { addExpense, clearBudget, deleteExpense, readReceiptText, setBudget, updateExpense } from "./actions";
 import { MoneyChart, type MonthBar } from "./money-chart";
+import { readImageText, type ReadStage } from "./read-image-text";
 
 export type ExpenseItem = {
   id: string;
@@ -80,9 +88,10 @@ function lookFor(type: EntryType, category: string): { icon: LucideIcon; tone: I
 }
 
 type Editing =
-  | { kind: "add"; type: EntryType }
+  | { kind: "add"; type: EntryType; draft?: ReceiptDraft }
   | { kind: "edit"; item: ExpenseItem }
-  | { kind: "budget" };
+  | { kind: "budget" }
+  | { kind: "receipt"; image: File; id: number };
 
 /**
  * The Uang screen (DESIGN.md §2, §6, §8, version 3). What is left of the month
@@ -93,6 +102,11 @@ type Editing =
  * last few months (EXP-6). Going over the
  * budget is written as a plain sentence and the bar stays the same colour: no
  * red anywhere except deleting data (§12).
+ *
+ * "Isi dari screenshot" (EXP-7) is a quiet link under the two buttons: the
+ * picture is read on the phone, the form opens filled in, and the user checks
+ * it before saving. A new entry can carry an earlier day (EXP-8); when that day
+ * is in another month, a line under the card links to it.
  */
 export function ExpenseBoard({
   monthLabel,
@@ -106,6 +120,7 @@ export function ExpenseBoard({
   budget,
   isPremium,
   groups,
+  today,
 }: {
   monthLabel: string;
   previousMonth: string;
@@ -118,9 +133,34 @@ export function ExpenseBoard({
   budget: number | null;
   isPremium: boolean;
   groups: DayGroup[];
+  /** The user's today, from their profile's time zone. */
+  today: string;
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [savedElsewhere, setSavedElsewhere] = useState<string | null>(null);
+  const readCount = useRef(0);
+
+  const startAdd = (type: EntryType, draft?: ReceiptDraft) => {
+    setNotice(undefined);
+    setSavedElsewhere(null);
+    setEditing({ kind: "add", type, draft });
+  };
+
+  const startReading = (image: File) => {
+    setNotice(undefined);
+    setSavedElsewhere(null);
+    readCount.current += 1;
+    setEditing({ kind: "receipt", image, id: readCount.current });
+  };
+
+  const onEntrySaved = (date: string) => {
+    setEditing(null);
+
+    if (date.slice(0, 7) !== today.slice(0, 7)) {
+      setSavedElsewhere(date);
+    }
+  };
 
   const openBudget = () => {
     if (!isPremium) {
@@ -212,32 +252,38 @@ export function ExpenseBoard({
 
       <p role="status" className="mt-2 text-sm text-text-muted">
         {notice}
+        {savedElsewhere ? (
+          <>
+            Tersimpan di {formatDayLabel(savedElsewhere)} {savedElsewhere.slice(0, 4)}.{" "}
+            <Link
+              href={`/expenses?bulan=${savedElsewhere.slice(0, 7)}`}
+              className="font-semibold text-text underline underline-offset-4"
+            >
+              Lihat bulan itu
+            </Link>
+          </>
+        ) : null}
       </p>
 
       {isCurrentMonth ? (
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          <Button
-            onClick={() => {
-              setNotice(undefined);
-              setEditing({ kind: "add", type: "expense" });
-            }}
-            className="w-full sm:flex-1"
-          >
-            <Plus aria-hidden="true" size={20} strokeWidth={2.2} />
-            Tambah pengeluaran
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setNotice(undefined);
-              setEditing({ kind: "add", type: "income" });
-            }}
-            className="w-full sm:flex-1"
-          >
-            <Plus aria-hidden="true" size={20} strokeWidth={2.2} />
-            Tambah pemasukan
-          </Button>
-        </div>
+        <>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <Button onClick={() => startAdd("expense")} className="w-full sm:flex-1">
+              <Plus aria-hidden="true" size={20} strokeWidth={2.2} />
+              Tambah pengeluaran
+            </Button>
+            <Button variant="secondary" onClick={() => startAdd("income")} className="w-full sm:flex-1">
+              <Plus aria-hidden="true" size={20} strokeWidth={2.2} />
+              Tambah pemasukan
+            </Button>
+          </div>
+          <div className="mt-1 flex justify-center">
+            <ImagePicker onPick={startReading} className={buttonVariants({ variant: "link" })}>
+              <ScanText aria-hidden="true" size={18} strokeWidth={2} />
+              Isi dari screenshot bank
+            </ImagePicker>
+          </div>
+        </>
       ) : null}
 
       {hasHistory ? (
@@ -314,13 +360,33 @@ export function ExpenseBoard({
       >
         {editing?.kind === "budget" ? (
           <BudgetForm current={budget} onDone={() => setEditing(null)} />
-        ) : editing ? (
+        ) : editing?.kind === "receipt" ? (
+          <ReceiptReader
+            key={editing.id}
+            image={editing.image}
+            onRead={(draft) => startAdd(draft.type, draft)}
+            onChooseAnother={startReading}
+            onManual={() => startAdd("expense")}
+          />
+        ) : editing?.kind === "edit" ? (
           <ExpenseForm
-            // A different entry or type starts a fresh form.
-            key={editing.kind === "edit" ? editing.item.id : editing.type}
-            type={editing.kind === "edit" ? editing.item.type : editing.type}
-            item={editing.kind === "edit" ? editing.item : null}
+            // A different entry starts a fresh form.
+            key={editing.item.id}
+            type={editing.item.type}
+            item={editing.item}
+            today={today}
             onDone={() => setEditing(null)}
+          />
+        ) : editing?.kind === "add" ? (
+          <ExpenseForm
+            // A different type, or a reading, starts a fresh form.
+            key={`${editing.type}-${editing.draft ? "draft" : "blank"}`}
+            type={editing.type}
+            item={null}
+            draft={editing.draft}
+            today={today}
+            onDone={() => setEditing(null)}
+            onAdded={onEntrySaved}
           />
         ) : null}
       </Sheet>
@@ -333,13 +399,191 @@ function sheetTitle(editing: Editing | null): string {
     return "Budget bulanan";
   }
 
-  const type = editing?.kind === "edit" ? editing.item.type : editing?.type;
-
-  if (editing?.kind === "edit") {
-    return type === "income" ? "Ubah pemasukan" : "Ubah pengeluaran";
+  if (editing?.kind === "receipt") {
+    return "Isi dari screenshot";
   }
 
-  return type === "income" ? "Pemasukan baru" : "Pengeluaran baru";
+  if (editing?.kind === "edit") {
+    return editing.item.type === "income" ? "Ubah pemasukan" : "Ubah pengeluaran";
+  }
+
+  if (editing?.draft) {
+    return "Cek hasil screenshot";
+  }
+
+  return editing?.type === "income" ? "Pemasukan baru" : "Pengeluaran baru";
+}
+
+/**
+ * A button that opens the phone's picture picker. A label around the file input
+ * rather than input.click() from code: the tap itself opens the picker, which
+ * also works from inside the modal sheet, where the page behind is inert. The
+ * input stays focusable, so the keyboard reaches it and the ring shows on the
+ * label.
+ */
+function ImagePicker({
+  onPick,
+  className,
+  children,
+}: {
+  onPick: (image: File) => void;
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      className={cn(
+        className,
+        "cursor-pointer has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
+      )}
+    >
+      <input
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={(event) => {
+          const image = event.target.files?.[0];
+          // Cleared so choosing the same picture again still counts as a change.
+          event.target.value = "";
+
+          if (image) {
+            onPick(image);
+          }
+        }}
+      />
+      {children}
+    </label>
+  );
+}
+
+const READ_STAGE_TEXT: Record<ReadStage | "tidying", string> = {
+  preparing: "Menyiapkan pembaca gambar…",
+  reading: "Membaca tulisan di gambar…",
+  tidying: "Merapikan hasilnya…",
+};
+
+/**
+ * Reads one chosen picture (EXP-7): the text on the phone first, then the server
+ * turns it into the fields of one entry. Closing the sheet mid-way drops the
+ * result. Every failure says what to do next: another picture, or the empty form.
+ */
+function ReceiptReader({
+  image,
+  onRead,
+  onChooseAnother,
+  onManual,
+}: {
+  image: File;
+  onRead: (draft: ReceiptDraft) => void;
+  onChooseAnother: (image: File) => void;
+  onManual: () => void;
+}) {
+  const [stage, setStage] = useState<ReadStage | "tidying">("preparing");
+  const [percent, setPercent] = useState<number | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const onReadRef = useRef(onRead);
+
+  useEffect(() => {
+    onReadRef.current = onRead;
+  }, [onRead]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function run() {
+      let text: string;
+
+      try {
+        text = prepareReceiptText(
+          await readImageText(image, (next, fraction) => {
+            if (!active) {
+              return;
+            }
+
+            setStage(next);
+            setPercent(next === "reading" ? Math.round(fraction * 100) : null);
+          }),
+        );
+      } catch {
+        if (active) {
+          setFailure("Gambar ini belum bisa dibaca di perangkatmu. Coba gambar lain, atau isi manual.");
+        }
+        return;
+      }
+
+      if (!active) {
+        return;
+      }
+
+      if (!hasReadableText(text)) {
+        setFailure("Tulisan di gambar ini tidak terbaca. Coba screenshot yang lebih jelas, atau isi manual.");
+        return;
+      }
+
+      setStage("tidying");
+      setPercent(null);
+
+      let result: Awaited<ReturnType<typeof readReceiptText>>;
+
+      try {
+        result = await readReceiptText({ text });
+      } catch {
+        if (active) {
+          setFailure("Koneksi terputus saat membaca gambar. Coba lagi, atau isi manual.");
+        }
+        return;
+      }
+
+      if (!active) {
+        return;
+      }
+
+      if (result.ok) {
+        onReadRef.current(result.draft);
+      } else {
+        setFailure(result.message);
+      }
+    }
+
+    void run();
+
+    return () => {
+      active = false;
+    };
+  }, [image]);
+
+  if (failure) {
+    return (
+      <div className="mt-4 flex flex-col gap-4">
+        <p role="alert" className="text-base text-text">
+          {failure}
+        </p>
+        <ImagePicker onPick={onChooseAnother} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>
+          Pilih gambar lain
+        </ImagePicker>
+        <Button variant="link" onClick={onManual} className="self-center">
+          Isi manual
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-3" aria-busy="true">
+      <p role="status" className="text-base text-text">
+        {READ_STAGE_TEXT[stage]}
+        {percent !== null ? <span className="tabular-nums"> {percent}%</span> : null}
+      </p>
+      <div aria-hidden="true" className="flex flex-col gap-2">
+        <div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-muted" />
+        <div className="h-4 w-1/2 animate-pulse rounded-full bg-surface-muted" />
+      </div>
+      <p className="text-sm text-text-muted">
+        Gambarnya dibaca di perangkatmu dan tidak diunggah. Hanya tulisannya, dengan nomor rekening disamarkan, yang
+        dikirim untuk dirapikan AI.
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -425,25 +669,54 @@ function AmountField({
   );
 }
 
+/** A choice drawn as a pill: the categories, and the type of a screenshot entry. */
+const CHOICE_CHIP_CLASS =
+  "flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-control bg-surface px-4 text-sm text-text transition-colors duration-200 ease-out has-checked:border-primary has-checked:bg-primary-soft has-checked:font-semibold has-checked:text-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary";
+
+/**
+ * Adds or edits one entry. A new entry carries a day (EXP-8), today unless the
+ * user picks an earlier one; an existing entry keeps its day and type (EXP-2).
+ * Filled from a screenshot (EXP-7), the form says so, keeps the type switchable
+ * in case the reading got the direction wrong, and saves nothing until "Simpan".
+ */
 function ExpenseForm({
-  type,
+  type: initialType,
   item,
+  draft,
+  today,
   onDone,
+  onAdded,
 }: {
   type: EntryType;
   item: ExpenseItem | null;
+  draft?: ReceiptDraft;
+  today: string;
   onDone: () => void;
+  /** Called instead of onDone after a new entry is saved, with its day. */
+  onAdded?: (date: string) => void;
 }) {
+  const [type, setType] = useState<EntryType>(initialType);
   const categories = categoriesFor(type);
   const noun = type === "income" ? "pemasukan" : "pengeluaran";
-  const [digits, setDigits] = useState(item ? String(item.amount) : "");
+  const [digits, setDigits] = useState(item ? String(item.amount) : draft ? String(draft.amount) : "");
   const [category, setCategory] = useState<string | null>(
-    item ? (categories.find((entry) => entry.value === item.category)?.value ?? "lainnya") : null,
+    item
+      ? (categories.find((entry) => entry.value === item.category)?.value ?? "lainnya")
+      : (draft?.category ?? null),
   );
-  const [note, setNote] = useState(item?.note ?? "");
+  const [note, setNote] = useState(item?.note ?? draft?.note ?? "");
+  const [date, setDate] = useState(draft?.date ?? today);
   const [message, setMessage] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  function changeType(next: EntryType) {
+    setType(next);
+
+    if (category !== null && !isCategoryOf(next, category)) {
+      setCategory(null);
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -460,17 +733,26 @@ function ExpenseForm({
       return;
     }
 
+    if (!item && !isAllowedEntryDate(date, today)) {
+      setMessage("Pilih tanggal hari ini atau sebelumnya, paling jauh setahun ke belakang.");
+      return;
+    }
+
     setPending(true);
     setMessage(undefined);
 
     const result = item
       ? await updateExpense({ id: item.id, type, amount, category, note })
-      : await addExpense({ type, amount, category, note });
+      : await addExpense({ type, amount, category, note, date });
 
     setPending(false);
 
     if (result.ok) {
-      onDone();
+      if (!item && onAdded) {
+        onAdded(date);
+      } else {
+        onDone();
+      }
       return;
     }
 
@@ -496,15 +778,41 @@ function ExpenseForm({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-4">
+    // noValidate: the date limits are explained in the form's own words, not the browser's.
+    <form noValidate onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-4">
+      {draft ? (
+        <>
+          <p className="rounded-2xl bg-surface-muted px-4 py-3 text-sm text-text">
+            Diisi dari screenshot. Cek nominal, jenis, dan tanggalnya dulu sebelum disimpan.
+          </p>
+          <div role="radiogroup" aria-label="Jenis" className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: "expense", label: "Uang keluar" },
+                { value: "income", label: "Uang masuk" },
+              ] as const
+            ).map((entry) => (
+              <label key={entry.value} className={CHOICE_CHIP_CLASS}>
+                <input
+                  type="radio"
+                  name="type"
+                  value={entry.value}
+                  checked={type === entry.value}
+                  onChange={() => changeType(entry.value)}
+                  className="sr-only"
+                />
+                {entry.label}
+              </label>
+            ))}
+          </div>
+        </>
+      ) : null}
+
       <AmountField label="Nominal" value={digits} onChange={setDigits} />
 
       <div role="radiogroup" aria-label="Kategori" className="flex flex-wrap gap-2">
         {categories.map((entry) => (
-          <label
-            key={entry.value}
-            className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-control bg-surface px-4 text-sm text-text transition-colors duration-200 ease-out has-checked:border-primary has-checked:bg-primary-soft has-checked:font-semibold has-checked:text-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary"
-          >
+          <label key={entry.value} className={CHOICE_CHIP_CLASS}>
             <input
               type="radio"
               name="category"
@@ -534,6 +842,20 @@ function ExpenseForm({
           className="mt-1"
         />
       </label>
+
+      {item ? null : (
+        <label className="block text-sm text-text-muted">
+          Tanggal
+          <Input
+            type="date"
+            value={date}
+            min={earliestEntryDate(today)}
+            max={today}
+            onChange={(event) => setDate(event.target.value)}
+            className="mt-1"
+          />
+        </label>
+      )}
 
       <p role="status" className="min-h-5 text-sm text-text-muted">
         {message}

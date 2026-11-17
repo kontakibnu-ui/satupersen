@@ -145,6 +145,133 @@ export function parseChatReply(raw: string): ChatReply {
 }
 
 /**
+ * Belajar: the check of a "Jelaskan dengan kata sendiri" (LEARN-2). The model
+ * compares the explanation with the user's own material only. Items are short
+ * so a list cannot swallow the screen; a model that ignores the length rule is
+ * caught here and retried (LEARN-6).
+ */
+const feedbackItemSchema = z.string().trim().min(1).max(300);
+
+export const explanationFeedbackSchema = z.object({
+  summary: z.string().trim().min(1).max(500),
+  correct: z.array(feedbackItemSchema).max(4),
+  missing: z.array(feedbackItemSchema).max(4),
+  wrong: z.array(feedbackItemSchema).max(3),
+  not_in_material: z.array(feedbackItemSchema).max(2),
+  language: languageSchema,
+});
+
+export type ExplanationFeedback = z.infer<typeof explanationFeedbackSchema>;
+
+export const studyQuestionSchema = z.object({
+  prompt: z.string().trim().min(1).max(300),
+  answer: z.string().trim().min(1).max(800),
+  kind: z.enum(["recall", "elaboration"]),
+});
+
+export type StudyQuestion = z.infer<typeof studyQuestionSchema>;
+
+/** The first check also writes the review questions: 3 to 5, at least one elaboration. */
+export const studyQuestionsSchema = z
+  .array(studyQuestionSchema)
+  .min(3)
+  .max(5)
+  .refine((questions) => questions.some((question) => question.kind === "elaboration"), {
+    message: "at least one question must be an elaboration question",
+  });
+
+export function parseExplanationCheck(
+  raw: string,
+  questionsWanted: boolean,
+): { feedback: ExplanationFeedback; questions: StudyQuestion[] } {
+  const candidate = extractJsonObject(raw);
+  const parsed = explanationFeedbackSchema.safeParse(candidate);
+
+  if (!parsed.success) {
+    throw new Error(describeIssues(parsed.error, "explanation check"));
+  }
+
+  if (!questionsWanted) {
+    return { feedback: parsed.data, questions: [] };
+  }
+
+  const questions = studyQuestionsSchema.safeParse((candidate as { questions?: unknown }).questions);
+
+  if (!questions.success) {
+    throw new Error(describeIssues(questions.error, "study questions"));
+  }
+
+  return { feedback: parsed.data, questions: questions.data };
+}
+
+/**
+ * Belajar: feedback on one review session (LEARN-4), one item per numbered
+ * answer. The numbers must be exactly the ones that were sent, each once, so a
+ * model that skips or invents an answer is retried instead of shown.
+ */
+export const reviewFeedbackSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        number: z.number().int().min(1).max(5),
+        feedback: z.string().trim().min(1).max(600),
+      }),
+    )
+    .min(1)
+    .max(5),
+});
+
+export type ReviewFeedbackItem = z.infer<typeof reviewFeedbackSchema>["items"][number];
+
+export function parseReviewFeedback(raw: string, expectedNumbers: number[]): ReviewFeedbackItem[] {
+  const parsed = reviewFeedbackSchema.safeParse(extractJsonObject(raw));
+
+  if (!parsed.success) {
+    throw new Error(describeIssues(parsed.error, "review feedback"));
+  }
+
+  const got = parsed.data.items.map((item) => item.number).sort((a, b) => a - b);
+  const wanted = [...expectedNumbers].sort((a, b) => a - b);
+
+  if (got.length !== wanted.length || got.some((number, index) => number !== wanted[index])) {
+    throw new Error(
+      `Model output did not match the review feedback schema: answered ${got.join(",")} instead of ${wanted.join(",")}`,
+    );
+  }
+
+  return parsed.data.items;
+}
+
+/**
+ * Uang: what the model read from the text of a bank or e-wallet screenshot
+ * (PRD.md EXP-7). Only the shape is strict here; whether the amount, the
+ * category, and the day are acceptable is decided by `toReceiptDraft`
+ * (src/lib/receipt.ts), so a wrong guess empties a field instead of failing the
+ * whole reading.
+ */
+export const receiptReadingSchema = z.object({
+  found: z.boolean(),
+  type: z.enum(["expense", "income"]).nullable(),
+  // zod 4 numbers already refuse Infinity and NaN.
+  amount: z.number().nullable(),
+  date: z.string().trim().max(20).nullable(),
+  category: z.string().trim().max(40).nullable(),
+  note: z.string().trim().max(300).nullable(),
+});
+
+export type ReceiptReading = z.infer<typeof receiptReadingSchema>;
+
+export function parseReceiptReading(raw: string): ReceiptReading {
+  const parsed = receiptReadingSchema.safeParse(extractJsonObject(raw));
+
+  if (!parsed.success) {
+    throw new Error(describeIssues(parsed.error, "receipt reading"));
+  }
+
+  return parsed.data;
+}
+
+/**
  * The token counts OpenRouter reports with every completion (PRD.md §8). Only
  * the fields the meter needs are read; `cost` is in USD and may be absent.
  */

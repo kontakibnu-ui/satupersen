@@ -51,7 +51,7 @@ export function EntryPreview() {
     <figure aria-label="Contoh tulisan hari ini" data-ui className="w-full">
       <div className="rounded-3xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-serif text-lg text-text">Gimana harimu?</p>
+          <p className="font-heading text-base font-bold text-text">Gimana harimu?</p>
           <ExampleLabel />
         </div>
         <p className="mt-3 font-serif text-base leading-relaxed text-text">
@@ -70,7 +70,7 @@ export function AnalysisPreview() {
     <figure aria-label="Contoh analisa hari ini" data-ui className="w-full">
       <div className="rounded-3xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-serif text-lg text-text">Analisa hari ini</p>
+          <p className="font-heading text-base font-bold text-text">Analisa hari ini</p>
           <ExampleLabel />
         </div>
         <p className="mt-3 text-sm font-semibold text-text">Yang sudah bagus</p>
@@ -97,7 +97,7 @@ export function ProgressPreview() {
     <figure aria-label="Contoh skor dan progres" data-ui className="w-full">
       <div className="rounded-3xl border border-border bg-surface p-5">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-serif text-lg text-text">Progresmu</p>
+          <p className="font-heading text-base font-bold text-text">Progresmu</p>
           <ExampleLabel />
         </div>
         <div className="mt-3 flex items-center gap-4">

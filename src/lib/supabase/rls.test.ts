@@ -466,6 +466,402 @@ describe.skipIf(!stackIsUp)("isolasi RLS dengan dua user sungguhan", () => {
     expect(reassign.status).toBeGreaterThanOrEqual(400);
   });
 
+  let materialId = "";
+
+  it("Belajar: free hanya 1 materi seumur akun, hapus tidak membuka slot, premium tanpa batas (LEARN-5)", async () => {
+    // Columns the server owns cannot be set by the browser, not even on insert.
+    const forgedStatus = await post("study_materials", anonKey as string, tokenA, {
+      user_id: idA,
+      title: "Fotosintesis",
+      source: "Tumbuhan membuat makanan dari cahaya.",
+      status: "active",
+    });
+    expect(forgedStatus.status).toBeGreaterThanOrEqual(400);
+
+    const first = await post("study_materials", anonKey as string, tokenA, {
+      user_id: idA,
+      title: "Fotosintesis",
+      source: "Tumbuhan membuat makanan dari cahaya.",
+    });
+    expect(first.status).toBe(201);
+    const firstRow = (first.body as { id: string; status: string }[])[0];
+    expect(firstRow.status).toBe("draft");
+
+    const second = await post("study_materials", anonKey as string, tokenA, {
+      user_id: idA,
+      title: "Hukum Newton",
+      source: "Benda diam tetap diam.",
+    });
+    expect(second.status).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(second.body)).toContain("study_material_limit_reached");
+
+    // Deleting gives no slot back: the count of materials ever made is what counts.
+    const removal = await fetch(`${url}/rest/v1/study_materials?id=eq.${firstRow.id}`, {
+      method: "DELETE",
+      headers: authHeaders(anonKey as string, tokenA),
+    });
+    expect(removal.status).toBe(204);
+
+    const afterDelete = await post("study_materials", anonKey as string, tokenA, {
+      user_id: idA,
+      title: "Hukum Newton",
+      source: "Benda diam tetap diam.",
+    });
+    expect(JSON.stringify(afterDelete.body)).toContain("study_material_limit_reached");
+
+    // The counter itself is out of the user's reach.
+    const resetCounter = await patch(`profiles?id=eq.${idA}`, anonKey as string, tokenA, {
+      study_materials_created: 0,
+    });
+    expect(resetCounter.status).toBeGreaterThanOrEqual(400);
+
+    await patch(`profiles?id=eq.${idA}`, serviceKey as string, undefined, { plan: "premium" });
+
+    try {
+      for (const title of ["Hukum Newton", "Sel hewan"]) {
+        const created = await post("study_materials", anonKey as string, tokenA, {
+          user_id: idA,
+          title,
+          source: `Bahan ${title}.`,
+        });
+        expect(created.status).toBe(201);
+        materialId = (created.body as { id: string }[])[0].id;
+      }
+    } finally {
+      await patch(`profiles?id=eq.${idA}`, serviceKey as string, undefined, { plan: "free" });
+    }
+  });
+
+  it("Belajar: user B tidak bisa membaca, mengubah, atau menghapus materi user A (uji ganti ID, LEARN-8)", async () => {
+    const read = await get(`study_materials?select=id&id=eq.${materialId}`, anonKey as string, tokenB);
+    expect(read.body).toEqual([]);
+
+    const changed = await patch(`study_materials?id=eq.${materialId}`, anonKey as string, tokenB, {
+      title: "Diambil alih",
+    });
+    expect(changed.body).toEqual([]);
+
+    const removal = await fetch(`${url}/rest/v1/study_materials?id=eq.${materialId}`, {
+      method: "DELETE",
+      headers: { ...authHeaders(anonKey as string, tokenB), Prefer: "return=representation" },
+    });
+    expect(await removal.json()).toEqual([]);
+
+    const forged = await post("study_materials", anonKey as string, tokenB, {
+      user_id: idA,
+      title: "Atas nama A",
+      source: "Bahan palsu.",
+    });
+    expect(forged.status).toBeGreaterThanOrEqual(400);
+
+    const own = await get(`study_materials?select=title&id=eq.${materialId}`, anonKey as string, tokenA);
+    expect(own.body).toEqual([{ title: "Sel hewan" }]);
+  });
+
+  it("Belajar: pertanyaan, review, kuota, dan rate limit hanya ditulis server (LEARN-3, LEARN-5, RATE-1)", async () => {
+    // The AI's columns and the schedule are not the user's to write.
+    const forgedFeedback = await patch(`study_materials?id=eq.${materialId}`, anonKey as string, tokenA, {
+      status: "active",
+      feedback: { summary: "palsu" },
+    });
+    expect(forgedFeedback.status).toBeGreaterThanOrEqual(400);
+
+    const question = await post("study_questions", anonKey as string, tokenA, {
+      material_id: materialId,
+      user_id: idA,
+      position: 1,
+      prompt: "Pertanyaan palsu?",
+      answer: "Jawaban palsu.",
+      kind: "recall",
+    });
+    expect(question.status).toBeGreaterThanOrEqual(400);
+
+    const check = await post("study_checks", anonKey as string, tokenA, {
+      user_id: idA,
+      material_id: materialId,
+      date: "2026-11-15",
+      kind: "review",
+    });
+    expect(check.status).toBeGreaterThanOrEqual(400);
+
+    const limits = await get("rate_limits?select=*", anonKey as string, tokenA);
+    expect(limits.status).toBeGreaterThanOrEqual(400);
+
+    for (const fn of [
+      "take_rate_limit",
+      "reserve_study_check",
+      "store_study_explanation_check",
+      "save_study_review",
+      "store_study_review_feedback",
+    ]) {
+      const call = await post(`rpc/${fn}`, anonKey as string, tokenA, {});
+      expect(call.status, fn).toBeGreaterThanOrEqual(400);
+    }
+  });
+
+  it("Belajar: bahan terkunci setelah materi aktif, judul tetap bisa diubah (LEARN-2)", async () => {
+    const activated = await patch(`study_materials?id=eq.${materialId}`, serviceKey as string, undefined, {
+      status: "active",
+    });
+    expect(activated.status).toBe(200);
+
+    const sourceChange = await patch(`study_materials?id=eq.${materialId}`, anonKey as string, tokenA, {
+      source: "Bahan baru yang lain sama sekali.",
+    });
+    expect(sourceChange.status).toBeGreaterThanOrEqual(400);
+    expect(JSON.stringify(sourceChange.body)).toContain("study_source_locked");
+
+    const titleChange = await patch(`study_materials?id=eq.${materialId}`, anonKey as string, tokenA, {
+      title: "Sel hewan dan tumbuhan",
+    });
+    expect(titleChange.status).toBe(200);
+  });
+
+  it("review tersimpan utuh atau tidak sama sekali, dan pertanyaan user lain tidak bisa ikut (LEARN-3, LEARN-4)", async () => {
+    const question = await post("study_questions", serviceKey as string, undefined, {
+      material_id: materialId,
+      user_id: idA,
+      position: 1,
+      prompt: "Apa isi sel hewan?",
+      answer: "Inti sel dan sitoplasma.",
+      kind: "recall",
+      due_date: "2026-11-15",
+    });
+    expect(question.status).toBe(201);
+    const questionId = (question.body as { id: string }[])[0].id;
+
+    // One real question and one that is not on this material: nothing may land.
+    const mixed = await post("rpc/save_study_review", serviceKey as string, undefined, {
+      p_user: idA,
+      p_material: materialId,
+      p_day: "2026-11-15",
+      p_items: [
+        { question_id: questionId, answer: "Inti sel", rating: "remembered", step: 1, due_date: "2026-11-18" },
+        { question_id: "00000000-0000-4000-8000-000000000000", answer: "", rating: "forgot", step: 0, due_date: "2026-11-16" },
+      ],
+    });
+    expect(mixed.status).toBeGreaterThanOrEqual(400);
+    expect((await get(`study_reviews?select=id&question_id=eq.${questionId}`, serviceKey as string)).body).toEqual([]);
+    expect((await get(`study_questions?select=step,due_date&id=eq.${questionId}`, serviceKey as string)).body).toEqual([
+      { step: 0, due_date: "2026-11-15" },
+    ]);
+
+    // The same session on its own lands whole: the review and the moved question.
+    const clean = await post("rpc/save_study_review", serviceKey as string, undefined, {
+      p_user: idA,
+      p_material: materialId,
+      p_day: "2026-11-15",
+      p_items: [{ question_id: questionId, answer: "Inti sel", rating: "remembered", step: 1, due_date: "2026-11-18" }],
+    });
+    expect(clean.status).toBeLessThan(300);
+    expect((await get(`study_questions?select=step,due_date&id=eq.${questionId}`, serviceKey as string)).body).toEqual([
+      { step: 1, due_date: "2026-11-18" },
+    ]);
+
+    // A second submit of the same day changes nothing.
+    const again = await post("rpc/save_study_review", serviceKey as string, undefined, {
+      p_user: idA,
+      p_material: materialId,
+      p_day: "2026-11-15",
+      p_items: [{ question_id: questionId, answer: "Lagi", rating: "forgot", step: 0, due_date: "2026-11-16" }],
+    });
+    expect(JSON.stringify(again.body)).toContain("23505");
+    expect((await get(`study_questions?select=step&id=eq.${questionId}`, serviceKey as string)).body).toEqual([{ step: 1 }]);
+
+    // Feedback for another user's review is refused as a whole.
+    const [review] = (await get(`study_reviews?select=id&question_id=eq.${questionId}`, serviceKey as string)).body as {
+      id: number;
+    }[];
+    const foreign = await post("rpc/store_study_review_feedback", serviceKey as string, undefined, {
+      p_user: idB,
+      p_items: [{ id: review.id, feedback: "Bukan milikmu." }],
+    });
+    expect(foreign.status).toBeGreaterThanOrEqual(400);
+    expect((await get(`study_reviews?select=feedback&id=eq.${review.id}`, serviceKey as string)).body).toEqual([
+      { feedback: null },
+    ]);
+  });
+
+  it("reserve_study_check menahan kuota dan take_rate_limit menahan panggilan keenam (LEARN-5, RATE-1)", async () => {
+    const reserve = (scope: string, limit: number) =>
+      post("rpc/reserve_study_check", serviceKey as string, undefined, {
+        p_user: idA,
+        p_material: materialId,
+        p_date: "2026-11-15",
+        p_kind: "explanation",
+        p_scope: scope,
+        p_limit: limit,
+      });
+
+    const firstCheck = await reserve("account", 1);
+    expect(typeof firstCheck.body).toBe("number");
+    const secondCheck = await reserve("account", 1);
+    expect(secondCheck.body).toBeNull();
+    // Per material for premium: the same day still has 9 of 10 left.
+    const perMaterial = await reserve("material", 10);
+    expect(typeof perMaterial.body).toBe("number");
+
+    const waits: number[] = [];
+
+    // An hour long window, so six calls a few milliseconds apart never straddle
+    // two windows; the app itself uses a one minute window.
+    for (let hit = 0; hit < 6; hit += 1) {
+      const taken = await post("rpc/take_rate_limit", serviceKey as string, undefined, {
+        p_user: idA,
+        p_bucket: `uji-${stamp}`,
+        p_limit: 5,
+        p_window_seconds: 3600,
+      });
+      waits.push(taken.body as number);
+    }
+
+    expect(waits.slice(0, 5)).toEqual([0, 0, 0, 0, 0]);
+    expect(waits[5]).toBeGreaterThan(0);
+    expect(waits[5]).toBeLessThanOrEqual(3600);
+  });
+
+  it("Ruang baca: buku hanya dibuat server, user hanya memindah posisi, file orang lain tertutup (READ-2, READ-6, READ-8)", async () => {
+    const storage = `${url}/storage/v1`;
+    const startUpload = (size: number, title = "Catatan Kecil") =>
+      post("rpc/start_book_upload", serviceKey as string, undefined, {
+        p_user: idA,
+        p_title: title,
+        p_format: "txt",
+        p_size: size,
+      });
+    const finishUpload = (bookId: string, size: number) =>
+      post("rpc/finish_book_upload", serviceKey as string, undefined, { p_user: idA, p_book: bookId, p_size: size });
+    const signUpload = async (path: string) => {
+      const response = await fetch(`${storage}/object/upload/sign/books/${path}`, {
+        method: "POST",
+        headers: authHeaders(serviceKey as string),
+        body: "{}",
+      });
+      const body = (await response.json()) as { url: string };
+      const token = new URL(`${storage}${body.url}`).searchParams.get("token");
+      expect(token).toBeTruthy();
+      return token as string;
+    };
+    const putSigned = (path: string, token: string, body: string, contentType: string) =>
+      fetch(`${storage}/object/upload/sign/books/${path}?token=${token}`, {
+        method: "PUT",
+        headers: { apikey: anonKey as string, "content-type": contentType, "x-upsert": "false" },
+        body,
+      });
+    const download = (path: string, token: string) =>
+      fetch(`${storage}/object/books/${path}`, { headers: authHeaders(anonKey as string, token) });
+    const text = "Rasa akrab itu menipu.";
+
+    // The browser cannot make a book row, not even for itself.
+    const forgedRow = await post("books", anonKey as string, tokenA, {
+      user_id: idA,
+      title: "Palsu",
+      format: "txt",
+      size_bytes: 10,
+      storage_path: `${idA}/palsu`,
+      status: "ready",
+    });
+    expect(forgedRow.status).toBeGreaterThanOrEqual(400);
+
+    const started = await startUpload(text.length);
+    expect(started.status).toBe(200);
+    const bookId = started.body as string;
+    const path = `${idA}/${bookId}`;
+
+    // Free: one book, and an upload in flight already holds the slot.
+    const second = await startUpload(10, "Kedua");
+    expect(JSON.stringify(second.body)).toContain("book_limit_reached");
+
+    // A position cannot be saved before the file is in, and the title never by the user.
+    const earlyPosition = await patch(`books?id=eq.${bookId}`, anonKey as string, tokenA, { progress: 0.5 });
+    expect(earlyPosition.body).toEqual([]);
+    const renamed = await patch(`books?id=eq.${bookId}`, anonKey as string, tokenA, { title: "Diganti" });
+    expect(renamed.status).toBeGreaterThanOrEqual(400);
+
+    // Uploading straight into the bucket with the user's own session is refused.
+    const directUpload = await fetch(`${storage}/object/books/${path}`, {
+      method: "POST",
+      headers: { ...authHeaders(anonKey as string, tokenA), "content-type": "text/plain" },
+      body: text,
+    });
+    expect(directUpload.status).toBeGreaterThanOrEqual(400);
+
+    // The bucket accepts only the four book types.
+    const wrongTypeToken = await signUpload(`${idA}/bukan-buku`);
+    const wrongType = await putSigned(`${idA}/bukan-buku`, wrongTypeToken, "<script></script>", "text/html");
+    expect(wrongType.status).toBeGreaterThanOrEqual(400);
+
+    const uploadToken = await signUpload(path);
+    const uploaded = await putSigned(path, uploadToken, text, "text/plain");
+    expect(uploaded.status).toBe(200);
+
+    const info = await fetch(`${storage}/object/info/books/${path}`, { headers: authHeaders(serviceKey as string) });
+    const stored = (await info.json()) as { size?: number; metadata?: { size?: number } };
+    const storedSize = stored.size ?? stored.metadata?.size;
+    expect(storedSize).toBe(text.length);
+
+    expect((await finishUpload(bookId, storedSize as number)).body).toBe("ready");
+    expect((await get(`profiles?select=books_created&id=eq.${idA}`, serviceKey as string)).body).toEqual([
+      { books_created: 1 },
+    ]);
+
+    // The owner reads the row and the file and moves the position.
+    const ownRow = await get(`books?select=title,status&id=eq.${bookId}`, anonKey as string, tokenA);
+    expect(ownRow.body).toEqual([{ title: "Catatan Kecil", status: "ready" }]);
+    const moved = await patch(`books?id=eq.${bookId}`, anonKey as string, tokenA, { progress: 0.34, location: "epubcfi(/6/4)" });
+    expect(moved.body).toEqual([expect.objectContaining({ progress: 0.34 })]);
+    const ownFile = await download(path, tokenA);
+    expect(ownFile.status).toBe(200);
+    expect(await ownFile.text()).toBe(text);
+
+    // User B gets nothing: not the row, not the file, not the position (ID swap test).
+    expect((await get(`books?select=id&id=eq.${bookId}`, anonKey as string, tokenB)).body).toEqual([]);
+    const stolenFile = await download(path, tokenB);
+    expect(stolenFile.status).toBeGreaterThanOrEqual(400);
+    expect(await stolenFile.text()).not.toContain(text);
+    const hijacked = await patch(`books?id=eq.${bookId}`, anonKey as string, tokenB, { progress: 0.99 });
+    expect(hijacked.body).toEqual([]);
+    const anonFile = await fetch(`${storage}/object/books/${path}`, { headers: authHeaders(anonKey as string) });
+    expect(anonFile.status).toBeGreaterThanOrEqual(400);
+
+    // Users cannot delete files or rows themselves; the server does both.
+    const userDelete = await fetch(`${storage}/object/books/${path}`, {
+      method: "DELETE",
+      headers: authHeaders(anonKey as string, tokenA),
+    });
+    expect((await download(path, tokenA)).status).toBe(200);
+    expect(userDelete.status === 200 ? await userDelete.text() : "").not.toContain(bookId);
+    const rowDelete = await fetch(`${url}/rest/v1/books?id=eq.${bookId}`, {
+      method: "DELETE",
+      headers: { ...authHeaders(anonKey as string, tokenA), Prefer: "return=representation" },
+    });
+    expect(rowDelete.status).toBeGreaterThanOrEqual(400);
+
+    await fetch(`${storage}/object/books`, {
+      method: "DELETE",
+      headers: authHeaders(serviceKey as string),
+      body: JSON.stringify({ prefixes: [path, `${idA}/bukan-buku`] }),
+    });
+    await fetch(`${url}/rest/v1/books?id=eq.${bookId}`, { method: "DELETE", headers: authHeaders(serviceKey as string) });
+
+    // Deleting gives no slot back.
+    expect(JSON.stringify((await startUpload(10, "Lagi")).body)).toContain("book_limit_reached");
+
+    // Premium: 2 GB across every book, 50 MB per file.
+    await patch(`profiles?id=eq.${idA}`, serviceKey as string, undefined, { plan: "premium" });
+
+    try {
+      expect(JSON.stringify((await startUpload(2147483649)).body)).toContain("book_storage_full");
+      const premiumBook = (await startUpload(10, "Premium")).body as string;
+      expect(typeof premiumBook).toBe("string");
+      expect((await finishUpload(premiumBook, 52428801)).body).toBe("too_large");
+      expect((await finishUpload(premiumBook, 10)).body).toBe("ready");
+      expect((await finishUpload(premiumBook, 10)).body).toBe("not_found");
+    } finally {
+      await patch(`profiles?id=eq.${idA}`, serviceKey as string, undefined, { plan: "free" });
+    }
+  });
+
   it("menghapus akun ikut menghapus entrinya", async () => {
     await deleteUser(idA);
 

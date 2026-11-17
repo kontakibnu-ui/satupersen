@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseBriefReport, parseDailySummary, parseFullReport, parseTokenUsage } from "@/lib/ai/schemas";
+import {
+  parseBriefReport,
+  parseDailySummary,
+  parseExplanationCheck,
+  parseFullReport,
+  parseReceiptReading,
+  parseReviewFeedback,
+  parseTokenUsage,
+} from "@/lib/ai/schemas";
 
 describe("parseTokenUsage (meter token, PRD §8)", () => {
   it("membaca bentuk usage yang dikirim OpenRouter (dicek dengan panggilan sungguhan 2026-11-01)", () => {
@@ -130,5 +138,107 @@ describe("report schemas (REPORT-3)", () => {
     expect(() => parseBriefReport('{"trend":"","focus":"f"}')).toThrow(/report schema/);
     expect(() => parseBriefReport('{"trend":"t"}')).toThrow(/report schema/);
     expect(() => parseBriefReport("maaf, tidak bisa")).toThrow(/JSON/);
+  });
+});
+
+describe("Belajar: pemeriksaan penjelasan (LEARN-2, LEARN-6)", () => {
+  const feedback = {
+    summary: "Kamu sudah menangkap inti fotosintesis.",
+    correct: ["Tumbuhan memakai cahaya matahari"],
+    missing: ["Hasilnya glukosa dan oksigen"],
+    wrong: [],
+    not_in_material: [],
+    language: "id",
+  };
+  const questions = [
+    { prompt: "Apa bahan fotosintesis?", answer: "Air dan karbon dioksida.", kind: "recall" },
+    { prompt: "Apa hasil fotosintesis?", answer: "Glukosa dan oksigen.", kind: "recall" },
+    { prompt: "Kenapa daun berwarna hijau?", answer: "Karena klorofil, menurut bahan.", kind: "elaboration" },
+  ];
+
+  it("membaca umpan balik dan pertanyaan, juga bila dibungkus blok kode", () => {
+    const parsed = parseExplanationCheck(`\`\`\`json\n${JSON.stringify({ ...feedback, questions })}\n\`\`\``, true);
+    expect(parsed.feedback.missing).toEqual(["Hasilnya glukosa dan oksigen"]);
+    expect(parsed.questions).toHaveLength(3);
+  });
+
+  it("pemeriksaan ulang tidak butuh pertanyaan dan mengabaikannya bila ada", () => {
+    expect(parseExplanationCheck(JSON.stringify({ ...feedback, questions: [] }), false).questions).toEqual([]);
+    expect(parseExplanationCheck(JSON.stringify({ ...feedback, questions }), false).questions).toEqual([]);
+  });
+
+  it("pemeriksaan pertama butuh 3 sampai 5 pertanyaan dengan minimal satu elaborasi", () => {
+    expect(() => parseExplanationCheck(JSON.stringify({ ...feedback, questions: questions.slice(0, 2) }), true)).toThrow(
+      /study questions/,
+    );
+    const onlyRecall = questions.map((question) => ({ ...question, kind: "recall" }));
+    expect(() => parseExplanationCheck(JSON.stringify({ ...feedback, questions: onlyRecall }), true)).toThrow(/elaboration/);
+    const six = [...questions, ...questions];
+    expect(() => parseExplanationCheck(JSON.stringify({ ...feedback, questions: six }), true)).toThrow(/study questions/);
+  });
+
+  it("menolak daftar yang terlalu panjang dan ringkasan kosong", () => {
+    const tooMany = { ...feedback, correct: ["a", "b", "c", "d", "e"] };
+    expect(() => parseExplanationCheck(JSON.stringify(tooMany), false)).toThrow(/explanation check/);
+    expect(() => parseExplanationCheck(JSON.stringify({ ...feedback, summary: " " }), false)).toThrow(/explanation check/);
+  });
+});
+
+describe("Belajar: umpan balik review (LEARN-4, LEARN-6)", () => {
+  it("menerima satu umpan balik untuk setiap nomor yang dikirim", () => {
+    const raw = JSON.stringify({
+      items: [
+        { number: 2, feedback: "Tepat, tapi oksigennya terlewat." },
+        { number: 1, feedback: "Sudah benar." },
+      ],
+    });
+    expect(parseReviewFeedback(raw, [1, 2]).map((item) => item.number)).toEqual([2, 1]);
+  });
+
+  it("menolak nomor yang terlewat, ganda, atau dikarang", () => {
+    const one = JSON.stringify({ items: [{ number: 1, feedback: "Sudah benar." }] });
+    expect(() => parseReviewFeedback(one, [1, 2])).toThrow(/instead of 1,2/);
+    const doubled = JSON.stringify({
+      items: [
+        { number: 1, feedback: "a" },
+        { number: 1, feedback: "b" },
+      ],
+    });
+    expect(() => parseReviewFeedback(doubled, [1, 2])).toThrow(/review feedback/);
+    const invented = JSON.stringify({
+      items: [
+        { number: 1, feedback: "a" },
+        { number: 3, feedback: "b" },
+      ],
+    });
+    expect(() => parseReviewFeedback(invented, [1, 2])).toThrow(/review feedback/);
+  });
+});
+
+describe("Uang: bacaan screenshot (EXP-7)", () => {
+  const reading = {
+    found: true,
+    type: "expense",
+    amount: 52500,
+    date: "2026-11-15",
+    category: "makan",
+    note: "Bayar Warung Bu Sri",
+  };
+
+  it("reads the object out of a fenced answer", () => {
+    expect(parseReceiptReading(`Berikut hasilnya:\n\`\`\`json\n${JSON.stringify(reading)}\n\`\`\``)).toEqual(reading);
+  });
+
+  it("accepts null fields when the screenshot does not show them", () => {
+    const empty = { found: false, type: null, amount: null, date: null, category: null, note: null };
+
+    expect(parseReceiptReading(JSON.stringify(empty))).toEqual(empty);
+  });
+
+  it("refuses a wrong shape so the call is retried", () => {
+    expect(() => parseReceiptReading(JSON.stringify({ ...reading, amount: "52.500" }))).toThrow(/receipt reading/);
+    expect(() => parseReceiptReading(JSON.stringify({ ...reading, type: "transfer" }))).toThrow(/receipt reading/);
+    expect(() => parseReceiptReading(JSON.stringify({ ...reading, found: undefined }))).toThrow(/receipt reading/);
+    expect(() => parseReceiptReading("tidak ada JSON")).toThrow(/JSON object/);
   });
 });

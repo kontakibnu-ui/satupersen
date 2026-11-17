@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
 import { AuthShell } from "@/components/auth-shell";
+import { safeNextPath } from "@/lib/redirects";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
   title: "Masuk · Satu Persen",
 };
-
-/**
- * Only a path inside this app is a valid place to go after signing in: one slash
- * first, and not "//" or "/\" which a browser reads as another host.
- */
-function safeNext(value: string | undefined): string {
-  return value !== undefined && /^\/(?![/\\])/.test(value) ? value : "/today";
-}
 
 /**
  * One screen, one focus (DESIGN.md §2): the way in. Nothing else is competing
@@ -35,7 +28,7 @@ export default async function LoginPage({
           : "Masuk dengan email dan passwordmu."
       }
     >
-      <LoginForm mode={signingUp ? "daftar" : "masuk"} next={safeNext(next)} failed={status === "gagal"} />
+      <LoginForm mode={signingUp ? "daftar" : "masuk"} next={safeNextPath(next)} failed={status === "gagal"} />
     </AuthShell>
   );
 }

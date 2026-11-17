@@ -23,15 +23,17 @@ const SECTIONS: LegalSection[] = [
       "Akun: email, nama, timezone, dan persetujuanmu saat mendaftar.",
       "Tulisan harianmu, serta mood dan energi yang kamu pilih.",
       "Kebiasaan yang kamu buat dan hari-hari kamu mencentangnya.",
-      "Pengeluaran yang kamu catat, dan budget bulanan jika kamu mengaturnya.",
+      "Pengeluaran yang kamu catat, dan budget bulanan jika kamu mengaturnya. Screenshot bank yang kamu pakai untuk mengisi catatan tidak disimpan; yang tersimpan hanya catatan yang kamu simpan sendiri.",
       "Ringkasan, skor, dan laporan yang dibuat dari data di atas.",
+      "Jika kamu memakai Belajar: bahan yang kamu tempel, penjelasan dan jawaban reviewmu, pertanyaan dan umpan balik yang dibuat dari bahan itu, serta jadwal reviewnya.",
+      "Jika kamu memakai Ruang baca: file e-book yang kamu unggah (PDF, EPUB, DOCX, atau TXT), judulnya, dan posisi terakhir kamu membacanya. File disimpan privat; hanya kamu yang bisa membukanya. Setelah sebuah buku dibuka, salinannya juga disimpan di browser perangkatmu supaya tidak perlu diunduh ulang, dan salinan itu dihapus saat kamu keluar dari akun atau menghapus bukunya.",
       "Jika kamu menghubungkan WhatsApp: nomormu dan pesan yang kamu kirim ke Satu Persen, beserta balasannya.",
     ],
   },
   {
     title: "Untuk apa data dipakai",
     paragraphs: [
-      "Hanya untuk menjalankan fitur yang kamu pakai: menyimpan tulisanmu, membuat ringkasan dan skor, menampilkan progres, membuat laporan, dan membalas pesanmu di WhatsApp.",
+      "Hanya untuk menjalankan fitur yang kamu pakai: menyimpan tulisanmu, membuat ringkasan dan skor, menampilkan progres, membuat laporan, memeriksa penjelasan dan menjadwalkan review di Belajar, dan membalas pesanmu di WhatsApp.",
     ],
   },
   {
@@ -40,9 +42,9 @@ const SECTIONS: LegalSection[] = [
       "Untuk menjalankan layanan, data melewati pihak berikut. Masing-masing punya kebijakan privasinya sendiri.",
     ],
     items: [
-      "Supabase: database dan proses masuk.",
+      "Supabase: database, proses masuk, dan penyimpanan file e-book Ruang baca.",
       "Vercel: tempat aplikasi berjalan.",
-      "OpenRouter dan penyedia model AI di baliknya: isi tulisan, mood, kebiasaan, dan pengeluaranmu dikirim ke sini agar ringkasan, laporan, dan balasan chat bisa dibuat. Kami meminta hanya penyedia yang, menurut pernyataan mereka, tidak mengumpulkan datamu.",
+      "OpenRouter dan penyedia model AI di baliknya: isi tulisan, mood, kebiasaan, dan pengeluaranmu dikirim ke sini agar ringkasan, laporan, dan balasan chat bisa dibuat. Di Belajar, bahan, penjelasan, dan jawabanmu dikirim saat kamu memintanya diperiksa. Saat kamu memakai “Isi dari screenshot” di Uang, gambarnya dibaca di perangkatmu dan tidak diunggah; hanya tulisan di gambar itu, dengan deretan angka panjang seperti nomor rekening disamarkan lebih dulu, yang dikirim agar nominal, tanggal, dan kategorinya bisa diisi. Tulisan itu tidak disimpan. Isi buku di Ruang baca tidak pernah dikirim ke sini; hanya bagian yang kamu pilih sendiri lewat “Jadikan materi” lalu kamu simpan sebagai materi Belajar, dan hanya saat kamu memintanya diperiksa. Kami meminta hanya penyedia yang, menurut pernyataan mereka, tidak mengumpulkan datamu.",
       "Meta (WhatsApp): jika kamu menghubungkan WhatsApp, pesanmu melewati server Meta. Jangan kirim data yang sangat sensitif seperti password atau nomor kartu.",
       "Google: jika kamu masuk dengan akun Google.",
     ],

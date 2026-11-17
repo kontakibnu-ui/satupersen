@@ -32,6 +32,8 @@ Terutama usia 18 sampai 25: mahasiswa, pelajar, pekerja yang ingin berubah, penc
 | Dashboard progres | DASH |
 | Laporan mingguan dan bulanan | REPORT |
 | Tanya diary-mu (tanya jawab AI atas riwayat diary sendiri) | ASK |
+| Belajar: retrieval, spacing, dan elaborasi, terinspirasi buku *Make It Stick* (disetujui user 2026-11-15) | LEARN |
+| Ruang baca di Belajar: unggah dan baca e-book, lalu jadikan bagiannya materi (disetujui user 2026-11-17) | READ |
 | Curhat lewat WhatsApp | WA |
 | Langganan dan pembayaran | SUB |
 | Landing page, privasi, export dan hapus akun, PWA (bisa dipasang di layar utama HP, tanpa mode offline) | LAUNCH |
@@ -51,10 +53,11 @@ Pesan suara WhatsApp, catat expense atau habit lewat WhatsApp, scan struk, aplik
 Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika semua kriteria modulnya terpenuhi (aturan lengkap di `AGENTS.md` §2).
 
 **AUTH**
-- AUTH-1: Daftar dan masuk dengan email dan password, atau dengan Google. Daftar dan masuk satu form di `/login`, dua mode (keputusan user, 2026-11-01: magic link dihapus). Password baru minimal 8 karakter. Lupa password belum ada.
+- AUTH-1: Daftar dan masuk dengan email dan password, atau dengan Google. Daftar dan masuk satu form di `/login`, dua mode (keputusan user, 2026-11-01: magic link dihapus). Password baru minimal 8 karakter. Lupa password: AUTH-5.
 - AUTH-2: Semua halaman di grup `(app)` mengarahkan ke `/login` jika belum login.
 - AUTH-3: Login pertama membuat baris `profiles` otomatis dengan plan `free`. Onboarding mendeteksi timezone browser (mis. `Asia/Makassar` untuk WITA) dan menyimpannya; `Asia/Jakarta` hanya dipakai bila deteksi gagal. Timezone bisa diubah di Akun.
 - AUTH-4: Onboarding satu layar: satu checkbox wajib sebelum masuk aplikasi, yaitu persetujuan kebijakan privasi. Tanpa itu user tidak bisa lanjut. (Pernyataan usia 18+ dihapus atas keputusan user, 2026-11-01.)
+- AUTH-5: Lupa password (disetujui user, 2026-11-14). Mode masuk di `/login` punya tautan "Lupa password?" ke `/forgot-password`, yang mengirim tautan reset lewat Supabase Auth dengan jawaban yang sama untuk email terdaftar maupun tidak. Tautan kembali lewat `/auth/callback` ke `/reset-password`, tempat password baru (minimal 8 karakter) disimpan, lalu user langsung masuk. Tautan yang kedaluwarsa, sudah dipakai, atau dibuka di browser lain menampilkan penjelasan dan tombol minta tautan baru. Parameter `next` di callback hanya menerima path di dalam aplikasi.
 
 **DIARY**
 - DIARY-1: `/today` menampilkan editor untuk tanggal hari ini menurut timezone user.
@@ -89,6 +92,8 @@ Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika 
 - EXP-4: Budget bulanan (premium), menjadi input dimensi keuangan skor.
 - EXP-5: Tambah pemasukan (nominal integer, kategori, catatan opsional) di tabel yang sama dengan pengeluaran, dibedakan kolom `type`. Kategori bawaan pemasukan: gaji, uang saku, usaha atau freelance, bonus atau hadiah, lainnya. Layar Uang menampilkan sisa uang bulan itu (masuk dikurangi keluar), total masuk, dan total keluar; jenis entri tidak bisa diubah setelah dibuat. Diputuskan user 2026-11-01.
 - EXP-6: Perbandingan perkembangan: bulan ini lawan bulan sebelumnya (pengeluaran dan sisa uang; bulan yang masih berjalan dibandingkan dengan hari-hari yang sama di bulan lalu) dan grafik masuk lawan keluar untuk 6 bulan yang berakhir di bulan yang dibuka. Tanpa warna baik atau buruk.
+- EXP-7: "Isi dari screenshot bank" (diputuskan user 2026-11-16: OCR di HP lalu DeepSeek). User memilih screenshot bukti transfer atau pembayaran dari bank atau e-wallet; gambar dibaca di perangkat (tesseract.js, bahasa Indonesia, mesin dan data bahasa dilayani dari situs sendiri) dan **tidak diunggah**. Hanya teksnya dikirim ke server, setelah deretan 10 angka atau lebih (nomor rekening, telepon, referensi) disamarkan di HP dan sekali lagi di server, dipotong maksimal 3.000 karakter. Model `AI_MODEL_DAILY` mengisi jenis, nominal, tanggal, kategori, dan catatan singkat; hasilnya divalidasi zod dan aturan server (nominal 1 sampai `MAX_AMOUNT`, kategori sesuai jenis, tanggal sesuai EXP-8; yang tidak lolos dikosongkan). Form terbuka terisi dan bisa diubah, termasuk jenis; **tidak ada yang tersimpan sebelum user menekan Simpan**. Teks screenshot dan hasil bacaan tidak disimpan dan tidak masuk log; yang dicatat hanya token di `ai_usage` (fitur `receipt`). Gambar tanpa tulisan dijawab tanpa memanggil server; tanpa nominal transaksi (misalnya layar saldo saja) dijawab "Nominal transaksi tidak ketemu…". Ikut rate limit (RATE-1) dan batas token bulanan (§8); tanpa filter krisis dan tanpa kuota harian terpisah.
+- EXP-8: Entri baru punya tanggal, bawaannya hari ini menurut timezone profil, bisa diganti ke hari sebelumnya paling jauh 365 hari ke belakang, tidak pernah ke masa depan; dicek ulang di server. Entri yang sudah ada tetap tidak bisa dipindah tanggal atau jenisnya (EXP-2, EXP-5). Bila tanggalnya di bulan lain, layar memberi tahu dan menautkan ke bulan itu. Skor hari yang sudah dianalisa tidak dihitung ulang. Diputuskan user 2026-11-16.
 
 **DASH**
 - DASH-1: Menampilkan rata-rata skor periode terpilih, persen vs periode sebelumnya, dan "sejak mulai" (§5). Hierarki tampilan mengikuti `DESIGN.md` §2.
@@ -110,6 +115,33 @@ Setiap baris adalah kriteria yang bisa diuji. Fitur dianggap selesai hanya jika 
 - ASK-6: Kuota harian dan cakupan riwayat per plan dicek di server (§8). Angkanya masih usulan.
 - ASK-7: Pertanyaan dan jawaban tidak disimpan dan tidak masuk log. Yang tercatat hanya hitungan pemakaian per hari.
 - ASK-8: Mengedit atau menghapus entri, atau menghapus akun, ikut memperbarui atau menghapus indeks pencariannya.
+
+**LEARN** (Belajar; modul terpisah dari diary, diputuskan user 2026-11-15, dikerjakan sebelum launch)
+
+Tujuannya membantu materi yang dipelajari user benar-benar nempel memakai tiga teknik dari *Make It Stick*: **retrieval** (mengingat tanpa melihat), **spacing** (diulang dengan jarak yang makin panjang), dan **elaborasi** (menjelaskan dengan kata sendiri dan menghubungkannya). Menu "Belajar" di `/learn`.
+- LEARN-1: `/learn` menampilkan materi milik user. Materi yang punya pertanyaan jatuh tempo hari ini (tanggal lokal user) tampil paling atas sebagai "Review hari ini". Tambah materi: judul (maksimal 120 karakter) dan bahan berupa teks yang ditempel atau ditulis (maksimal 5.000 karakter), ditolak di klien dan server dengan pesan jelas. Unggah PDF, foto, atau tautan sebagai bahan tidak didukung; e-book dibaca di Ruang baca (READ), dan bagian yang diblok di sana bisa dijadikan bahan lewat "Jadikan materi" (READ-7).
+- LEARN-2: Langkah pertama, "Jelaskan dengan kata sendiri". Bahan tertutup secara bawaan (bisa dibuka). User menulis penjelasan (maksimal 3.000 karakter), lalu "Periksa penjelasan". AI membandingkan penjelasan **hanya dengan bahan** (keputusan user): yang sudah tepat, yang terlewat, dan yang keliru menurut bahan. Hal yang tidak ada di bahan tidak dinilai benar atau salah, tetapi disebut "tidak ada di bahanmu". Pemeriksaan pertama yang berhasil juga membuat 3 sampai 5 pertanyaan dari bahan, minimal satu pertanyaan elaborasi (kenapa, bagaimana, hubungkan, beri contoh), masing-masing dengan jawaban menurut bahan. Sejak itu materi aktif. Bahan hanya bisa diubah sebelum materi aktif, karena pertanyaannya dibuat dari bahan itu. Penjelasan bisa diulang dan diperiksa lagi selama kuota mengizinkan; pertanyaan dan jadwal tidak berubah.
+- LEARN-3: Jadwal review dihitung di kode (`src/lib/study/schedule.ts`, dengan tes), tidak pernah oleh AI. Pertanyaan pertama kali jatuh tempo 1 hari setelah materi aktif. Jarak bertahap 1, 3, 7, 14, lalu 30 hari, dihitung dari tanggal review (tanggal lokal user). Penilaian user sendiri yang menentukan: **Ingat** naik ke jarak berikutnya (setelah jarak 30 hari pertanyaan selesai), **Ragu** mengulang jarak yang sama, **Lupa** kembali ke 1 hari. Materi selesai bila semua pertanyaannya selesai.
+- LEARN-4: Sesi review per materi: semua pertanyaan yang jatuh tempo dijawab dari ingatan dulu (boleh kosong), lalu "Lihat jawaban" menampilkan jawaban menurut bahan, lalu user menilai tiap pertanyaan (Lupa, Ragu, Ingat) dan menyimpan. Setelah tersimpan, bila kuota mengizinkan, AI memberi umpan balik singkat per jawaban berdasarkan bahan. Review tetap tersimpan walau AI gagal, tidak dikonfigurasi, atau kuotanya habis.
+- LEARN-5: Kuota, dicek di server (§8). Free maksimal **1 materi per akun**: menghapus materi tidak membuka slot, karena yang dihitung adalah jumlah materi yang pernah dibuat, dijaga trigger database. Premium tanpa batas materi. Pemeriksaan AI (1x = satu pemeriksaan penjelasan, atau satu sesi review yang semua jawabannya diperiksa sekaligus): free **1x per hari per akun**, premium **10x per materi per hari**, hari menurut tanggal lokal user. Pemeriksaan yang gagal tidak dihitung, dan dua permintaan bersamaan tidak bisa sama-sama lolos dari batas. Lewat batas token bulanan (§8), pemeriksaan AI Belajar berhenti sampai tanggal 1, sedangkan review dengan penilaian sendiri tetap jalan. Premium yang berakhir: semua materi tetap ada dan bisa direview, aturan free berlaku (SUB-3).
+- LEARN-6: Output model divalidasi zod. Tidak valid: coba ulang 1x, lalu error dengan tombol "Coba lagi". Tidak ada umpan balik atau pertanyaan palsu. Bahan dibungkus pembatas dan diperlakukan sebagai data, bukan perintah. Umpan balik ditampilkan sebagai teks biasa dengan label bahwa itu diperiksa AI dari bahan.
+- LEARN-7: Tanpa filter krisis (keputusan user 2026-11-15: isinya bahan pelajaran, bukan curhat, dan filter kata kunci salah tangkap bab psikologi, sejarah, atau biologi). Cerita pribadi tetap di diary dan WhatsApp yang punya penanganan krisis. Prompt tetap melarang nomor telepon, diagnosis, dan saran medis.
+- LEARN-8: Materi, pertanyaan, dan riwayat review ikut export dan terhapus bersama akun. User bisa menghapus satu materi beserta pertanyaan dan riwayat reviewnya; untuk free, konfirmasinya menjelaskan bahwa slot tidak kembali. Isi bahan, penjelasan, dan jawaban tidak pernah masuk log.
+- LEARN-9: Item Belajar di navigasi diberi penanda kecil (dengan teks untuk pembaca layar) saat ada pertanyaan yang jatuh tempo hari ini.
+
+**READ** (Ruang baca di Belajar; diputuskan user 2026-11-17, dikerjakan sebelum launch)
+
+Tempat membaca e-book milik user di dalam Satu Persen, supaya bagian penting dari buku bisa langsung dijadikan materi Belajar. Pembeda dari aplikasi baca lain adalah sambungan ke LEARN; AI tidak pernah membaca buku.
+- READ-1: Di `/learn` ada lembaran "Ruang baca" berisi buku milik user (judul dari nama file, format, ukuran, posisi baca terakhir dalam persen) dan tautan "Unggah buku". Format yang diterima: PDF, EPUB, DOCX, dan TXT, maksimal 50 MB per file. Jenis file dicek dari isinya di HP sebelum diunggah, bukan hanya dari ekstensi; file lain ditolak dengan pesan jelas. Buku yang terkunci DRM tidak bisa dibuka dan dijawab dengan pesan jelas.
+- READ-2: Kuota dicek di server, sama polanya dengan LEARN-5: free **1 buku per akun** (yang dihitung buku yang pernah selesai diunggah, jadi menghapus buku tidak membuka slot), premium **total 2 GB**. Unggahan yang gagal atau ditinggalkan tidak memakai slot. File diunggah langsung dari HP ke Supabase Storage dengan izin unggah sekali pakai dari server (batas isi request Vercel 4,5 MB), lalu server memeriksa ukuran file yang benar-benar tersimpan sebelum buku ditandai siap; yang melewati batas dihapus. Dua permintaan bersamaan tidak bisa sama-sama lolos dari batas. Premium yang berakhir: semua buku tetap ada dan bisa dibaca, aturan free berlaku untuk menambah buku (SUB-3).
+- READ-3: Pembaca di `/read/[id]` menampilkan buku dengan tata letak dan huruf dari file penerbit lewat foliate-js (pilihan user 2026-11-17, dibandingkan di artifact contoh). DOCX diubah ke HTML dan TXT ke paragraf, dibersihkan, lalu dibuka di pembaca yang sama, sehingga semua format punya satu gaya baca. Cara baca **Gulir** atau **Geser** dipilih di panel Aa dan bisa diganti kapan saja tanpa kehilangan posisi; pilihannya disimpan di perangkat seperti mode malam, bukan di database. PDF dibaca per halaman (Geser) di versi pertama, karena foliate-js belum menyediakan mode gulir untuk tata letak tetap.
+- READ-4: Pindah halaman di mode Geser tanpa tombol di layar: geser jari ke kiri atau kanan, ketuk sepertiga tepi kiri atau kanan, atau tombol panah keyboard. Panel Aa juga mengatur ukuran huruf (EPUB, DOCX, TXT). **Mode layar penuh** menyembunyikan semua kontrol; ketuk tengah layar memunculkannya lagi dan kontrol hilang sendiri setelah 4 detik; Esc atau tombol yang sama menutupnya. Di browser yang mendukung Fullscreen API, bar browser ikut disembunyikan; di browser lain hanya kontrol aplikasi yang hilang.
+- READ-5: Mode siang menampilkan warna asli file. Mode malam menimpa warna teks dan latar buku dengan token mode malam Satu Persen; huruf dan tata letak tetap dari file. PDF tetap berwarna asli di versi pertama.
+- READ-6: Posisi baca terakhir (penanda posisi foliate-js dan persentase) disimpan per buku, paling sering sekali tiap 2 detik, dan buku dibuka lagi di posisi itu, juga setelah cara baca diganti.
+- READ-7: **"Jadikan materi"**: teks yang diblok, maksimal 5.000 karakter (dihitung di layar), dibawa ke form Materi baru (`/learn/new`) dengan judul usulan dari awal teks dan judul buku. User bisa mengubah judul dan bahannya, lalu LEARN-1 sampai LEARN-5 berlaku, termasuk batas 1 materi free. Teksnya tidak dikirim ke server sebelum user menekan "Simpan materi".
+- READ-8: Keamanan. File privat per akun: bucket privat, kebijakan baca hanya untuk folder milik user, dan hanya service role yang menulis serta menghapus file. Isi buku dianggap tidak dipercaya: halaman pembaca selalu dimuat sebagai dokumen baru (bukan navigasi di sisi klien) dengan CSP tambahan berbasis nonce, sehingga script di dalam buku tidak jalan; dibuktikan dengan tes EPUB yang berisi script. foliate-js diambil dari repo pembuatnya dan dikunci di satu commit (paket npm bernama sama diterbitkan orang lain); foliate-js, pdf.js, pengubah DOCX, dan pembersih HTML dilayani dari situs sendiri.
+- READ-9: Salinan buku disimpan di Cache Storage browser setelah dibuka pertama kali, terpisah per user, supaya buka ulang tidak mengunduh lagi. Salinan dihapus saat buku dihapus dan saat user keluar lewat tombol Keluar; salinan milik akun lain di perangkat yang sama dihapus saat pembaca dibuka.
+- READ-10: Hapus buku dengan konfirmasi di tempat; file dan barisnya terhapus, dan untuk free konfirmasinya menjelaskan bahwa slot tidak kembali. Hapus akun menghapus semua file buku di Storage secara eksplisit, karena file tidak ikut terhapus bersama baris database. Export memuat daftar buku (judul, format, ukuran, tanggal, posisi), bukan filenya. Judul dan isi buku tidak pernah masuk log.
 
 **WA, SUB, LAUNCH:** lihat §6, §8, dan `TASKS.md` Fase 6.
 
@@ -207,6 +239,9 @@ Dimensi tanpa data (mis. user belum punya habit atau budget) dikeluarkan dan bob
 - Tidak ada batas atau pernyataan usia di aplikasi (keputusan user, 2026-11-01; sebelumnya 18+). Risiko yang tetap berlaku: UU PDP Pasal 25 mewajibkan persetujuan orang tua atau wali untuk pemrosesan data anak, dan curhat dari anak jauh lebih sensitif. Ini bukan saran hukum; tinjau dengan ahli sebelum launch.
 - Pesan WhatsApp melewati server Meta. User diberi tahu saat menghubungkan dan disarankan tidak mengirim data sangat sensitif (password, nomor kartu).
 - Kebijakan privasi dan syarat layanan wajib ada sebelum launch (UU Pelindungan Data Pribadi). Draf dari AI wajib ditinjau manusia.
+- Belajar (LEARN): bahan, penjelasan, dan jawaban review disimpan di database dan dikirim ke penyedia model saat diperiksa (persetujuan user 2026-11-15). Kebijakan privasi menyebutnya.
+- Isi dari screenshot (EXP-7): gambar tidak pernah meninggalkan HP; teksnya, dengan deretan angka panjang disamarkan, dikirim ke penyedia model lalu dibuang, tidak disimpan dan tidak masuk log (persetujuan user 2026-11-16). Penyamaran hanya menangkap deretan angka; nama penerima dan merchant tetap ikut terkirim. Kebijakan privasi menyebutnya.
+- Ruang baca (READ): file e-book disimpan privat di Supabase Storage dan tidak pernah dikirim ke penyedia model; salinannya disimpan di browser user (READ-9). Hanya teks yang user pilih sendiri lewat "Jadikan materi" yang bisa sampai ke penyedia model, lewat pemeriksaan LEARN. User hanya boleh mengunggah file yang berhak ia simpan; ketentuan layanan melarang file yang melanggar hak cipta dan menyediakan jalur laporan penurunan konten (kontaknya diisi manusia). Kebijakan privasi dan ketentuan menyebutnya; draf wajib ditinjau manusia (persetujuan fitur oleh user 2026-11-17).
 
 **Klien tidak dipercaya: tidak ada yang penting di sisi browser**
 
@@ -220,6 +255,13 @@ Semua yang dikirim ke browser bisa dilihat lewat Inspect, tab Network, bundle Ja
 6. **Header keamanan** di produksi: Content-Security-Policy, HSTS, `X-Content-Type-Options: nosniff`, pembatasan framing, dan Referrer-Policy.
 7. **Dependency** diperiksa dengan `npm audit` sebelum launch, dan temuan serius diselesaikan.
 8. **Dibuktikan, bukan diklaim.** Checklist launch (`TASKS.md` 6.5) memuat: pencarian nama dan nilai tiap secret di hasil build (`.next/static`), uji RLS memakai anon key saja, uji akses ke data user lain lewat penggantian ID, dan pengecekan header produksi.
+
+**Rate limit (disetujui user 2026-11-15, "pasang tapi jangan sampai mengganggu penggunaan normal")**
+
+Kuota mengatur berapa banyak, rate limit mengatur seberapa cepat. Rate limit menutup dua celah yang tidak ditutup kuota: banyak permintaan di detik yang sama yang semuanya melihat "jatah masih ada", dan percobaan gagal yang tidak memotong kuota tetapi tetap dibayar.
+- RATE-1: Maksimal **5 panggilan AI per menit per user**, dihitung di tabel server `rate_limits` lewat satu fungsi database yang atomik (aman dipakai banyak instance Vercel sekaligus). Satu ember dipakai bersama oleh "Analisa hari ini", pemeriksaan Belajar, dan "Isi dari screenshot" (EXP-7). WhatsApp sudah punya batas banjir sendiri yang dihitung dari `wa_messages` (lebih dari 10 pesan per menit disimpan tanpa dibalas), jadi tidak memakai tabel ini.
+- RATE-2: Yang dihitung adalah ketukan yang memanggil AI. Coba ulang otomatis karena format jawaban model salah (AI-2) tidak dihitung lagi. Menulis, simpan otomatis, menilai sendiri, dan membuka halaman tidak pernah dibatasi.
+- RATE-3: Saat batas tercapai, layar menampilkan "Tunggu sebentar ya, kamu bisa coba lagi dalam N detik." dan tulisan tetap tersimpan. Bila hitungan tidak bisa dibaca, permintaan diloloskan dan kejadiannya dicatat di log (tanpa isi), supaya gangguan database tidak memblokir pemakaian normal.
 
 **Tanya diary-mu: guardrail AI dan keamanan** (berlaku untuk ASK; prinsip prompt injection dan render teks juga berlaku untuk ringkasan harian dan balasan WhatsApp)
 
@@ -257,7 +299,7 @@ Sumber angka satu-satunya: `src/config/plans.ts` (landing, halaman Paket, dan ce
 
 **Dasar hitungan biaya (2026-11-01):** harga publik OpenRouter untuk model di `AI_MODEL_*` dengan provider menengah yang lolos `data_collection: deny` (asumsi USD 0,30 per juta token input dan 1,20 per juta output, kurs Rp 16.500 per USD). Satu analisa harian sungguhan tercatat 659 token input dan 718 token output (termasuk token berpikir model), biaya USD 0,00059, sekitar Rp 10. Bulan premium normal sekitar 360 ribu token (sekitar Rp 2.500). Biaya gateway per transaksi belum diketahui, diasumsikan sekitar Rp 4.500; paket panjang hanya kena satu kali.
 
-**Batas token AI bulanan (lunak, keputusan user 2026-11-01):** gratis 150.000 token, premium 1.200.000 token per bulan kalender lokal, dihitung dari token yang dilaporkan OpenRouter dan dicatat di `ai_usage`. Lewat batas: analisa pertama tiap hari tetap jalan; analisa ulang dan balasan chat AI di WhatsApp berhenti (satu pemberitahuan per hari) sampai tanggal 1. Laporan terjadwal tetap dibuat. Batas premium menjaga bulan terberat di bawah separuh harga efektif paket 12 bulan.
+**Batas token AI bulanan (lunak, keputusan user 2026-11-01):** gratis 150.000 token, premium 1.200.000 token per bulan kalender lokal, dihitung dari token yang dilaporkan OpenRouter dan dicatat di `ai_usage`. Lewat batas: analisa pertama tiap hari tetap jalan; analisa ulang, balasan chat AI di WhatsApp, pemeriksaan AI Belajar, dan "Isi dari screenshot" (input manual tetap jalan) berhenti (satu pemberitahuan per hari untuk WhatsApp) sampai tanggal 1. Laporan terjadwal dan review Belajar dengan penilaian sendiri tetap jalan. Batas premium menjaga bulan terberat di bawah separuh harga efektif paket 12 bulan.
 
 | Fitur | Gratis | Premium |
 | --- | --- | --- |
@@ -271,6 +313,10 @@ Sumber angka satu-satunya: `src/config/plans.ts` (landing, halaman Paket, dan ce
 | Laporan mingguan | Ringkas | Lengkap |
 | Laporan bulanan | Tidak | Ya |
 | Tanya diary-mu (usulan, belum final) | 3 per hari, 30 hari terakhir | 20 per hari, seluruh riwayat |
+| Materi Belajar (LEARN-5, keputusan user 2026-11-15) | 1 materi per akun | Tanpa batas |
+| Pemeriksaan AI Belajar | 1x per hari | 10x per materi per hari |
+| Ruang baca (READ-2, keputusan user 2026-11-17) | 1 buku per akun | Total 2 GB |
+| Ukuran satu file e-book | Maksimal 50 MB | Maksimal 50 MB |
 | Kuota AI per bulan (batas lunak) | 150.000 token | 1.200.000 token |
 | Export dan hapus data | Ya | Ya |
 
@@ -281,7 +327,7 @@ Sumber angka satu-satunya: `src/config/plans.ts` (landing, halaman Paket, dan ce
 
 ## 9. Data model
 
-Dua belas tabel. Semua tabel data user punya `user_id` dan RLS `user_id = auth.uid()`. Tabel bertanda (server) hanya ditulis lewat service role di server. Tanggal disimpan sebagai tipe `date` menurut timezone user, bukan timestamp UTC.
+Dua belas tabel inti, ditambah tabel Belajar dan rate limit di bawahnya. Semua tabel data user punya `user_id` dan RLS `user_id = auth.uid()`. Tabel bertanda (server) hanya ditulis lewat service role di server. Tanggal disimpan sebagai tipe `date` menurut timezone user, bukan timestamp UTC.
 
 | Tabel | Kolom | Constraint |
 | --- | --- | --- |
@@ -294,10 +340,30 @@ Dua belas tabel. Semua tabel data user punya `user_id` dan RLS `user_id = auth.u
 | daily_summaries | id, user_id, date, status text, summary, strengths jsonb, improvements jsonb, tomorrow_tip, ai_dimension_score smallint, score smallint, score_dimensions jsonb, delta_pct numeric, score_reason, risk_flag boolean, model text, regen_count smallint | UNIQUE (user_id, date); status in (pending, done, failed) |
 | reports | id, user_id, type text, period_start date, period_end date, content jsonb, created_at | UNIQUE (user_id, type, period_start); type in (weekly, monthly) |
 | subscriptions (server) | id, user_id, provider text, provider_ref text, plan text, status text, current_period_end | UNIQUE provider_ref |
-| ai_usage (server) | id, user_id, feature text, model text, prompt_tokens int, completion_tokens int, cost_usd numeric, created_at | feature in (daily, chat, report); satu baris per panggilan model termasuk percobaan ulang; user hanya membaca miliknya; jumlah bulanan lewat RPC `ai_tokens_since` |
+| ai_usage (server) | id, user_id, feature text, model text, prompt_tokens int, completion_tokens int, cost_usd numeric, created_at | feature in (daily, chat, report, study, receipt); satu baris per panggilan model termasuk percobaan ulang; user hanya membaca miliknya; jumlah bulanan lewat RPC `ai_tokens_since` |
 | whatsapp_links | user_id, phone text, verified_at, opted_in boolean, reminder_time time, last_inbound_at timestamptz | PK user_id; UNIQUE phone; phone = format digit E.164 tanpa "+" seperti dikirim Meta |
 | whatsapp_link_codes (server) | code text, user_id, expires_at | PK code |
 | wa_messages (server) | id, user_id (nullable), wa_message_id text, direction text, kind text, body text, created_at | UNIQUE wa_message_id (idempotensi webhook); direction in (in, out); kind untuk pesan keluar in (ai_reply, notice, crisis, summary, reminder, help); jumlah `ai_reply` per tanggal lokal user = pemakaian batas harian |
+
+**Tambahan untuk Belajar dan rate limit (disetujui user 2026-11-15).** Semua punya `user_id` dengan ON DELETE CASCADE dari `auth.users` dan RLS `user_id = auth.uid()` untuk membaca. Tabel bertanda (server) hanya ditulis service role. Selain itu `profiles` mendapat kolom server `study_materials_created integer` (jumlah materi yang pernah dibuat, dinaikkan trigger, tidak turun saat materi dihapus; dasar batas free LEARN-5).
+
+| Tabel | Kolom | Constraint |
+| --- | --- | --- |
+| study_materials | id uuid, user_id, title text, source text, explanation text, feedback jsonb, status text, created_at, activated_at timestamptz, updated_at | title 1 sampai 120; source 1 sampai 5000; explanation maks 3000; status in (draft, active). User hanya boleh menulis `title` dan `source`, dan `source` dikunci trigger setelah status `active`. `explanation`, `feedback`, `status` ditulis server. Trigger insert menolak akun free yang sudah pernah membuat 1 materi |
+| study_questions (server) | id uuid, material_id, user_id, position smallint, prompt text, answer text, kind text, step smallint, due_date date, created_at | ON DELETE CASCADE dari `study_materials`; kind in (recall, elaboration); step 0 sampai 5; `due_date` null = pertanyaan selesai; UNIQUE (material_id, position) |
+| study_reviews (server) | id, user_id, material_id, question_id, reviewed_on date, answer text, rating text, feedback text, created_at | ON DELETE CASCADE dari materi dan pertanyaan; rating in (forgot, unsure, remembered); answer maks 1000; UNIQUE (question_id, reviewed_on) |
+| study_checks (server) | id, user_id, material_id, date, kind text, created_at | Satu baris per pemeriksaan AI yang berhasil, dasar kuota LEARN-5; `material_id` ON DELETE SET NULL supaya hitungan hari itu tidak hilang saat materi dihapus; kind in (explanation, review); diambil lewat fungsi `reserve_study_check` yang mengunci per user |
+| rate_limits (server) | user_id, bucket text, window_start timestamptz, count integer | PK (user_id, bucket, window_start); ditulis hanya lewat fungsi `take_rate_limit` (RATE-1); jendela lama milik user itu dihapus setiap kali fungsi dipanggil; tidak bisa dibaca user |
+
+Penulisan Belajar yang menyentuh beberapa baris berjalan dalam satu transaksi lewat fungsi database yang hanya bisa dipanggil service role: `store_study_explanation_check` (umpan balik, pertanyaan, dan aktivasi materi), `save_study_review` (jawaban, penilaian, dan jadwal baru), dan `store_study_review_feedback` (umpan balik AI per jawaban). Nilainya (jadwal dari `schedule.ts`, output model yang sudah divalidasi) tetap dihitung di kode server.
+
+**Tambahan untuk Ruang baca (disetujui user 2026-11-17).** `profiles` mendapat kolom server `books_created integer` (jumlah buku yang pernah selesai diunggah; tidak turun saat buku dihapus; dasar batas free READ-2).
+
+| Tabel | Kolom | Constraint |
+| --- | --- | --- |
+| books | id uuid, user_id, title text, format text, size_bytes bigint, storage_path text, status text, location text, progress numeric, created_at, ready_at timestamptz, opened_at timestamptz | ON DELETE CASCADE dari `auth.users`; title 1 sampai 120; format in (pdf, epub, docx, txt); size_bytes 1 sampai 52.428.800; status in (uploading, ready); storage_path UNIQUE, `<user_id>/<id>`; location maks 2.000 karakter; progress 0 sampai 1. User hanya membaca bukunya sendiri dan hanya boleh mengubah `location`, `progress`, dan `opened_at`; selain itu ditulis server lewat `start_book_upload` dan `finish_book_upload`, yang mengunci per user |
+
+File disimpan di bucket Storage privat `books` (maksimal 50 MB per file, hanya tipe PDF, EPUB, DOCX, dan TXT) dengan path `<user_id>/<book_id>`. Kebijakan Storage hanya mengizinkan user membaca file di foldernya sendiri; unggah memakai izin sekali pakai dari server, dan hapus hanya lewat service role.
 
 **Tambahan untuk ASK (usulan).** Dua tabel ini menambah data baru yang disimpan, jadi baru dibuat setelah user menyetujuinya (§11). Keduanya punya `user_id` dan RLS `user_id = auth.uid()`.
 
@@ -339,3 +405,6 @@ Tugas yang bergantung pada hal ini harus berhenti dan ditulis di `TASKS.md` bagi
 - [ ] ASK: model embedding dan env baru (mis. `AI_MODEL_EMBEDDING`, belum ada di daftar env `AGENTS.md` §4). Keluarga DeepSeek yang sudah diputuskan mungkin tidak menyediakan model embedding; ini harus dicek, bukan diasumsikan
 - [ ] ASK: kuota dan cakupan riwayat per plan (usulan di §8)
 - [ ] ASK: persetujuan menyimpan indeks pencarian sebagai data turunan baru (§9) dan revisi teks privasi
+- [x] Belajar (LEARN, 2026-11-15): modul terpisah bernama "Belajar"; AI menilai hanya berdasarkan bahan; free 1 materi per akun dan pemeriksaan AI 1x per hari; premium materi tanpa batas dan 10x per materi per hari; tanpa filter krisis; data Belajar disimpan di database; Riwayat dan Laporan pindah ke tab di Progres; dikerjakan sebelum launch
+- [x] Rate limit dan tabel `rate_limits` (2026-11-15), dengan syarat tidak mengganggu pemakaian normal (RATE-1 sampai RATE-3)
+- [x] Ruang baca (READ, 2026-11-17): di menu Belajar; format PDF, EPUB, DOCX, TXT; tata letak asli penerbit lewat foliate-js dengan pilihan Gulir atau Geser, geser tanpa tombol, dan mode layar penuh; mode malam ikut Satu Persen, mode siang warna asli; tersambung ke Belajar lewat "Jadikan materi"; batas ikut pola Belajar (free 1 buku per akun, premium total 2 GB, 50 MB per file); salinan di browser boleh dan dihapus saat keluar; dikerjakan sebelum launch

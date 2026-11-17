@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChartLine, ListChecks, NotebookPen, Wallet } from "lucide-react";
+import { BookOpen, ChartLine, ListChecks, NotebookPen, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brand } from "@/components/brand";
@@ -16,22 +16,30 @@ import { cn } from "@/lib/utils";
  *
  * The active item is darker and bolder **and** carries `aria-current`, so
  * colour is never the only signal (§13); a short gold line marks it as well.
+ *
+ * Since 2026-11-15 Belajar takes the slot Riwayat had, and Progres holds
+ * Riwayat and Laporan as tabs, so Progres is active on all three routes.
+ * Belajar carries a small ink dot while a review is due today (LEARN-9).
  */
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: typeof NotebookPen; also?: string[] }[] = [
   { href: "/today", label: "Hari Ini", icon: NotebookPen },
-  { href: "/history", label: "Riwayat", icon: CalendarDays },
   { href: "/habits", label: "Kebiasaan", icon: ListChecks },
+  { href: "/learn", label: "Belajar", icon: BookOpen },
   { href: "/expenses", label: "Uang", icon: Wallet },
-  { href: "/dashboard", label: "Progres", icon: ChartLine },
-] as const;
+  { href: "/dashboard", label: "Progres", icon: ChartLine, also: ["/history", "/reports"] },
+];
+
+const LEARN_HREF = "/learn";
+const DUE_TEXT = ", ada review hari ini";
 
 function useIsActive() {
   const pathname = usePathname();
+  const matches = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
-  return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  return (href: string, also: string[] = []) => matches(href) || also.some(matches);
 }
 
-export function AppHeader({ initial }: { initial: string }) {
+export function AppHeader({ initial, learnDue }: { initial: string; learnDue: boolean }) {
   const isActive = useIsActive();
   const onAccount = isActive("/settings");
 
@@ -44,7 +52,8 @@ export function AppHeader({ initial }: { initial: string }) {
 
         <nav aria-label="Navigasi utama" className="hidden items-center gap-1 lg:flex">
           {NAV_ITEMS.map((item) => {
-            const active = isActive(item.href);
+            const active = isActive(item.href, item.also);
+            const due = learnDue && item.href === LEARN_HREF;
 
             return (
               <Link
@@ -52,13 +61,19 @@ export function AppHeader({ initial }: { initial: string }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 items-center px-3 text-[15px] underline-offset-[10px] transition-colors duration-200",
+                  "flex min-h-11 items-center gap-1.5 px-3 text-[15px] underline-offset-[10px] transition-colors duration-200",
                   active
                     ? "font-semibold text-text underline decoration-accent-warm decoration-2"
                     : "text-text-muted hover:text-text",
                 )}
               >
                 {item.label}
+                {due ? (
+                  <>
+                    <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+                    <span className="sr-only">{DUE_TEXT}</span>
+                  </>
+                ) : null}
               </Link>
             );
           })}
@@ -88,7 +103,7 @@ export function AppHeader({ initial }: { initial: string }) {
   );
 }
 
-export function AppNav() {
+export function AppNav({ learnDue }: { learnDue: boolean }) {
   const isActive = useIsActive();
 
   return (
@@ -99,7 +114,8 @@ export function AppNav() {
     >
       <div className="mx-auto flex max-w-[560px] items-stretch justify-around px-1">
         {NAV_ITEMS.map((item) => {
-          const active = isActive(item.href);
+          const active = isActive(item.href, item.also);
+          const due = learnDue && item.href === LEARN_HREF;
 
           return (
             <Link
@@ -113,8 +129,14 @@ export function AppNav() {
                   : "text-text-muted",
               )}
             >
-              <item.icon aria-hidden="true" size={21} strokeWidth={active ? 2 : 1.5} />
+              <span className="relative">
+                <item.icon aria-hidden="true" size={21} strokeWidth={active ? 2 : 1.5} />
+                {due ? (
+                  <span aria-hidden="true" className="absolute -right-1 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+                ) : null}
+              </span>
               {item.label}
+              {due ? <span className="sr-only">{DUE_TEXT}</span> : null}
             </Link>
           );
         })}

@@ -124,7 +124,8 @@ export function TodayClient({
       if (body.kind === "error") {
         setPhase("failed");
         setMessage(body.message);
-        setRetryable(!FINAL_STATUSES.has(response.status));
+        // A rate limit (RATE-3) passes in seconds, so its 429 keeps "Coba lagi".
+        setRetryable(!FINAL_STATUSES.has(response.status) || response.headers.has("Retry-After"));
         return;
       }
 

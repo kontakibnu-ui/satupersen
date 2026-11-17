@@ -134,6 +134,7 @@ export default async function ExpensesPage({
         budget={budget}
         isPremium={isPremium}
         groups={[...byDay.values()]}
+        today={today}
       />
     </main>
   );

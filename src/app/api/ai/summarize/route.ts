@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { summarizeUserDay, type SummaryOutcome } from "@/lib/ai/summarize-day";
 import { todayKey } from "@/lib/dates";
+import { rateLimitMessage, takeAiRateLimit } from "@/lib/rate-limit";
 import { getActionContext } from "@/lib/session";
 
 /**
@@ -16,6 +17,9 @@ import { getActionContext } from "@/lib/session";
  * Regen quota (AI-4): the first summary of a day is always allowed, and after
  * that free accounts get 1 more attempt while premium gets 3. The same function
  * serves the WhatsApp command and the automatic summary, so the quota is shared.
+ *
+ * Rate limit (RATE-1): at most 5 taps a minute per user reach the model, so a
+ * burst of requests cannot slip past the quota before it is counted.
  */
 
 const bodySchema = z.object({
@@ -42,6 +46,19 @@ export async function POST(request: Request) {
 
   if (parsedBody.data.date !== todayKey(context.timeZone)) {
     return fail(409, "Hari sudah berganti. Muat ulang halaman ini untuk menganalisa hari ini.");
+  }
+
+  // RATE-1: taps in quick succession wait here, before any quota or model work.
+  // Only the web button counts; the WhatsApp command has its own flood limit and
+  // the 22:00 automatic summary is not a tap.
+  const wait = await takeAiRateLimit(context.userId);
+
+  if (wait > 0) {
+    // Retry-After tells the screen that, unlike a used up quota, trying again later helps.
+    return NextResponse.json<SummarizeResponse>(
+      { kind: "error", message: rateLimitMessage(wait) },
+      { status: 429, headers: { "Retry-After": String(wait) } },
+    );
   }
 
   const outcome = await summarizeUserDay({

@@ -14,10 +14,11 @@ type Feature = {
 /**
  * What can be recorded, as sentences that end in a real switch (DESIGN.md §10).
  * A band switched on fills with its colour and says what it means in numbers.
- * Two are on at first, so the pattern explains itself.
+ * All of them start on, so a visitor who only scrolls still reads every one
+ * (design audit 2026-11-14: two bands that started off hid half the list).
  */
 export function FeatureSwitches({ features }: { features: Feature[] }) {
-  const [on, setOn] = useState<Set<string>>(() => new Set(features.slice(0, 2).map((feature) => feature.id)));
+  const [on, setOn] = useState<Set<string>>(() => new Set(features.map((feature) => feature.id)));
 
   const toggle = (id: string) =>
     setOn((current) => {
@@ -50,7 +51,7 @@ export function FeatureSwitches({ features }: { features: Feature[] }) {
                 <p
                   id={`feature-${feature.id}`}
                   className={cn(
-                    "font-serif text-[clamp(1.5rem,2.4vw,2rem)] leading-tight font-normal transition-colors duration-300",
+                    "font-heading text-[clamp(1.375rem,2.2vw,1.75rem)] leading-tight font-bold tracking-[-0.015em] transition-colors duration-300",
                     active ? "text-text" : "text-text-muted",
                   )}
                 >

@@ -30,7 +30,8 @@ const CHEAPEST_MONTH = Math.min(...PACKAGES.map((pkg) => pkg.perMonth));
 const STEPS = [
   { clause: "Pertama, kamu menulis.", detail: "Beberapa kalimat saja, satu sampai dua menit.", preview: EntryPreview, tone: "bg-surface-muted" },
   { clause: "Lalu harimu dianalisa.", detail: "Yang sudah bagus, ruang untuk tumbuh, dan satu saran untuk besok.", preview: AnalysisPreview, tone: "bg-primary-soft" },
-  { clause: "Lalu progresmu terlihat.", detail: "\"Kamu 2% lebih baik dibanding kemarin\", beserta alasannya.", preview: ProgressPreview, tone: "bg-accent-soft" },
+  // `accent-soft` points at `primary-soft` since version 4, so the third field takes the deeper ruled-line blue to stay a field of its own.
+  { clause: "Lalu progresmu terlihat.", detail: "\"Kamu 2% lebih baik dibanding kemarin\", beserta alasannya.", preview: ProgressPreview, tone: "bg-rule" },
 ] as const;
 
 const FEATURES = [
@@ -84,6 +85,8 @@ const FAQ = [
   },
   {
     tab: "Kuota AI",
+    // The pricing lists link here from the word "token".
+    anchor: "faq-kuota",
     question: "Apa itu kuota AI bulanan?",
     answer: `Setiap analisa dan balasan AI memakai token. Paket gratis mendapat ${formatTokens(MONTHLY_TOKEN_SOFT_CAP.free)} token per bulan, premium ${formatTokens(MONTHLY_TOKEN_SOFT_CAP.premium)}. Kalau habis, analisa pertama tiap hari tetap jalan; analisa ulang dan balasan chat berhenti sampai tanggal 1.`,
   },
@@ -108,8 +111,11 @@ const FAQ = [
 /** Container of every section: one pair of outer margins on the whole page. */
 const frame = "mx-auto w-full max-w-[1080px] px-4 md:px-8";
 
-/** A section heading in Fraunces; every section names itself. */
-const sectionTitle = "font-serif text-[clamp(2rem,5vw,3.25rem)] leading-[1.05] font-light tracking-[-0.02em] text-text";
+/**
+ * A section heading in Plus Jakarta Sans 700, like every heading in version 4 (DESIGN.md §4); Lora stays
+ * for what is written on the paper. Every section names itself.
+ */
+const sectionTitle = "font-heading text-[clamp(2rem,5vw,3.25rem)] leading-[1.08] font-bold tracking-[-0.025em] text-text";
 
 /**
  * The landing page (DESIGN.md §10). One motif, the round "1%" stamp of the
@@ -169,7 +175,7 @@ export default async function LandingPage() {
             <div data-reveal className="landing-reveal">
               <h1
                 id="hero-title"
-                className="font-serif text-[clamp(3rem,8.5vw,5rem)] leading-[0.98] font-light tracking-[-0.03em] text-text"
+                className="font-heading text-[clamp(2.75rem,8vw,4.5rem)] leading-[1.02] font-bold tracking-[-0.035em] text-text"
               >
                 Jadi 1% lebih baik tiap hari
               </h1>
@@ -235,7 +241,9 @@ export default async function LandingPage() {
                       className="landing-reveal"
                       style={{ "--reveal-delay": `${index * 90}ms` } as React.CSSProperties}
                     >
-                      <p className="font-serif text-[clamp(1.5rem,2.4vw,2rem)] leading-tight text-text">{step.clause}</p>
+                      <p className="font-heading text-[clamp(1.375rem,2.2vw,1.75rem)] leading-tight font-bold tracking-[-0.015em] text-text">
+                        {step.clause}
+                      </p>
                       <p className="mt-2 max-w-[30ch] text-base text-text">{step.detail}</p>
                     </div>
                     <div
@@ -259,7 +267,9 @@ export default async function LandingPage() {
             <h2 id="features-title" className={sectionTitle}>
               Catat yang penting, tanpa ribet
             </h2>
-            <p className="mt-4 max-w-[40rem] text-lg text-text">Nyalakan satu per satu untuk melihat yang kamu dapat.</p>
+            <p className="mt-4 max-w-[40rem] text-lg text-text">
+              Semuanya bisa dipakai di paket gratis. Premium melonggarkan batasnya.
+            </p>
           </div>
           <div className="mt-10 md:mt-14">
             <FeatureSwitches features={FEATURES} />
@@ -343,17 +353,20 @@ export default async function LandingPage() {
         </section>
 
         <section id="faq" aria-labelledby="faq-title" className="scroll-mt-4 pb-20 md:pb-32">
-          <div className={cn(frame, "max-w-[820px]")}>
+          {/* Same left edge as every other section (DESIGN.md §5: content flush left); only the cards are narrower. */}
+          <div className={frame}>
             <h2 id="faq-title" data-reveal className={cn(sectionTitle, "landing-reveal")}>
               Pertanyaan yang sering muncul
             </h2>
-            <div className="mt-12">
+            <div className="mt-12 max-w-[820px]">
               {FAQ.map((item, index) => (
                 <details
                   key={item.question}
+                  id={"anchor" in item ? item.anchor : undefined}
                   name="faq"
                   open={index === 0}
-                  className={cn("landing-faq-card", "group relative")}
+                  // The tabs step to the right only from 768 px; on a phone the step would squeeze the questions.
+                  className={cn("landing-faq-card", "group relative scroll-mt-6 md:ml-[calc(var(--tab-step,0)*1px)]")}
                   style={{ "--tab-step": Math.min(index * 18, 72) } as React.CSSProperties}
                 >
                   <summary className="block cursor-pointer list-none">
@@ -398,7 +411,7 @@ export default async function LandingPage() {
         <section aria-labelledby="cta-title" className="bg-primary text-primary-foreground">
           <div className={cn(frame, "flex flex-col items-start gap-8 py-20 md:flex-row md:items-end md:justify-between md:py-28")}>
             <div data-reveal className="landing-reveal">
-              <h2 id="cta-title" className="font-serif text-[clamp(2rem,5vw,3.25rem)] leading-[1.05] font-light tracking-[-0.02em]">
+              <h2 id="cta-title" className="font-heading text-[clamp(2rem,5vw,3.25rem)] leading-[1.08] font-bold tracking-[-0.025em]">
                 Mulai dari satu kalimat hari ini
               </h2>
               <p className="mt-4 text-lg">Gratis untuk dimulai. Tanpa kartu.</p>

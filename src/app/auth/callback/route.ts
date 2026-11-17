@@ -1,10 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNextPath } from "@/lib/redirects";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
 
 /**
- * Landing point for the flows that leave the app: Google, and the link in the
- * sign-up confirmation email, send the user here with a code that is exchanged
- * for a session (AUTH-1).
+ * Landing point for the flows that leave the app: Google, the link in the
+ * sign-up confirmation email, and the link in the password reset email
+ * (`next=/reset-password`, AUTH-5) send the user here with a code that is
+ * exchanged for a session (AUTH-1).
  */
 /**
  * The redirect target is built from the Host header, not from request.url:
@@ -28,17 +30,22 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const origin = resolveOrigin(request);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/today";
+  // `next` is glued after the origin, so anything but an in-app path ("@evil.com") would leave the site.
+  const next = safeNextPath(searchParams.get("next"));
+
+  // A reset link that cannot be exchanged (expired, used, other browser) goes to
+  // /reset-password, which explains that and offers a new link; the login form would not.
+  const failed = next === "/reset-password" ? `${origin}/reset-password` : `${origin}/login?status=gagal`;
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?status=gagal`);
+    return NextResponse.redirect(failed);
   }
 
   const supabase = await createSupabaseActionClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(`${origin}/login?status=gagal`);
+    return NextResponse.redirect(failed);
   }
 
   return NextResponse.redirect(`${origin}${next}`);

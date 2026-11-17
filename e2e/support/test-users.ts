@@ -8,7 +8,9 @@ import type { BrowserContext } from "@playwright/test";
  *
  * The session cookies are produced by @supabase/ssr's own server client, the
  * same library the app reads them with, so the cookie format is never guessed.
- * Only the local stack is ever touched: the URL must be 127.0.0.1.
+ * Only the local stack is ever touched: the URL must be 127.0.0.1 or localhost.
+ * localhost is accepted because another program on a machine can hold
+ * 127.0.0.1:54321 while Docker's Supabase still answers on ::1 (seen 2026-11-14).
  */
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ?? "";
@@ -18,7 +20,7 @@ const PASSWORD = "RahasiaUji123!";
 
 export const BASE_URL = "http://127.0.0.1:3000";
 
-const isLocal = /^http:\/\/127\.0\.0\.1:\d+$/.test(url);
+const isLocal = /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(url);
 
 export async function localStackIsRunning(): Promise<boolean> {
   if (!isLocal || !anonKey || !serviceKey) {
@@ -334,4 +336,99 @@ export async function seedAiUsage(user: TestUser, promptTokens: number, completi
     prompt_tokens: promptTokens,
     completion_tokens: completionTokens,
   });
+}
+
+async function restReturning<T>(path: string, payload: unknown): Promise<T[]> {
+  const response = await fetch(`${url}/rest/v1/${path}`, {
+    method: "POST",
+    headers: { ...serviceHeaders(), Prefer: "return=representation" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Seeding POST ${path} failed with ${response.status}`);
+  }
+
+  return (await response.json()) as T[];
+}
+
+/**
+ * A Belajar material (LEARN-1). The insert trigger always starts it as a draft
+ * and counts it against the free limit, exactly as for a real user; an active
+ * material is then set the way the server sets it after the first check.
+ */
+export async function seedStudyMaterial(
+  user: TestUser,
+  fields: { title: string; source: string; active?: boolean; explanation?: string; feedback?: Record<string, unknown> },
+): Promise<string> {
+  const [row] = await restReturning<{ id: string }>("study_materials", {
+    user_id: user.id,
+    title: fields.title,
+    source: fields.source,
+  });
+
+  if (fields.active || fields.explanation !== undefined || fields.feedback !== undefined) {
+    await rest(`study_materials?id=eq.${row.id}`, "PATCH", {
+      ...(fields.active ? { status: "active", activated_at: new Date().toISOString() } : {}),
+      ...(fields.explanation !== undefined ? { explanation: fields.explanation } : {}),
+      ...(fields.feedback !== undefined ? { feedback: fields.feedback } : {}),
+    });
+  }
+
+  return row.id;
+}
+
+/** A review question, written the way the server writes it after a check (LEARN-2, LEARN-3). */
+export async function seedStudyQuestion(
+  user: TestUser,
+  materialId: string,
+  fields: {
+    position: number;
+    prompt: string;
+    answer: string;
+    kind?: "recall" | "elaboration";
+    step?: number;
+    dueDate: string | null;
+  },
+): Promise<string> {
+  const [row] = await restReturning<{ id: string }>("study_questions", {
+    material_id: materialId,
+    user_id: user.id,
+    position: fields.position,
+    prompt: fields.prompt,
+    answer: fields.answer,
+    kind: fields.kind ?? "recall",
+    step: fields.step ?? 0,
+    due_date: fields.dueDate,
+  });
+
+  return row.id;
+}
+
+/** A stored review of one question on one day (LEARN-4). */
+export async function seedStudyReview(
+  user: TestUser,
+  materialId: string,
+  questionId: string,
+  fields: { reviewedOn: string; answer: string; rating: "forgot" | "unsure" | "remembered"; feedback?: string },
+): Promise<void> {
+  await rest("study_reviews", "POST", {
+    user_id: user.id,
+    material_id: materialId,
+    question_id: questionId,
+    reviewed_on: fields.reviewedOn,
+    answer: fields.answer,
+    rating: fields.rating,
+    feedback: fields.feedback ?? null,
+  });
+}
+
+/** An AI check already used on `date`, so a test can stand at the quota without calling the model (LEARN-5). */
+export async function seedStudyCheck(
+  user: TestUser,
+  materialId: string,
+  date: string,
+  kind: "explanation" | "review" = "review",
+): Promise<void> {
+  await rest("study_checks", "POST", { user_id: user.id, material_id: materialId, date, kind });
 }

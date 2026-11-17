@@ -5,14 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MIN_NEW_PASSWORD } from "@/lib/passwords";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type LoginMode = "masuk" | "daftar";
 
 type Status = { kind: "idle" | "sending" | "sent" | "error"; message?: string };
-
-/** Only for a new password; signing in accepts whatever the account already has. */
-const MIN_NEW_PASSWORD = 8;
 
 /**
  * Says what happened and what to do next, without blaming the user (DESIGN.md §11).
@@ -196,7 +194,14 @@ export function LoginForm({
         />
         {mode === "daftar" ? (
           <p className="mt-2 text-sm text-text-muted">Minimal {MIN_NEW_PASSWORD} karakter.</p>
-        ) : null}
+        ) : (
+          // Without it an account made with email and password has no way back once the password is gone (AUTH-5).
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className={buttonVariants({ variant: "link", className: "text-sm" })}>
+              Lupa password?
+            </Link>
+          </div>
+        )}
 
         <Button type="submit" disabled={busy} className="mt-4 w-full">
           {mode === "daftar" ? "Daftar" : "Masuk"}

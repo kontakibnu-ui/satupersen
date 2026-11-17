@@ -5,6 +5,8 @@ import {
   deleteTestUser,
   jakartaToday,
   localStackIsRunning,
+  readRows,
+  seedAiUsage,
   seedBudget,
   seedExpense,
   seedIncome,
@@ -234,4 +236,100 @@ test("bulan sebelumnya bisa dibuka tanpa tombol tambah, dan bulan depan dipotong
 
   await page.goto("/expenses?bulan=2099-01");
   await expect(page.getByRole("button", { name: "Tambah pengeluaran" })).toBeVisible();
+});
+
+/**
+ * A screenshot drawn in a second tab, so no picture file lives in the repo.
+ * Plain black text on white, like the receipt screen of a bank or e-wallet app.
+ */
+async function picture(page: Page, lines: string[]): Promise<Buffer> {
+  const sheet = await page.context().newPage();
+  await sheet.setViewportSize({ width: 540, height: 900 });
+  await sheet.setContent(
+    `<body style="margin:0;padding:48px 40px;background:#fff;color:#111;font-family:Arial,sans-serif">${lines
+      .map((line) => `<p style="margin:0 0 24px;font-size:30px">${line}</p>`)
+      .join("")}</body>`,
+  );
+  const shot = await sheet.screenshot({ type: "png" });
+  await sheet.close();
+  return shot;
+}
+
+test("tanggal entri: bisa hari sebelumnya di bulan lalu dan ada tautan ke bulannya; besok ditolak (EXP-8)", async ({
+  page,
+}) => {
+  test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
+  const user = await newUser(page, "tanggal");
+  const lastMonthDay = daysBefore(firstOfMonth, 10);
+  await page.goto("/expenses");
+
+  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await expect(page.getByLabel("Tanggal")).toHaveValue(today);
+  await page.getByLabel("Nominal").fill("15000");
+  await page.getByRole("radio", { name: "Makan" }).check({ force: true });
+  await page.getByLabel("Tanggal").fill(lastMonthDay);
+  await page.getByRole("button", { name: "Simpan" }).click();
+
+  // Not on this month's sheet, so the line under the card points to it.
+  await expect(page.getByText("Belum ada catatan uang di bulan ini.")).toBeVisible();
+  await expect(page.getByText(`Tersimpan di`, { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Lihat bulan itu" }).click();
+  await expect(page).toHaveURL(new RegExp(`bulan=${lastMonthDay.slice(0, 7)}`));
+  await expect(page.getByRole("button", { name: /Makan\s*Rp 15\.000/ })).toBeVisible();
+
+  const rows = await readRows<{ date: string; amount: number }>("expenses", `select=date,amount&user_id=eq.${user.id}`);
+  expect(rows).toEqual([{ date: lastMonthDay, amount: 15000 }]);
+
+  await page.goto("/expenses");
+  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await page.getByLabel("Nominal").fill("5000");
+  await page.getByRole("radio", { name: "Makan" }).check({ force: true });
+  await page.getByLabel("Tanggal").fill(daysBefore(today, -1));
+  await page.getByRole("button", { name: "Simpan" }).click();
+  await expect(page.getByText("Pilih tanggal hari ini atau sebelumnya", { exact: false })).toBeVisible();
+  expect(await readRows("expenses", `select=id&user_id=eq.${user.id}`)).toHaveLength(1);
+});
+
+test("isi dari screenshot: gambar dibaca di perangkat; lewat batas token AI tidak dipanggil dan tidak ada yang tersimpan (EXP-7, PRD §8)", async ({
+  page,
+}) => {
+  test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
+  test.setTimeout(150_000);
+  const user = await newUser(page, "screenshot-kuota");
+  await seedAiUsage(user, 200_000);
+  const shot = await picture(page, [
+    "Transfer Berhasil",
+    "Penerima BUDI SANTOSO",
+    "Nominal Rp 50.000",
+    "Tanggal 15 Nov 2026",
+  ]);
+  await page.goto("/expenses");
+
+  await page.getByLabel("Isi dari screenshot bank").setInputFiles({ name: "bukti.png", mimeType: "image/png", buffer: shot });
+  await expect(page.getByRole("heading", { name: "Isi dari screenshot" })).toBeVisible();
+
+  // The engine and the language data come from /ocr on this site, under the
+  // production CSP when run against `next start`; the text it finds is real
+  // enough to reach the server, which stops at the monthly cap.
+  await expect(page.getByText("Kuota AI bulan ini sudah habis.", { exact: false })).toBeVisible({ timeout: 120_000 });
+  expect(await readRows("ai_usage", `select=id&user_id=eq.${user.id}&feature=eq.receipt`)).toHaveLength(0);
+  expect(await readRows("expenses", `select=id&user_id=eq.${user.id}`)).toHaveLength(0);
+
+  await page.getByRole("button", { name: "Isi manual" }).click();
+  await expect(page.getByRole("heading", { name: "Pengeluaran baru" })).toBeVisible();
+});
+
+test("isi dari screenshot: gambar tanpa tulisan dijawab jelas tanpa memanggil server, lalu bisa pilih gambar lain (EXP-7)", async ({
+  page,
+}) => {
+  test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
+  test.setTimeout(150_000);
+  const user = await newUser(page, "screenshot-kosong");
+  const blank = await picture(page, []);
+  await page.goto("/expenses");
+
+  await page.getByLabel("Isi dari screenshot bank").setInputFiles({ name: "kosong.png", mimeType: "image/png", buffer: blank });
+  await expect(page.getByText("Tulisan di gambar ini tidak terbaca.", { exact: false })).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByLabel("Pilih gambar lain")).toBeAttached();
+  expect(await readRows("ai_usage", `select=id&user_id=eq.${user.id}`)).toHaveLength(0);
 });

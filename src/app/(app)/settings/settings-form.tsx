@@ -6,6 +6,7 @@ import { useActionState, useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, Chip, IconBadge } from "@/components/ui/card";
+import { forgetAllBooks } from "@/lib/books/cache";
 import { AccountData } from "./account-data";
 import { signOut, updateProfile, type ProfileActionResult } from "./actions";
 
@@ -158,7 +159,13 @@ export function SettingsForm({
       </nav>
 
       <Card as="div" className="flex flex-col gap-2">
-        <form action={signOut}>
+        {/* Book copies kept for Ruang baca go before the session does (READ-9). */}
+        <form
+          action={async () => {
+            await forgetAllBooks();
+            await signOut();
+          }}
+        >
           <Button type="submit" variant="secondary" className="w-full">
             <LogOut aria-hidden="true" size={18} strokeWidth={2} />
             Keluar

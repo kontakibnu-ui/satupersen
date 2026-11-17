@@ -12,7 +12,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
  * with the service role. Nothing but ids and statuses is ever logged.
  */
 
-export type AiFeature = "daily" | "chat" | "report";
+export type AiFeature = "daily" | "chat" | "report" | "study" | "receipt";
 
 /** Stores the calls of one feature run; a failed write is logged and never blocks the user. */
 export async function recordUsage(userId: string, feature: AiFeature, usages: TokenUsage[]): Promise<void> {

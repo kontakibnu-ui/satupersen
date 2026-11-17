@@ -97,6 +97,36 @@ export type DeleteAccountResult = { ok: false; message: string };
 /** The word the user types to confirm; anything else leaves the account alone. */
 const DELETE_CONFIRMATION = "HAPUS";
 
+/** Page size of a Storage folder listing. */
+const STORAGE_PAGE = 1000;
+
+/**
+ * Deletes every file in the user's folder of the books bucket, including files
+ * whose row is already gone. Returns false when Storage refuses, so the caller
+ * keeps the account rather than leave files without an owner.
+ */
+async function removeBookFiles(admin: ReturnType<typeof createSupabaseAdminClient>, userId: string): Promise<boolean> {
+  for (;;) {
+    const { data: files, error: listError } = await admin.storage.from("books").list(userId, { limit: STORAGE_PAGE });
+
+    if (listError) {
+      console.error("listing book files before deleting an account failed", { userId, kind: listError.name });
+      return false;
+    }
+
+    if (!files || files.length === 0) {
+      return true;
+    }
+
+    const { error: removeError } = await admin.storage.from("books").remove(files.map((file) => `${userId}/${file.name}`));
+
+    if (removeError) {
+      console.error("deleting book files before deleting an account failed", { userId, kind: removeError.name });
+      return false;
+    }
+  }
+}
+
 /**
  * Deletes the account and everything stored for it (PRD.md §7: for every plan,
  * with no condition). Removing the user in Supabase Auth cascades through every
@@ -120,7 +150,15 @@ export async function deleteAccount(input: { confirmation: string }): Promise<De
     return { ok: false, message: "Sesi kamu sudah berakhir. Masuk lagi dulu." };
   }
 
-  const { error } = await createSupabaseAdminClient().auth.admin.deleteUser(userId);
+  const admin = createSupabaseAdminClient();
+
+  // Book files live in Storage, which the cascade does not reach (READ-10).
+  // They go first; if they cannot, the account stays, so nothing is left behind.
+  if (!(await removeBookFiles(admin, userId))) {
+    return { ok: false, message: "Akun belum bisa dihapus. Coba lagi sebentar lagi." };
+  }
+
+  const { error } = await admin.auth.admin.deleteUser(userId);
 
   if (error) {
     console.error("deleting an account failed", { userId });

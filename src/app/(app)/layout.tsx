@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppHeader, AppNav } from "@/components/app-nav";
-import { isValidTimeZone } from "@/lib/dates";
+import { isValidTimeZone, todayKey } from "@/lib/dates";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { TimezoneNotice } from "./timezone-notice";
 
@@ -46,17 +46,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // when no name is set yet.
   const email = typeof claims?.claims?.email === "string" ? claims.claims.email : "";
   const initial = ((profile.name as string | null)?.trim()[0] ?? email.trim()[0] ?? "S").toUpperCase();
+  const timeZone = isValidTimeZone(profile.timezone as string) ? (profile.timezone as string) : "Asia/Jakarta";
+
+  // LEARN-9: a dot on Belajar while a review question is due on the user's day.
+  // Only a count is read. If it cannot be read the dot is left off: the pages
+  // themselves still show what is due.
+  const { count: dueCount, error: dueError } = await supabase
+    .from("study_questions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .lte("due_date", todayKey(timeZone));
+
+  if (dueError) {
+    console.error("counting due study questions failed", { userId });
+  }
+
+  const learnDue = !dueError && (dueCount ?? 0) > 0;
 
   return (
     <div className="min-h-dvh">
-      <AppHeader initial={initial} />
+      <AppHeader initial={initial} learnDue={learnDue} />
 
       <div className="mx-auto w-full max-w-[640px] px-4 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] has-[[data-wide]]:max-w-[960px] md:px-6 lg:pb-16">
-        <TimezoneNotice savedZone={isValidTimeZone(profile.timezone as string) ? (profile.timezone as string) : "Asia/Jakarta"} />
+        <TimezoneNotice savedZone={timeZone} />
         {children}
       </div>
 
-      <AppNav />
+      <AppNav learnDue={learnDue} />
     </div>
   );
 }

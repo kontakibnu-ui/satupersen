@@ -3,9 +3,12 @@ import {
   categoriesFor,
   categoryLabel,
   compareMonths,
+  earliestEntryDate,
   EXPENSE_CATEGORIES,
+  isAllowedEntryDate,
   isCategoryOf,
   MAX_AMOUNT,
+  MAX_BACKDATE_DAYS,
   monthsEndingAt,
   monthTotals,
   netOf,
@@ -128,5 +131,31 @@ describe("monthly totals and comparison (EXP-5, EXP-6)", () => {
   it("lists the months ending at a month, across a year change", () => {
     expect(monthsEndingAt("2026-02", 4)).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
     expect(monthsEndingAt("2026-10", 1)).toEqual(["2026-10"]);
+  });
+});
+
+describe("entry date (EXP-8)", () => {
+  const today = "2026-11-16";
+
+  it("allows today and earlier days up to the limit", () => {
+    expect(isAllowedEntryDate(today, today)).toBe(true);
+    expect(isAllowedEntryDate("2026-11-15", today)).toBe(true);
+    expect(isAllowedEntryDate("2026-10-31", today)).toBe(true);
+    expect(isAllowedEntryDate(earliestEntryDate(today), today)).toBe(true);
+  });
+
+  it("refuses the future, days past the limit, and anything that is not a day", () => {
+    expect(isAllowedEntryDate("2026-11-17", today)).toBe(false);
+    expect(isAllowedEntryDate("2027-01-01", today)).toBe(false);
+    expect(isAllowedEntryDate("2025-11-15", today)).toBe(false);
+    expect(isAllowedEntryDate("2026-02-30", today)).toBe(false);
+    expect(isAllowedEntryDate("16/11/2026", today)).toBe(false);
+    expect(isAllowedEntryDate("", today)).toBe(false);
+  });
+
+  it("counts the limit in calendar days, across a leap year", () => {
+    expect(earliestEntryDate("2026-11-16")).toBe("2025-11-16");
+    expect(earliestEntryDate("2028-03-01")).toBe("2027-03-02");
+    expect(MAX_BACKDATE_DAYS).toBe(365);
   });
 });

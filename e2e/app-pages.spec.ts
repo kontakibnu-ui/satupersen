@@ -257,6 +257,42 @@ test("Hari Ini kosong: tombol tetap hidup dan menjelaskan, tanpa memanggil AI (A
   expect(aiCalls).toBe(0);
 });
 
+test("Analisa hari ini: ketukan keenam dalam semenit ditahan rate limit dengan pesan menunggu (RATE-1, RATE-3)", async ({
+  page,
+}) => {
+  test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
+
+  const user = await createTestUser("rate-limit", true);
+
+  try {
+    await signIn(page.context(), user);
+    await page.goto("/today");
+
+    // The diary is empty, so the allowed taps stop with 400 before any model
+    // call. Eleven taps span at most two one minute windows, so one window
+    // holds a sixth tap whatever the clock does.
+    const statuses: number[] = [];
+    let limited: { retryAfter: string | undefined; message: string | undefined } | null = null;
+
+    for (let tap = 0; tap < 11 && limited === null; tap += 1) {
+      const response = await page.request.post("/api/ai/summarize", { data: { date: today } });
+      statuses.push(response.status());
+
+      if (response.status() === 429) {
+        limited = { retryAfter: response.headers()["retry-after"], message: ((await response.json()) as { message?: string }).message };
+      }
+    }
+
+    // Normal use is untouched: at least five taps go through first.
+    expect(statuses.indexOf(429)).toBeGreaterThanOrEqual(5);
+    expect(statuses.filter((status) => status !== 429).every((status) => status === 400)).toBe(true);
+    expect(limited?.retryAfter).toMatch(/^\d+$/);
+    expect(limited?.message).toMatch(/^Tunggu sebentar ya, kamu bisa coba lagi dalam \d+ detik\.$/);
+  } finally {
+    await deleteTestUser(user);
+  }
+});
+
 test("Hari Ini menulis: tulisan di layar pertama, pemantik bisa diganti, bar menulis di HP (DIARY-1, DESIGN §5, §6)", async ({
   page,
 }) => {
@@ -469,15 +505,17 @@ test("Laporan kosong: pesan yang menjelaskan kapan laporan muncul, tanpa data pa
   await expect(page.getByRole("region")).toHaveCount(0);
 });
 
-test("Progres menautkan ke Laporan dan Riwayat (DESIGN §5)", async ({ page }) => {
+test("Progres bertab Grafik, Riwayat, dan Laporan (DESIGN §5, §6)", async ({ page }) => {
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
   await open(page, scenarioNamed("dashboard-7"));
-  await expect(page.getByRole("main").getByRole("link", { name: /Laporan/ })).toHaveAttribute("href", "/reports");
-  await expect(page.getByRole("main").getByRole("link", { name: /Riwayat/ })).toHaveAttribute("href", "/history");
+  const tabs = page.getByRole("navigation", { name: "Bagian Progres" });
+  await expect(tabs.getByRole("link", { name: "Grafik" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "Laporan" })).toHaveAttribute("href", "/reports");
+  await expect(tabs.getByRole("link", { name: "Riwayat" })).toHaveAttribute("href", "/history");
 });
 
-test("Header: profil di pojok kanan atas membuka Akun, dan Riwayat ada di navigasi (DESIGN §5)", async ({ page }) => {
+test("Header: profil di pojok kanan atas membuka Akun, dan Belajar ada di navigasi (DESIGN §5)", async ({ page }) => {
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
   for (const width of [360, 1280]) {
@@ -498,8 +536,8 @@ test("Header: profil di pojok kanan atas membuka Akun, dan Riwayat ada di naviga
 
     await expect(page.getByRole("banner").getByRole("switch", { name: "Mode malam" })).toBeVisible();
     await expect(
-      page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Riwayat" }),
-    ).toHaveAttribute("href", "/history");
+      page.getByRole("navigation", { name: "Navigasi utama" }).filter({ visible: true }).getByRole("link", { name: "Belajar" }),
+    ).toHaveAttribute("href", "/learn");
   }
 });
 

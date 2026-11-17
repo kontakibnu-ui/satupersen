@@ -77,10 +77,10 @@ export function ScoreRing({
           <>
             <span
               className={cn(
-                "font-serif font-light leading-none text-text tabular-nums",
-                // A signed figure is wider than the old two digits, so it steps
-                // down from 60 px to stay inside the dotted ring.
-                size >= 150 ? (figure.length <= 3 ? "text-5xl" : "text-4xl") : "text-3xl",
+                // Big numbers are Plus Jakarta Sans 700 in version 4 (DESIGN.md §4).
+                "font-heading font-bold leading-none tracking-[-0.02em] text-text tabular-nums",
+                // A signed bold figure is wide, so it steps down to stay inside the dotted ring.
+                size >= 150 ? (figure.length <= 3 ? "text-4xl" : "text-3xl") : "text-2xl",
               )}
             >
               {figure}

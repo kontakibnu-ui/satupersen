@@ -1,7 +1,8 @@
-import { CalendarDays, ChartLine, ChevronRight, FileText, Lock, TrendingUp } from "lucide-react";
+import { ChartLine, Lock, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { ProgressTabs } from "@/components/progress-tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, IconBadge } from "@/components/ui/card";
 import { formatPercent } from "@/lib/format";
@@ -54,7 +55,8 @@ const DIMENSION_LABELS: Record<DimensionName, string> = {
 /**
  * Progres (DASH-1 to DASH-3, DESIGN.md §2 and §8). The one focus is the average
  * score of the chosen period, with its line. Everything else stays quiet: the
- * dimension bars are neutral, "sejak mulai" is one line, and Riwayat is a link.
+ * dimension bars are neutral and "sejak mulai" is one line. Riwayat and Laporan
+ * are the other two tabs of Progres (DESIGN.md §6 "Tab Progres", 2026-11-15).
  *
  * The period comes from the URL, and the server decides what it may show: the
  * 1 year view belongs to premium (DASH-2), so a free account is told so here and
@@ -94,6 +96,7 @@ export default async function DashboardPage({
   return (
     <main data-wide className="py-6 md:py-10">
       <PageHeader title="Progres" description="Lihat arahmu, bukan hanya satu hari." />
+      <ProgressTabs current="grafik" />
 
       <nav aria-label="Periode" className="mt-5">
         <ul className="inline-flex gap-1 rounded-full border border-border bg-surface-muted p-1">
@@ -128,30 +131,6 @@ export default async function DashboardPage({
         <Overview supabase={supabase} userId={userId} today={today} period={period} />
       )}
 
-      <nav aria-label="Halaman lain" className="mt-6 grid gap-4 md:grid-cols-2">
-        <Link
-          href="/reports"
-          className="flex min-h-11 items-center gap-4 rounded-3xl border border-border bg-surface p-5 transition-colors duration-200 hover:bg-surface-muted"
-        >
-          <IconBadge icon={FileText} tone="sage" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold text-text">Laporan</span>
-            <span className="block text-sm text-text-muted">Mingguan dan bulanan</span>
-          </span>
-          <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="text-text-muted" />
-        </Link>
-        <Link
-          href="/history"
-          className="flex min-h-11 items-center gap-4 rounded-3xl border border-border bg-surface p-5 transition-colors duration-200 hover:bg-surface-muted"
-        >
-          <IconBadge icon={CalendarDays} tone="accent" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold text-text">Riwayat</span>
-            <span className="block text-sm text-text-muted">Baca lagi tulisanmu</span>
-          </span>
-          <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="text-text-muted" />
-        </Link>
-      </nav>
     </main>
   );
 }

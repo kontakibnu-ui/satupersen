@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { siteContentSecurityPolicy } from "./src/lib/csp";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -12,27 +13,14 @@ const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
   : "";
 
 /**
- * Content-Security-Policy (PRD.md §7, point 6). Next.js writes small inline
- * scripts into every page, so scripts allow 'unsafe-inline' for now; a policy
- * with per-request nonces is possible later and would tighten this one line.
- * Everything else is closed: no plugins, no framing, no other origin for
- * scripts, styles, fonts, images, or requests. The dev server needs eval and a
- * websocket for hot reload, which production never gets.
+ * The site-wide Content-Security-Policy lives in src/lib/csp.ts (PRD.md §7,
+ * point 6). The reader at /read/[id] gets it from src/proxy.ts instead,
+ * together with its own nonce policy (READ-8), so it is left out here: two
+ * sources writing the same header could drop one of the policies.
  */
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  `connect-src 'self' ${supabaseOrigin}${isProduction ? "" : " ws: wss:"}`.trimEnd(),
-  "object-src 'none'",
-  "base-uri 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
+const contentSecurityPolicy = siteContentSecurityPolicy({ isProduction, supabaseOrigin });
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: contentSecurityPolicy },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -52,7 +40,13 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
 
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      {
+        source: "/((?!read/).*)",
+        headers: [{ key: "Content-Security-Policy", value: contentSecurityPolicy }],
+      },
+    ];
   },
 
   /**

@@ -295,11 +295,7 @@ html.dark {
     transition: stroke-dashoffset 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 
-  /* FAQ: index cards filed in a drawer, each with a tab that steps to the right. */
-  .landing-faq-card {
-    margin-left: calc(var(--tab-step, 0) * 1px);
-  }
-
+  /* FAQ: index cards filed in a drawer. Each tab steps to the right from 768 px (md:ml-* on the card). */
   .landing-faq-card + .landing-faq-card {
     margin-top: -12px;
   }

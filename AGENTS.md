@@ -72,7 +72,8 @@ Jika env model AI kosong, fitur AI menampilkan error konfigurasi yang jelas. **J
 src/app/(auth)/login
 src/app/auth/callback      URL asli /auth/callback (penukar kode masuk), bukan grup (auth)
 src/app/onboarding         di luar (app) karena layar persetujuan tanpa navigasi
-src/app/(app)/today, history, habits, expenses, dashboard, reports, settings
+src/app/read/[id]          pembaca Ruang baca (PRD READ), di luar (app) karena tanpa navigasi dan memakai CSP nonce sendiri
+src/app/(app)/today, history, habits, learn, expenses, dashboard, reports, settings
 src/app/api/ai/summarize
 src/app/api/whatsapp/webhook
 src/app/api/cron/tick
@@ -80,8 +81,15 @@ src/app/api/payments/webhook
 src/lib/ai/        openrouter.ts, prompts.ts, schemas.ts, scoring.ts
 src/lib/whatsapp/  client.ts, handlers.ts, signature.ts
 src/lib/supabase/  server.ts, client.ts, admin.ts
+src/lib/study/             Belajar: jadwal review dan kuota (fungsi murni, dites), aturan input
+src/lib/rate-limit.ts      rate limit per user lewat tabel rate_limits (PRD RATE-1)
 src/lib/dates.ts
 src/lib/entries.ts         aturan entri yang dipakai klien dan server (mis. batas karakter)
+src/lib/receipt.ts         Isi dari screenshot (EXP-7): penyamaran angka panjang dan pengaman hasil bacaan AI
+scripts/copy-ocr-assets.mjs  menyalin mesin OCR dan data bahasa dari node_modules ke public/ocr (tidak di-commit) sebelum dev dan build
+src/lib/books/             Ruang baca: aturan file dan kuota (fungsi murni, dites), cache salinan di browser
+vendor/foliate-js/         salinan foliate-js dari repo pembuatnya, dikunci di satu commit (lihat README di folder itu); bukan paket npm
+scripts/copy-reader-assets.mjs  menyalin foliate-js, pdf.js, dan aset pembaca lain ke public/reader (tidak di-commit) sebelum dev dan build
 src/config/crisis.ts
 src/components/ui/         komponen dasar DESIGN.md §6 (tombol); dipakai ulang, tidak ditulis ulang per halaman
 src/components/            komponen yang dipakai lebih dari satu rute

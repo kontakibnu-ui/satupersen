@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
+import { ProgressTabs } from "@/components/progress-tabs";
 import { formatPercent } from "@/lib/format";
 import { reportContentSchema, type ReportContent } from "@/lib/reports/content";
 import { formatPeriodLabel, type ReportType } from "@/lib/reports/period";
@@ -20,7 +21,8 @@ type ReportRow = {
 };
 
 /**
- * Laporan (REPORT-1 to REPORT-4). The tick writes these; this screen only reads
+ * Laporan (REPORT-1 to REPORT-4), the third tab of Progres since 2026-11-15
+ * (DESIGN.md §5): Progres's title, tabs, and 960 px column, content at 640 px. The tick writes these; this screen only reads
  * the user's own rows, so row level security keeps everyone else's out. Rows
  * that are not finished (pending, skipped, failed) are not shown, and nothing is
  * made up to fill the gap (DESIGN.md §12).
@@ -56,21 +58,24 @@ export default async function ReportsPage() {
   });
 
   return (
-    <main className="py-6 md:py-10">
-      <PageHeader title="Laporan" description="Tren, pola, dan satu fokus untuk periode berikutnya." />
+    <main data-wide className="py-6 md:py-10">
+      <PageHeader title="Progres" description="Tren, pola, dan satu fokus untuk periode berikutnya." />
+      <ProgressTabs current="laporan" />
 
-      {reports.length === 0 ? (
-        <p className="mt-6 rounded-3xl border border-border bg-surface p-6 text-base text-text-muted">
-          Belum ada laporan. Laporan mingguan muncul tiap Senin pagi, kalau minggu sebelumnya punya
-          minimal 3 hari yang sudah dianalisa.
-        </p>
-      ) : (
-        <div className="mt-6 flex flex-col gap-4">
-          {reports.map((report) => (
-            <ReportView key={`${report.type}-${report.start}`} {...report} />
-          ))}
-        </div>
-      )}
+      <div className="max-w-[640px]">
+        {reports.length === 0 ? (
+          <p className="mt-6 rounded-3xl border border-border bg-surface p-6 text-base text-text-muted">
+            Belum ada laporan. Laporan mingguan muncul tiap Senin pagi, kalau minggu sebelumnya punya
+            minimal 3 hari yang sudah dianalisa.
+          </p>
+        ) : (
+          <div className="mt-6 flex flex-col gap-4">
+            {reports.map((report) => (
+              <ReportView key={`${report.type}-${report.start}`} {...report} />
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

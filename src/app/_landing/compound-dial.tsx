@@ -38,7 +38,7 @@ export function CompoundDial() {
           <circle cx="150" cy="150" r="112" className="fill-none stroke-primary/30" strokeWidth="1.5" strokeDasharray="2 6" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="font-serif text-[clamp(3rem,8.5vw,5rem)] leading-none font-light tracking-[-0.03em] text-primary tabular-nums">
+          <span className="font-heading text-[clamp(2.75rem,8vw,4.5rem)] leading-none font-bold tracking-[-0.03em] text-primary tabular-nums">
             {formatMultiple(better)}x
           </span>
           <span className="mt-2 text-base text-text-muted">hari ke-{days}</span>
@@ -65,14 +65,15 @@ export function CompoundDial() {
           className="mt-3 h-11 w-full cursor-pointer accent-primary"
         />
 
-        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Pilih cepat">
+        {/* Four equal columns on a phone, so "1 tahun" does not drop to a row of its own at 360 px. */}
+        <div className="mt-3 grid grid-cols-4 gap-2 sm:flex sm:flex-wrap" role="group" aria-label="Pilih cepat">
           {PRESETS.map((preset) => (
             <button
               key={preset}
               type="button"
               onClick={() => setDays(preset)}
               aria-pressed={days === preset}
-              className="min-h-11 rounded-full border border-control px-4 text-sm font-semibold text-text transition-colors duration-200 hover:bg-surface-muted aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+              className="min-h-11 rounded-full border border-control px-2 text-sm font-semibold whitespace-nowrap sm:px-4 text-text transition-colors duration-200 hover:bg-surface-muted aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             >
               {preset === MAX_DAYS ? "1 tahun" : `${preset} hari`}
             </button>

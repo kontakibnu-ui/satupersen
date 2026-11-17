@@ -3,7 +3,10 @@ import {
   AiConfigError,
   AiOutputError,
   AiProviderError,
+  checkExplanation,
+  checkReviewAnswers,
   getModelFor,
+  readReceipt,
   summarizeDay,
 } from "@/lib/ai/openrouter";
 
@@ -166,5 +169,159 @@ describe("summarizeDay", () => {
 
     await expect(summarizeDay(promptInput)).rejects.toThrow(/Could not reach OpenRouter/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Belajar: checkExplanation dan checkReviewAnswers (LEARN-2, LEARN-4, LEARN-6)", () => {
+  const explanationInput = {
+    title: "Fotosintesis",
+    source: "Tumbuhan memakai cahaya, air, dan karbon dioksida untuk membuat glukosa dan oksigen.",
+    explanation: "Tumbuhan bikin makanan dari cahaya.",
+    questionsWanted: true,
+  };
+  const explanationOutput = {
+    summary: "Kamu menangkap bahwa tumbuhan memakai cahaya.",
+    correct: ["Tumbuhan memakai cahaya"],
+    missing: ["Air dan karbon dioksida sebagai bahan", "Hasilnya glukosa dan oksigen"],
+    wrong: [],
+    not_in_material: [],
+    language: "id",
+    questions: [
+      { prompt: "Apa bahan fotosintesis?", answer: "Cahaya, air, dan karbon dioksida.", kind: "recall" },
+      { prompt: "Apa hasilnya?", answer: "Glukosa dan oksigen.", kind: "recall" },
+      { prompt: "Kenapa tumbuhan butuh cahaya?", answer: "Cahaya dipakai untuk membuat glukosa.", kind: "elaboration" },
+    ],
+  };
+
+  it("memakai model analisa harian, data_collection deny, dan mengembalikan pertanyaan", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch(completion(JSON.stringify(explanationOutput)));
+
+    const result = await checkExplanation(explanationInput);
+
+    expect(result.model).toBe("deepseek/test-model");
+    expect(result.questions).toHaveLength(3);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.model).toBe("deepseek/test-model");
+    expect(body.provider).toEqual({ data_collection: "deny" });
+    expect(body.messages[1].content).toContain("Questions wanted: yes");
+  });
+
+  it("mencoba ulang sekali lalu gagal jelas, tanpa hasil karangan", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const withoutQuestions = { ...explanationOutput, questions: [] };
+    const fetchMock = stubFetch(completion(JSON.stringify(withoutQuestions)), completion("bukan json"));
+
+    await expect(checkExplanation(explanationInput)).rejects.toThrow(AiOutputError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("umpan balik review: percobaan kedua yang benar dipakai", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch(
+      completion(JSON.stringify({ items: [{ number: 1, feedback: "Sudah benar." }] })),
+      completion(
+        JSON.stringify({
+          items: [
+            { number: 1, feedback: "Sudah benar." },
+            { number: 2, feedback: "Oksigennya terlewat." },
+          ],
+        }),
+      ),
+    );
+
+    const result = await checkReviewAnswers({
+      title: "Fotosintesis",
+      source: explanationInput.source,
+      items: [
+        { number: 1, kind: "recall", prompt: "Apa bahannya?", answer: "Cahaya, air, CO2.", userAnswer: "Cahaya dan air" },
+        { number: 2, kind: "recall", prompt: "Apa hasilnya?", answer: "Glukosa dan oksigen.", userAnswer: "Glukosa" },
+      ],
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.items.map((item) => item.number)).toEqual([1, 2]);
+  });
+
+  it("tanpa AI_MODEL_DAILY tidak memilih model sendiri", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch();
+
+    await expect(checkExplanation(explanationInput)).rejects.toThrow(AiConfigError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("readReceipt (EXP-7)", () => {
+  const reading = {
+    found: true,
+    type: "expense",
+    amount: 50000,
+    date: "2026-11-15",
+    category: "makan",
+    note: "Bayar Warung Bu Sri",
+  };
+  const input = { text: "Pembayaran Berhasil\nWarung Bu Sri\nRp 50.000\n15 Nov 2026", today: "2026-11-16" };
+
+  const billed = (content: string) => ({
+    ok: true,
+    status: 200,
+    text: async () =>
+      JSON.stringify({
+        choices: [{ message: { content } }],
+        usage: { prompt_tokens: 300, completion_tokens: 40, cost: 0.0001 },
+      }),
+  });
+
+  it("sends the locked request shape with the daily model and the screenshot text", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch(completion(JSON.stringify(reading)));
+
+    const result = await readReceipt(input);
+
+    expect(result).toEqual({ reading, model: "deepseek/test-model" });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+
+    expect(body.model).toBe("deepseek/test-model");
+    expect(body.provider).toEqual({ data_collection: "deny" });
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.messages[1].content).toContain("Warung Bu Sri");
+    expect(body.messages[1].content).toContain("Today's date: 2026-11-16");
+  });
+
+  it("retries an unusable answer once and meters both calls", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch(billed('{"amount": "lima puluh ribu"}'), billed(JSON.stringify(reading)));
+    const usages: unknown[] = [];
+
+    const result = await readReceipt(input, (usage) => usages.push(usage));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.reading).toEqual(reading);
+    expect(usages).toHaveLength(2);
+  });
+
+  it("gives up after two unusable answers instead of filling the form with a guess", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    stubFetch(completion("maaf, tidak bisa"), completion('{"found": "ya"}'));
+
+    await expect(readReceipt(input)).rejects.toThrow(AiOutputError);
+  });
+
+  it("does not pick a model when AI_MODEL_DAILY is empty", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch();
+
+    await expect(readReceipt(input)).rejects.toThrow(AiConfigError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

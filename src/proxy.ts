@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isReaderPath, readerContentSecurityPolicy, siteContentSecurityPolicy } from "@/lib/csp";
 
 /**
  * Keeps the Supabase session fresh and keeps everything outside the public
@@ -17,7 +18,21 @@ import { NextResponse, type NextRequest } from "next/server";
  * route checks its own signature or secret (AGENTS.md §6).
  */
 
-const PUBLIC_PATHS = ["/", "/login", "/privacy", "/terms", "/auth/callback", "/manifest.webmanifest"];
+/**
+ * /reset-password is public on purpose: an expired or reused reset link arrives
+ * there without a session, and the page itself explains how to ask for a new one
+ * instead of bouncing the user to the login form.
+ */
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/privacy",
+  "/terms",
+  "/auth/callback",
+  "/manifest.webmanifest",
+];
 
 function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/")) {
@@ -38,7 +53,26 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  let response = NextResponse.next({ request });
+  // The reader (READ-8) gets a fresh nonce on every request. Next.js reads it
+  // from the request's policy header and puts it on its own scripts; the
+  // response carries the site-wide policy and the nonce policy together.
+  const isProduction = process.env.NODE_ENV === "production";
+  const nonce = isReaderPath(request.nextUrl.pathname) ? btoa(crypto.randomUUID()) : null;
+  const readerPolicy = nonce ? readerContentSecurityPolicy({ nonce, isProduction }) : null;
+
+  const forward = () => {
+    if (!nonce || !readerPolicy) {
+      return NextResponse.next({ request });
+    }
+
+    const headers = new Headers(request.headers);
+    headers.set("x-nonce", nonce);
+    headers.set("Content-Security-Policy", readerPolicy);
+
+    return NextResponse.next({ request: { headers } });
+  };
+
+  let response = forward();
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -46,7 +80,7 @@ export async function proxy(request: NextRequest) {
       setAll: (cookiesToSet, headers) => {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
 
-        response = NextResponse.next({ request });
+        response = forward();
 
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
@@ -76,6 +110,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (readerPolicy) {
+    const sitePolicy = siteContentSecurityPolicy({ isProduction, supabaseOrigin: new URL(url).origin });
+    // One header holding two policies, separated by a comma, is enforced like two
+    // headers. The nonce policy goes first on purpose: Next.js copies the proxy's
+    // response headers onto the request (server/lib/router-utils/resolve-routes.js)
+    // and reads the nonce from the first script-src it finds in that value.
+    response.headers.set("Content-Security-Policy", `${readerPolicy}, ${sitePolicy}`);
+  }
+
   return response;
 }
 
@@ -83,6 +126,9 @@ export const config = {
   matcher: [
     // Static assets and the dev-only hot reload sockets never need a session
     // check; letting them through keeps the client bundle and HMR working.
-    "/((?!_next/static|_next/image|_next/hmr|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
+    // ocr/ is the screenshot reader's engine and language data, copied from
+    // node_modules (scripts/copy-ocr-assets.mjs); reader/ is foliate-js and
+    // PDF.js (scripts/copy-reader-assets.mjs). Neither holds user data.
+    "/((?!_next/static|_next/image|_next/hmr|_next/webpack-hmr|favicon.ico|ocr/|reader/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
   ],
 };

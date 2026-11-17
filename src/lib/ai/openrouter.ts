@@ -1,28 +1,44 @@
 import {
   buildChatUserPrompt,
   buildDailySummaryUserPrompt,
+  buildReceiptUserPrompt,
   buildReportUserPrompt,
+  buildStudyExplanationUserPrompt,
+  buildStudyReviewUserPrompt,
   DAILY_SUMMARY_SYSTEM_PROMPT,
+  RECEIPT_SYSTEM_PROMPT,
   REPORT_BRIEF_SYSTEM_PROMPT,
   REPORT_FULL_SYSTEM_PROMPT,
+  STUDY_EXPLANATION_SYSTEM_PROMPT,
+  STUDY_REVIEW_SYSTEM_PROMPT,
   WHATSAPP_CHAT_SYSTEM_PROMPT,
   type ChatTurn,
   type DailySummaryPromptInput,
   type ReportPromptInput,
+  type StudyExplanationPromptInput,
+  type StudyReviewPromptInput,
 } from "@/lib/ai/prompts";
 import {
   parseBriefReport,
   parseChatReply,
   parseCrisisSignal,
   parseDailySummary,
+  parseExplanationCheck,
   parseFullReport,
+  parseReceiptReading,
+  parseReviewFeedback,
   parseTokenUsage,
   type BriefReportText,
   type ChatReply,
   type DailySummary,
+  type ExplanationFeedback,
   type FullReportText,
+  type ReceiptReading,
+  type ReviewFeedbackItem,
+  type StudyQuestion,
   type SummaryLanguage,
 } from "@/lib/ai/schemas";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/expenses";
 
 /**
  * The only place that talks to OpenRouter (AGENTS.md §6). It runs on the
@@ -289,6 +305,146 @@ export async function generateReport(
 
   throw new AiOutputError(
     `The model did not return a usable report after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+/**
+ * Belajar uses the model of the daily analysis (AI_MODEL_DAILY): a
+ * non-reasoning model that answers in JSON (AGENTS.md §6). No new env var, so
+ * no model is chosen here; the ID still comes only from the environment.
+ */
+const STUDY_MODEL_ROLE: ModelRole = "daily";
+
+/**
+ * Whether Belajar's checks can run at all, so a screen can say "not configured"
+ * instead of offering a check that is bound to fail. Reads presence only.
+ */
+export function isStudyAiConfigured(): boolean {
+  return Boolean(process.env[ENV_BY_ROLE[STUDY_MODEL_ROLE]]?.trim() && process.env.OPENROUTER_API_KEY?.trim());
+}
+
+export type ExplanationCheckResult = {
+  feedback: ExplanationFeedback;
+  /** Empty unless `questionsWanted` was set (the first check of a material). */
+  questions: StudyQuestion[];
+  model: string;
+};
+
+/**
+ * Checks a "Jelaskan dengan kata sendiri" against the material (LEARN-2) and,
+ * on the first check, writes the review questions. Unusable output is retried
+ * once, then raised so nothing made up is stored or shown (LEARN-6).
+ */
+export async function checkExplanation(
+  input: StudyExplanationPromptInput,
+  onUsage?: UsageSink,
+): Promise<ExplanationCheckResult> {
+  const model = getModelFor(STUDY_MODEL_ROLE);
+  const messages: ChatMessage[] = [
+    { role: "system", content: STUDY_EXPLANATION_SYSTEM_PROMPT },
+    { role: "user", content: buildStudyExplanationUserPrompt(input) },
+  ];
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return { ...parseExplanationCheck(content, input.questionsWanted), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return a usable explanation check after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+/**
+ * Feedback on one review session (LEARN-4), one item per answer. The schedule
+ * is not the model's business: the user's own ratings were stored before this
+ * runs. Unusable output is retried once, then raised.
+ */
+export async function checkReviewAnswers(
+  input: StudyReviewPromptInput,
+  onUsage?: UsageSink,
+): Promise<{ items: ReviewFeedbackItem[]; model: string }> {
+  const model = getModelFor(STUDY_MODEL_ROLE);
+  const messages: ChatMessage[] = [
+    { role: "system", content: STUDY_REVIEW_SYSTEM_PROMPT },
+    { role: "user", content: buildStudyReviewUserPrompt(input) },
+  ];
+  const expectedNumbers = input.items.map((item) => item.number);
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return { items: parseReviewFeedback(content, expectedNumbers), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return usable review feedback after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+/**
+ * "Isi dari screenshot" also uses the model of the daily analysis
+ * (AI_MODEL_DAILY): short JSON from a non-reasoning model, and no new env var.
+ */
+const RECEIPT_MODEL_ROLE: ModelRole = "daily";
+
+/**
+ * Reads the text of a bank or e-wallet screenshot into the fields of one money
+ * entry (PRD.md EXP-7). `text` must already have gone through
+ * `prepareReceiptText` (src/lib/receipt.ts). Unusable output is retried once,
+ * then raised, so the form is never filled with something made up (AI-2).
+ */
+export async function readReceipt(
+  input: { text: string; today: string },
+  onUsage?: UsageSink,
+): Promise<{ reading: ReceiptReading; model: string }> {
+  const model = getModelFor(RECEIPT_MODEL_ROLE);
+  const messages: ChatMessage[] = [
+    { role: "system", content: RECEIPT_SYSTEM_PROMPT },
+    {
+      role: "user",
+      content: buildReceiptUserPrompt({
+        text: input.text,
+        today: input.today,
+        expenseCategories: EXPENSE_CATEGORIES,
+        incomeCategories: INCOME_CATEGORIES,
+      }),
+    },
+  ];
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return { reading: parseReceiptReading(content), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return a usable receipt reading after ${ATTEMPTS} attempts: ${
       lastOutputError?.message ?? "unknown reason"
     }`,
   );

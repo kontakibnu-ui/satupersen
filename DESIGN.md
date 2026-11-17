@@ -38,8 +38,14 @@ Aturan paling penting di file ini. Penekanan itu terbatas; kalau semua ditonjolk
 | Hari Ini, menulis | Lembaran tulisan, langsung di bawah judul (lewat ukuran, posisi, dan ruang, bukan warna) | Analisa hari ini | Tanggal, pemantik, mood dan energi, daftar kebiasaan, status simpan |
 | Hari Ini, hasil | Angka skor | Tidak ada | Delta, alasan, daftar, "Untuk besok", tautan ubah tulisan |
 | Kebiasaan | Daftar centang hari ini | "Tambah kebiasaan" hanya saat daftar kosong; selain itu tautan | Streak, identitas |
-| Uang | Sisa uang bulan ini (total pengeluaran sampai ada pemasukan) | Tambah pengeluaran | Tambah pemasukan (tombol sekunder), perbandingan dan grafik masuk lawan keluar, daftar transaksi, kategori, sisa budget |
-| Progres | Angka rata-rata periode dan garis grafik | Tidak ada | Batang dimensi, "sejak mulai", tautan laporan dan riwayat |
+| Uang | Sisa uang bulan ini (total pengeluaran sampai ada pemasukan) | Tambah pengeluaran | Tambah pemasukan (tombol sekunder), "Isi dari screenshot bank" (tautan), perbandingan dan grafik masuk lawan keluar, daftar transaksi, kategori, sisa budget |
+| Progres (tab Grafik) | Angka rata-rata periode dan garis grafik | Tidak ada | Tab bagian, batang dimensi, "sejak mulai" |
+| Progres (tab Riwayat, Laporan) | Kalender dan lembaran baca; laporan terbaru | Tidak ada | Tab bagian |
+| Belajar | "Review hari ini" bila ada; selain itu daftar materi | "Tambah materi" hanya saat belum ada materi; selain itu tautan | Status tiap materi, batas paket, lembaran Ruang baca dan tautan "Unggah buku" |
+| Materi, menjelaskan | Lembaran "Jelaskan dengan kata sendiri" | Periksa penjelasan | Bahan (tertutup), sisa pemeriksaan AI, ubah bahan, hapus |
+| Materi, review | Daftar pertanyaan jatuh tempo | Lihat jawaban, lalu Simpan review (bergantian, satu per saat) | Umpan balik penjelasan, bahan, hapus |
+| Materi, menunggu review | Umpan balik penjelasan | Tidak ada ("Jelaskan ulang" berupa tombol sekunder) | Daftar pertanyaan dan tanggal review, bahan, hapus |
+| Pembaca (Ruang baca) | Halaman buku | "Jadikan materi", hanya saat ada teks yang diblok | Bar atas, panel Aa, posisi baca, hapus buku |
 | Akun | Tidak ada | Tidak ada | Semuanya; "Hapus akun" berupa tautan kecil paling bawah |
 | Mode krisis | Teks respons | Tombol telepon layanan | "Lanjut menulis" sebagai tautan |
 | Landing | Judul hero | Mulai gratis (boleh diulang sekali di akhir halaman) | Semua bagian lain |
@@ -93,18 +99,21 @@ Di semua ukuran ada **header**: logo di kiri; sakelar mode siang/malam dan **lin
 | Di bawah 1024 px (HP dan tablet) | Bar datar di bawah, 5 item ikon dan label, garis rambut di atasnya | Satu kolom, padding samping 16 px (24 px dari 768 px) |
 | 1024 px ke atas (laptop) | Lima kata di tengah header | Satu kolom di tengah |
 
-Lebar maksimum konten: 640 px untuk Hari Ini, Riwayat, Kebiasaan, Uang, dan Akun; 960 px untuk Progres. Header melebar sampai 1120 px. Konten rata kiri.
+Lebar maksimum konten: 640 px untuk Hari Ini, Kebiasaan, Belajar, Uang, dan Akun; 960 px untuk ketiga tab Progres (Grafik, Riwayat, Laporan), supaya judul dan tab tidak bergeser saat berpindah tab. Di dalam tab Riwayat dan Laporan isinya tetap selebar 640 px, rata kiri. Header melebar sampai 1120 px. Konten rata kiri.
 
-**Navigasi dan rute**
+**Navigasi dan rute** (diubah 2026-11-15: Riwayat dan Laporan masuk ke tab Progres, slotnya untuk Belajar)
 
 | Label | Rute | Isi |
 | --- | --- | --- |
 | Hari Ini | `/today` | Menulis, mood, energi, centang kebiasaan, hasil analisa |
-| Riwayat | `/history` | Kalender dan tulisan hari-hari sebelumnya |
 | Kebiasaan | `/habits` | Kelola kebiasaan |
+| Belajar | `/learn` | Materi, "Jelaskan dengan kata sendiri", review berjarak (PRD LEARN) |
 | Uang | `/expenses` | Pengeluaran dan budget |
-| Progres | `/dashboard` | Grafik; dari sini juga membuka `/reports` |
+| Progres | `/dashboard`, `/history`, `/reports` | Tiga tab: Grafik, Riwayat (kalender dan tulisan lampau), Laporan |
 | (lingkaran profil) | `/settings` | Profil, timezone, mode malam, WhatsApp, langganan, export, hapus akun |
+| (dari Belajar) | `/read/[id]` | Pembaca Ruang baca (PRD READ), layar penuh tanpa header dan navigasi; dibuka sebagai dokumen baru, bukan navigasi di sisi klien, supaya CSP-nya sendiri berlaku |
+
+Item Progres aktif di ketiga rutenya. Item Belajar mendapat **titik penanda** 8 px `primary` di pojok ikon (bar bawah) atau di samping kata (header) saat ada pertanyaan yang jatuh tempo hari ini, dengan teks tersembunyi ", ada review hari ini" untuk pembaca layar (LEARN-9). Titik ini penanda state kecil (§2), bukan angka dan bukan lencana.
 
 Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di atas ikon pada bar bawah, garis bawah pada header). Yang lain `text-muted`. Lingkaran profil aktif mendapat cincin emas.
 
@@ -162,6 +171,26 @@ Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di
 - **Batas premium.** Muncul hanya saat user mencoba fitur premium: teks singkat di tempat itu (boleh dalam lembaran dengan ikon gembok). Tanpa pop-up otomatis, banner permanen, atau hitung mundur.
 - **Notifikasi.** Hindari toast. Tampilkan status di tempat aksi terjadi.
 
+**Belajar dan tab Progres (2026-11-15).** Mengikuti versi 4: Plus Jakarta Sans untuk antarmuka, Lora berwarna `primary` di atas garis buku untuk apa pun yang ditulis user (penjelasan, jawaban) dan isi bahan.
+
+- **Tab Progres.** Di bawah judul "Progres" pada ketiga rute: tiga tautan Grafik, Riwayat, Laporan dalam satu baris dengan garis rambut `border` di bawahnya. Tab aktif teks `text` 600 dengan garis bawah 2 px `primary` dan `aria-current="page"`; lainnya `text-muted`. Tinggi 44 px. Bentuknya sengaja beda dari kontrol segmen periode supaya dua pilihan itu tidak tertukar. Kartu "Laporan" dan "Riwayat" di bawah grafik dihapus karena digantikan tab.
+- **Kepala Belajar.** Judul "Belajar", kalimat "Biar materi nempel, bukan cuma lewat."
+- **Review hari ini.** Lembaran di atas daftar, hanya bila ada pertanyaan jatuh tempo. Tiap baris 56 px: judul materi 16/600 dan "3 pertanyaan menunggu" 14 `text-muted`, chevron di kanan, seluruh baris tautan ke materi.
+- **Daftar materi.** Satu lembaran "Materimu", baris dipisah garis rambut. Status satu baris 14 `text-muted`: "Belum diperiksa", "Review berikutnya Kamis, 19 November", atau "Selesai, semua pertanyaan sudah nempel". Tanpa progress bar, lencana, atau persentase.
+- **Keadaan kosong Belajar.** Lembaran berisi tiga langkah bernomor (tempel bahan, jelaskan dengan kata sendiri, jawab review dengan jarak 1, 3, 7, 14, lalu 30 hari) dan tombol primary "Tambah materi".
+- **Batas materi free.** Teks 14 di tempat tautan "Tambah materi": "Paket gratis memuat 1 materi. Materi tanpa batas ada di Premium." dengan tautan "Lihat paket" ke `/settings/plan` (§6 Batas premium).
+- **Form materi.** Label terlihat "Judul" dan "Bahan" (input 16 px). Bahan berupa textarea Lora bergaris yang tumbuh mengikuti isi, minimal 8 baris; penghitung "1.234 / 5.000" 14 `text-muted` selalu tampil. Satu tombol primary "Simpan materi".
+- **Lembaran menjelaskan.** Judul "Jelaskan dengan kata sendiri", satu kalimat petunjuk 14 `text-muted`, lalu editor Lora bergaris seperti Hari Ini (minimal 6 baris). Di bawahnya tombol primary "Periksa penjelasan" dan satu baris sisa pemeriksaan AI hari ini. Saat memeriksa: tombol "Memeriksa…" nonaktif dan teks "Sedang membandingkan dengan bahanmu…", tanpa progress bar palsu.
+- **Bahan tertutup.** `<details>` di lembaran sendiri berlabel "Lihat bahan", tertutup secara bawaan, isi Lora 16 dengan baris maksimal 65 karakter. Saat materi masih draf, ada tautan "Ubah bahan".
+- **Umpan balik AI.** Satu lembaran. Label 14 `text-muted` "Diperiksa AI dari bahanmu" (tanpa ikon sparkles atau stempel), kalimat ringkas 16, lalu daftar "Sudah tepat", "Yang terlewat", "Perlu dicek lagi", dan "Tidak ada di bahanmu" (judul 14/700, titik `primary`, item 16), hanya yang berisi. Tanpa merah dan tanpa tanda silang: "Perlu dicek lagi" memakai titik yang sama.
+- **Sesi review.** Satu lembaran "Review hari ini" berisi pertanyaan bernomor (16/600; pertanyaan elaborasi diberi keterangan 14 `text-muted` "Hubungkan dengan pemahamanmu"). Tiap pertanyaan punya textarea Lora bergaris berlabel "Jawabanmu" (minimal 3 baris). Setelah "Lihat jawaban": jawaban user jadi teks biasa, di bawahnya kotak `primary-soft` radius 16 "Menurut bahan", lalu radio "Seberapa ingat?" berbentuk kontrol segmen tiga pilihan Lupa, Ragu, Ingat (target 44 px, terpilih pill `surface` dengan teks `primary` dan tebal). Setelah tersimpan: tiap pertanyaan menulis tanggal review berikutnya ("Muncul lagi Kamis, 19 November" atau "Selesai"), lalu umpan balik AI per jawaban di bawah label "Diperiksa AI dari bahanmu".
+- **Lembaran Ruang baca (2026-11-17, PRD READ).** Di bawah "Materimu", atau di bawah keadaan kosong Belajar. Judul "Ruang baca" dengan ikon `Library`. Tiap buku satu baris 56 px dipisah garis rambut: judul 16/600 satu baris, lalu "EPUB · 2,4 MB · 34%" 14 `text-muted` (persen hanya setelah pernah dibuka), chevron di kanan; seluruh baris tautan biasa ke `/read/[id]`. Di bawah daftar tautan "Unggah buku" (bukan primary) yang membuka pemilih file. Saat mengunggah, baris status 14 di tempat tautan: "Mengunggah Judul… 45%" dengan angka sungguhan, lalu "Memeriksa file…"; gagal: kalimat penyebab dan langkahnya, tanpa merah. Kosong: satu kalimat 14 `text-muted` "Unggah PDF, EPUB, DOCX, atau TXT untuk dibaca di sini, lalu jadikan bagian pentingnya materi." Batas free di tempat tautan: "Paket gratis memuat 1 buku. Buku lebih banyak ada di Premium." dengan tautan "Lihat paket"; premium yang hampir penuh: "Tersisa 120 MB dari 2 GB".
+- **Pembaca.** Halaman setinggi layar (`h-dvh`) tanpa header dan navigasi aplikasi. **Bar atas** berlatar `surface` dengan garis rambut di bawah: tombol kembali ke Belajar, judul buku 14/600 satu baris dengan "EPUB · 2,4 MB" 12 `text-muted` di bawahnya, tombol layar penuh (ikon `Maximize`/`Minimize`), dan tombol "Aa"; semuanya 44 px. **Panel Aa** di bawah bar atas, latar `surface-muted`: baris "Cara baca" dengan kontrol segmen Gulir | Geser (terpilih berlatar `primary`; untuk PDF hanya Geser, dengan kalimat "PDF dibaca per halaman."), baris "Ukuran huruf" dengan tombol A− dan A+ (44 px, tepi `control`) dan angkanya, satu kalimat 12 `text-muted` "Pilihanmu diingat di perangkat ini.", dan paling bawah tautan kecil `danger` "Hapus buku" dengan konfirmasi di tempat seperti hapus materi. **Area buku** memenuhi sisa layar, tanpa tombol panah. **Bar bawah** berlatar `surface` dengan garis rambut di atas: posisi 12 `text-muted` ("Hlm 23 dari 212" atau "34%"); saat ada teks yang diblok, baris berganti "1.234 karakter terpilih" dan tombol primary "Jadikan materi" (di atas 5.000: "Terlalu panjang, maksimal 5.000 karakter" tanpa tombol). Tanpa blok teks, tidak ada tombol nonaktif.
+- **Layar penuh.** Bar atas dan bawah bergeser keluar layar (250 ms, tanpa gerak bila `prefers-reduced-motion`); posisi baca 12 `text-muted` di pojok kanan bawah. Ketuk tengah memunculkan kedua bar selama 4 detik (tetap tampil selama panel Aa terbuka). Teks yang diblok memunculkan bar bawah saja.
+- **Isi buku.** Mode siang: warna, huruf, dan tata letak dari file. Mode malam: teks `text` dan latar `background` mode malam disuntikkan ke buku (tautan `primary`); huruf dan tata letak tetap. DOCX dan TXT memakai Lora 18 bila tersedia, dengan cadangan serif perangkat. Halaman berpindah dengan animasi geser bawaan foliate-js, dimatikan bila `prefers-reduced-motion`.
+- **State pembaca.** Memuat: "Membuka buku…" atau "Mengunduh buku… 45%" (angka sungguhan) di tengah, tanpa progress bar palsu. Gagal: "Buku ini tidak bisa dibuka. Mungkin filenya rusak atau terkunci DRM." dan tautan "Kembali ke Belajar". Buku tidak ada: "Buku ini tidak ada, atau sudah dihapus."
+- **Hapus materi.** Tautan kecil `danger` paling bawah. Konfirmasi di tempat (bukan dialog): kalimat apa yang ikut terhapus, dan untuk free "Paket gratis hanya bisa membuat 1 materi, jadi setelah dihapus kamu tidak bisa menambah materi baru.", lalu tombol sekunder "Ya, hapus" dan tautan "Batal".
+
 ## 7. State layar Hari Ini
 
 1. **Kosong:** pemantik dan placeholder editor. Jika "Analisa hari ini" ditekan saat tulisan kosong, tampilkan petunjuk di bawah tombol: "Tulis minimal satu kalimat dulu". Tombol tidak dinonaktifkan.
@@ -203,7 +232,7 @@ Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di
 |                                    |
 | [        Analisa hari ini        ] |  satu-satunya primary
 +------------------------------------+
-| Hari Ini Riwayat Kebiasaan Uang Progres |
+| Hari Ini Kebiasaan Belajar Uang Progres |
 +------------------------------------+
 ```
 
@@ -244,7 +273,9 @@ Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di
 **Progres**
 ```
 +------------------------------------+
-| Progres                            |  34, Fraunces
+| Progres                            |  28, judul layar
+| Grafik   Riwayat   Laporan         |  tab bagian, aktif bergaris bawah primary
+|------------------------------------|
 | ( 7 hari | 30 hari | 1 tahun )     |  segmen, aktif = state kecil
 |                                    |
 | 74                                 |  40, fokus
@@ -256,9 +287,6 @@ Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di
 |                                    |
 | Kebiasaan  ########--  80          |  batang netral
 | Mood       ######----  62          |
-|                                    |
-| Laporan                         >  |
-| Riwayat                         >  |
 +------------------------------------+
 ```
 
@@ -280,7 +308,108 @@ Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di
 ```
 Lewat budget ditulis sebagai teks ("Lewat Rp 50.000 dari budget"), batang penuh tetap netral. Tidak merah.
 
-**Bottom sheet tambah pengeluaran:** nominal di atas (fokus otomatis, keypad angka), 6 chip kategori, catatan opsional, satu tombol "Simpan". Target: selesai dalam 3 ketukan setelah mengetik nominal.
+**Bottom sheet tambah pengeluaran:** nominal di atas (fokus otomatis, keypad angka), 6 chip kategori, catatan opsional, tanggal (bawaannya hari ini, pemilih tanggal bawaan perangkat; EXP-8), satu tombol "Simpan". Target: selesai dalam 3 ketukan setelah mengetik nominal; tanggal hanya disentuh bila bukan hari ini. Bila tanggalnya di bulan lain, baris status di bawah lembaran total menulis "Tersimpan di Minggu, 15 November 2026." dengan tautan "Lihat bulan itu".
+
+**Isi dari screenshot (EXP-7):** tautan dengan ikon ScanText di bawah dua tombol tambah, tidak bersaing dengan primary. Mengetuknya membuka pemilih gambar HP; sheet "Isi dari screenshot" lalu menampilkan status 16 px ("Menyiapkan pembaca gambar…", "Membaca tulisan di gambar… 45%" dengan angka progres sungguhan dari mesin OCR, "Merapikan hasilnya…"), dua garis skeleton `surface-muted`, dan satu kalimat 14 `text-muted` bahwa gambar tidak diunggah. Berhasil: sheet berganti judul "Cek hasil screenshot", kotak `surface-muted` radius 16 "Diisi dari screenshot. Cek nominal, jenis, dan tanggalnya dulu sebelum disimpan.", dua chip "Uang keluar" dan "Uang masuk", lalu form biasa yang sudah terisi dan satu tombol "Simpan". Gagal: kalimat penyebab dan langkahnya, tombol sekunder "Pilih gambar lain", dan tautan "Isi manual".
+
+**Belajar**
+```
++------------------------------------+
+| Belajar                            |  28, judul layar
+| Biar materi nempel, bukan cuma     |  16, text-muted
+| lewat.                             |
+| +--------------------------------+ |
+| | Review hari ini                | |  fokus, hanya bila ada
+| | Fotosintesis                 > | |  16/600
+| | 3 pertanyaan menunggu          | |  14, text-muted
+| +--------------------------------+ |
+| +--------------------------------+ |
+| | Materimu                       | |
+| | Fotosintesis                 > | |
+| | Review berikutnya Kamis, 19 Nov| |
+| | Hukum Newton                 > | |
+| | Belum diperiksa                | |
+| +--------------------------------+ |
+| Tambah materi                      |  tautan; primary hanya saat kosong
+| +--------------------------------+ |
+| | Ruang baca                     | |
+| | Catatan Kecil tentang Ingatan> | |  16/600
+| | EPUB · 2,4 MB · 34%            | |  14, text-muted
+| +--------------------------------+ |
+| Unggah buku                        |  tautan, membuka pemilih file
++------------------------------------+
+```
+
+**Pembaca (Ruang baca)**
+```
++------------------------------------+
+| <   Catatan Kecil tentang...  [] Aa|  bar atas, surface
+|     EPUB · 2,4 MB                  |  12, text-muted
+|------------------------------------|
+| Cara baca        ( Gulir | Geser ) |  panel Aa, surface-muted
+| Ukuran huruf      (A-)  17  (A+)   |  hanya saat dibuka
+| Pilihanmu diingat di perangkat ini.|
+| Hapus buku                         |  tautan kecil danger
+|------------------------------------|
+|                                    |
+|   halaman buku, gaya penerbit      |  fokus; geser atau ketuk tepi
+|                                    |
+|------------------------------------|
+| Hlm 23 dari 212                    |  bar bawah, 12, text-muted
++------------------------------------+
+saat ada teks yang diblok:
+| 214 karakter terpilih [Jadikan materi] |  satu-satunya primary
+layar penuh: kedua bar disembunyikan, ketuk tengah untuk memunculkan
+```
+
+**Materi, menjelaskan (draf)**
+```
++------------------------------------+
+| < Belajar                          |  tautan kembali, 14
+| Fotosintesis                       |  28
+| Belum diperiksa                    |  14, text-muted
+| +--------------------------------+ |
+| | Jelaskan dengan kata sendiri   | |
+| | Tutup bahannya, lalu tulis     | |  14, text-muted
+| | seolah menjelaskan ke teman.   | |
+| | ______________________________ | |  Lora bergaris, min 6 baris
+| | ______________________________ | |
+| | [     Periksa penjelasan     ] | |  satu-satunya primary
+| | Sisa pemeriksaan AI hari ini: 1| |  14, text-muted
+| +--------------------------------+ |
+| +--------------------------------+ |
+| | > Lihat bahan       Ubah bahan | |  details, tertutup
+| +--------------------------------+ |
+| Hapus materi                       |  tautan kecil danger
++------------------------------------+
+```
+
+**Materi, review**
+```
++------------------------------------+
+| Review hari ini                    |
+| 1. Apa hasil fotosintesis?         |  16/600
+|    ______________________________  |  Jawabanmu, Lora bergaris
+| 2. Kenapa daun berwarna hijau?     |
+|    Hubungkan dengan pemahamanmu    |  14, text-muted (elaborasi)
+|    ______________________________  |
+| [         Lihat jawaban          ] |  primary
++------------------------------------+
+setelah "Lihat jawaban":
+| 1. Apa hasil fotosintesis?         |
+|    <jawabanmu>                     |
+|  +------------------------------+  |
+|  | Menurut bahan                |  |  primary-soft, radius 16
+|  | Glukosa dan oksigen.         |  |
+|  +------------------------------+  |
+|  Seberapa ingat?                   |
+|  ( Lupa | Ragu | Ingat )           |  kontrol segmen
+| [         Simpan review          ] |  primary
+setelah tersimpan:
+|  Muncul lagi Kamis, 19 November    |  14, text-muted
+|  Diperiksa AI dari bahanmu         |  14, text-muted
+|  <umpan balik>                     |  16
+```
 
 ## 9. Mode krisis
 
@@ -291,6 +420,14 @@ Saat `risk_flag` aktif, layar berubah total: latar `surface-muted`, **tanpa cinc
 **Versi 2026-11-01 (dirombak atas permintaan user: "lebih menarik dan interaktif"; arah komposisi dari skill taste-skill, arahan `one-motif`, dengan token, font, dan komponen tetap dari file ini).** Satu motif menjalankan seluruh halaman: lingkaran stempel "1%" dari logo. Ia muncul raksasa dan terpotong tepi layar di hero, sebagai dial kalkulator, sebagai penanda poin privasi, sebagai pemilih lama paket, dan sebagai cap penutup di atas footer.
 
 Urutan: (1) hero: judul "Jadi 1% lebih baik tiap hari" (Fraunces 300 sampai 80 px, tanpa baris kecil di atasnya), satu kalimat penjelas, tombol primary "Mulai gratis", tautan "Lihat harga", dan pratinjau hasil analisa berlabel "Contoh"; (2) **satu hal hidup**: dial "Satu persen itu kecil", penggeser 1 sampai 365 hari yang menghitung 1,01 pangkat jumlah hari (dan 0,99 sebagai pembanding), dengan catatan "Ilustrasi cara kebiasaan kecil menumpuk, bukan janji hasil"; (3) cara kerja: tiga bidang warna bersebelahan, tiap bidang satu kalimat dan satu potongan antarmuka (tulis, analisa, skor); (4) fitur sebagai kalimat yang diakhiri sakelar sungguhan (kebiasaan, mood dan energi, pengeluaran, laporan Senin); bidang menyala berwarna dan menampilkan akibatnya dalam angka; (5) curhat lewat WhatsApp dengan contoh chat; (6) privasi tiga poin; (7) harga: dua bidang yang bertemu di tepi keras, Gratis (lebih sempit) dan Premium (lebih lebar) dengan pemilih 1, 3, 6, 12 bulan dari `src/config/plans.ts`; (8) tanya jawab sebagai kartu indeks bertab, satu terbuka sekaligus (`<details name>`); (9) pita penutup `primary` dengan "Mulai gratis" kedua; (10) cap besar "1%" dan nama, lalu footer. Semua potongan antarmuka dibangun dari komponen asli, diberi label "Contoh", dan ditandai `data-ui`. Header: logo, tautan bagian (layar 768 px ke atas), sakelar mode, tombol sekunder "Masuk". Tanpa foto dan ilustrasi stok.
+
+**Perbaikan 2026-11-14 (audit desain, disetujui user).** Butir ini menggantikan bagian di atas yang bertentangan dengannya:
+- Huruf mengikuti versi 4 (§4): judul hero, judul bagian, kalimat langkah dan fitur, nama paket, harga, angka dial, dan angka stempel memakai Plus Jakarta Sans 700. Lora hanya untuk tulisan diary di contoh dan keterangan miring di stempel. Fraunces tidak dipakai lagi di landing.
+- Cara kerja: tiga bidang tetap tiga warna di bawah satu tinta, yaitu `surface-muted`, `primary-soft`, dan `rule`.
+- Fitur: keempat sakelar menyala sejak awal, sehingga pengunjung yang hanya menggulir membaca semua penjelasannya. Kalimat di bawah judul: "Semuanya bisa dipakai di paket gratis. Premium melonggarkan batasnya."
+- Harga: dari 768 px kedua bidang berbagi baris (subgrid), sehingga nama paket dan harga sejajar. Isi paket berupa daftar pendek dengan centang `text-muted` (Premium diawali "Semua yang gratis, ditambah"), dan kuota token menautkan ke pertanyaan "Apa itu kuota AI bulanan?". Catatan "Pembayaran premium segera dibuka" berada tepat di bawah tombol "Pilih premium".
+- Tanya jawab: rata kiri dengan bagian lain. Tab yang menjorok ke kanan hanya mulai 768 px.
+- Footer: tautan Masuk, Privasi, dan Syarat layanan.
 
 ## 11. Nada tulisan
 

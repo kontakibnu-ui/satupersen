@@ -19,6 +19,11 @@
 /.next/
 /out/
 
+# OCR engine and language data, copied from node_modules by scripts/copy-ocr-assets.mjs
+/public/ocr/
+# Reader assets (foliate-js and PDF.js), copied by scripts/copy-reader-assets.mjs
+/public/reader/
+
 # production
 /build
 

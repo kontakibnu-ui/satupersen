@@ -1,6 +1,8 @@
+import { addDays, daysBetween, isDateKey } from "@/lib/dates";
+
 /**
- * Money entry rules shared by the screen and the server (EXP-1, EXP-3, EXP-5).
- * The server checks them again, because the browser can be edited.
+ * Money entry rules shared by the screen and the server (EXP-1, EXP-3, EXP-5,
+ * EXP-8). The server checks them again, because the browser can be edited.
  */
 
 /** EXP-5: an entry is money going out or money coming in. */
@@ -48,6 +50,28 @@ export const EXPENSE_CATEGORY_VALUES = EXPENSE_CATEGORIES.map((category) => cate
 export const MAX_AMOUNT = 1_000_000_000;
 
 export const MAX_NOTE_LENGTH = 200;
+
+/**
+ * EXP-8: how far back a new entry may be dated, so a bank screenshot from last
+ * week or last month can still go on its own day. Never in the future.
+ */
+export const MAX_BACKDATE_DAYS = 365;
+
+/** The earliest day a new entry may carry, counted from the user's today. */
+export function earliestEntryDate(today: string): string {
+  return addDays(today, -MAX_BACKDATE_DAYS);
+}
+
+/** EXP-8: a real calendar day, not after today and at most MAX_BACKDATE_DAYS back. */
+export function isAllowedEntryDate(date: string, today: string): boolean {
+  if (!isDateKey(date) || !isDateKey(today)) {
+    return false;
+  }
+
+  const back = daysBetween(date, today);
+
+  return back >= 0 && back <= MAX_BACKDATE_DAYS;
+}
 
 export function categoryLabel(value: string, type: EntryType = "expense"): string {
   return categoriesFor(type).find((category) => category.value === value)?.label ?? "Lainnya";

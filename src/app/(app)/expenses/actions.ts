@@ -2,8 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { tokenStanding } from "@/config/plans";
+import { AiConfigError, readReceipt, type TokenUsage } from "@/lib/ai/openrouter";
+import { recordUsage, tokensUsedThisMonth } from "@/lib/ai/usage";
 import { startOfMonthKey, todayKey } from "@/lib/dates";
-import { ENTRY_TYPES, isCategoryOf, MAX_AMOUNT, MAX_NOTE_LENGTH } from "@/lib/expenses";
+import { ENTRY_TYPES, isAllowedEntryDate, isCategoryOf, MAX_AMOUNT, MAX_NOTE_LENGTH } from "@/lib/expenses";
+import { rateLimitMessage, takeAiRateLimit } from "@/lib/rate-limit";
+import {
+  hasReadableText,
+  MAX_RECEIPT_TEXT_LENGTH,
+  prepareReceiptText,
+  toReceiptDraft,
+  type ReceiptDraft,
+} from "@/lib/receipt";
 import { getActionContext } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -50,12 +61,19 @@ function refresh(): void {
   revalidatePath("/expenses");
 }
 
-/** EXP-1, EXP-5: two required fields, one optional, dated today by the user's own clock. */
+const DATE_NOT_ALLOWED = "Tanggalnya tidak bisa dipakai. Pilih hari ini atau sebelumnya, paling jauh setahun ke belakang.";
+
+/**
+ * EXP-1, EXP-5, EXP-8: two required fields, one optional, and the day. Without
+ * a day the entry is dated today by the user's own clock; a day sent by the
+ * browser is checked against that same clock, never trusted.
+ */
 export async function addExpense(input: {
   type: string;
   amount: number;
   category: string;
   note?: string;
+  date?: string;
 }): Promise<ExpenseActionResult> {
   const parsed = expenseFields.safeParse(input);
 
@@ -69,9 +87,16 @@ export async function addExpense(input: {
     return { ok: false, message: SESSION_ENDED };
   }
 
+  const today = todayKey(context.timeZone);
+  const date = input.date === undefined ? today : input.date;
+
+  if (typeof date !== "string" || !isAllowedEntryDate(date, today)) {
+    return { ok: false, message: DATE_NOT_ALLOWED };
+  }
+
   const { error } = await context.supabase.from("expenses").insert({
     user_id: context.userId,
-    date: todayKey(context.timeZone),
+    date,
     type: parsed.data.type,
     amount: parsed.data.amount,
     category: parsed.data.category,
@@ -218,4 +243,84 @@ export async function clearBudget(): Promise<ExpenseActionResult> {
 
   refresh();
   return { ok: true };
+}
+
+export type ReceiptReadResult = { ok: true; draft: ReceiptDraft } | { ok: false; message: string };
+
+const RECEIPT_UNREADABLE = "Tulisan di gambar ini tidak terbaca. Coba screenshot yang lebih jelas, atau isi manual.";
+const RECEIPT_NOT_FOUND =
+  "Nominal transaksi tidak ketemu di gambar ini. Pastikan ini bukti transfer atau pembayaran, atau isi manual.";
+const RECEIPT_FAILED = "Gambar belum berhasil dibaca. Coba lagi, atau isi manual.";
+const RECEIPT_NOT_CONFIGURED = "Baca screenshot belum dikonfigurasi. Isi manual dulu, ya.";
+const RECEIPT_TOKEN_CAP = "Kuota AI bulan ini sudah habis. Isi manual dulu, baca screenshot bisa lagi tanggal 1.";
+
+const receiptInput = z.object({
+  // The browser already cut the text; twice the limit leaves room for an
+  // edited browser, and the server cuts it again below.
+  text: z.string().max(MAX_RECEIPT_TEXT_LENGTH * 2, RECEIPT_UNREADABLE),
+});
+
+/**
+ * EXP-7: the text of a bank or e-wallet screenshot, read on the phone, turned
+ * into the fields of one entry. Nothing is saved here: the user checks the form
+ * and saves it through `addExpense`. In order: the text is cut again (long
+ * numbers hidden), the rate limit counts the tap (RATE-1), the monthly token cap
+ * is checked (PRD.md §8), and the model's reading is made safe for the form.
+ * Neither the text nor the reading is logged or stored; only the token counts are.
+ */
+export async function readReceiptText(input: { text: string }): Promise<ReceiptReadResult> {
+  const parsed = receiptInput.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? RECEIPT_UNREADABLE };
+  }
+
+  const context = await getActionContext();
+
+  if (!context) {
+    return { ok: false, message: SESSION_ENDED };
+  }
+
+  const text = prepareReceiptText(parsed.data.text);
+
+  // No model call, so not a tap the rate limit counts (RATE-2).
+  if (!hasReadableText(text)) {
+    return { ok: false, message: RECEIPT_UNREADABLE };
+  }
+
+  const wait = await takeAiRateLimit(context.userId);
+
+  if (wait > 0) {
+    return { ok: false, message: rateLimitMessage(wait) };
+  }
+
+  // An unreadable total lets the reading through: the cap is soft (PRD.md §8).
+  const used = await tokensUsedThisMonth(context.supabase, context.userId, context.timeZone);
+
+  if (used !== null && tokenStanding(context.plan, used).overCap) {
+    return { ok: false, message: RECEIPT_TOKEN_CAP };
+  }
+
+  const today = todayKey(context.timeZone);
+  const usages: TokenUsage[] = [];
+  let draft: ReceiptDraft | null;
+
+  try {
+    const { reading } = await readReceipt({ text, today }, (usage) => usages.push(usage));
+    draft = toReceiptDraft(reading, today);
+  } catch (error) {
+    if (error instanceof AiConfigError) {
+      return { ok: false, message: RECEIPT_NOT_CONFIGURED };
+    }
+
+    console.error("reading a receipt failed", {
+      userId: context.userId,
+      kind: error instanceof Error ? error.name : "unknown",
+    });
+    return { ok: false, message: RECEIPT_FAILED };
+  } finally {
+    await recordUsage(context.userId, "receipt", usages);
+  }
+
+  return draft ? { ok: true, draft } : { ok: false, message: RECEIPT_NOT_FOUND };
 }
