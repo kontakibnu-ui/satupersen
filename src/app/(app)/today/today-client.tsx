@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { HabitChecklist } from "@/components/habit-checklist";
 import { Button } from "@/components/ui/button";
+import { BinderSheet, Kop, SectionHead } from "@/components/notebook";
 import { Card } from "@/components/ui/card";
 import type { HabitView } from "@/lib/habits";
 import { EntryEditor } from "./entry-editor";
@@ -25,8 +26,9 @@ import { SummaryResultView, type SummaryResult, type WeekDay } from "./summary-r
  *
  * The page reads in the order a day is closed (DESIGN.md §8): the writing
  * first, because it is the focus, then mood and energy, the habits, and the one
- * primary button at the end. Version 4 ("Buku tulis") keeps one sheet of paper
- * for the writing and lays the rest straight on the page, without cards.
+ * primary button at the end. Version 5 ("Meja Tulis", §14.2) keeps one binder
+ * sheet for the writing and lays the rest straight on the page under section
+ * heads, without cards.
  */
 type Phase = "idle" | "summarizing" | "failed";
 
@@ -165,19 +167,20 @@ export function TodayClient({
   const habitBlock =
     habits.length > 0 ? (
       <section aria-labelledby="habit-heading">
-        <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2">
-          <h2 id="habit-heading" className="font-heading text-base font-bold text-text">
-            Kebiasaan
-          </h2>
-          <p className="text-sm text-text-muted tabular-nums">
-            {doneToday} dari {habits.length}
-            <span className="sr-only"> selesai hari ini</span>
-          </p>
-        </div>
-        <HabitChecklist date={date} habits={habits} setHabits={setHabits} />
+        <SectionHead
+          id="habit-heading"
+          title="Kebiasaan"
+          aside={
+            <>
+              {doneToday} dari {habits.length}
+              <span className="sr-only"> selesai hari ini</span>
+            </>
+          }
+        />
+        <HabitChecklist date={date} habits={habits} setHabits={setHabits} showIdentity={false} />
       </section>
     ) : (
-      <section aria-label="Kebiasaan" className="flex flex-wrap items-center justify-between gap-x-3 border-y border-border py-2">
+      <section aria-label="Kebiasaan" className="flex flex-wrap items-center justify-between gap-x-3 border-y border-rule py-2">
         <p className="text-sm text-text-muted">Belum ada kebiasaan. Mulai dari satu yang kecil.</p>
         <Link
           href="/habits"
@@ -189,8 +192,14 @@ export function TodayClient({
     );
 
   const writingBlock = showEditor ? (
-    <Card as="div" className="transition-colors duration-200 focus-within:border-primary">
-      <NotebookHeading weekday={weekday} fullDate={fullDate} />
+    // No name of its own: the textarea inside is already "Tulisan hari ini".
+    <BinderSheet as="div" className="focus-within:border-primary">
+      <Kop
+        rows={[
+          ["Hari", weekday],
+          ["Tanggal", fullDate],
+        ]}
+      />
       <EntryEditor
         date={date}
         initialContent={content}
@@ -202,10 +211,10 @@ export function TodayClient({
           }
         }}
       />
-    </Card>
+    </BinderSheet>
   ) : (
     <section aria-labelledby="writing-heading">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 border-b-[3px] border-double border-rule-strong">
         <h2 id="writing-heading" className="font-heading text-base font-bold text-text">
           Tulisanmu
         </h2>
@@ -213,7 +222,7 @@ export function TodayClient({
           Ubah tulisan
         </Button>
       </div>
-      <p className="line-clamp-4 whitespace-pre-line font-serif text-lg leading-relaxed text-primary">{content}</p>
+      <p className="mt-2 line-clamp-4 whitespace-pre-line font-serif text-lg leading-[1.65] text-primary">{content}</p>
     </section>
   );
 
@@ -230,7 +239,8 @@ export function TodayClient({
       <div className="flex flex-col gap-3">
         {result === null ? (
           <>
-            <Button onClick={summarise} disabled={phase === "summarizing"} className="min-h-14 w-full text-lg">
+            <Button onClick={summarise} disabled={phase === "summarizing"} className="w-full text-[17px]">
+              <Stamp aria-hidden="true" size={18} strokeWidth={1.7} />
               {phase === "summarizing" ? "Menganalisa…" : "Analisa hari ini"}
             </Button>
             {phase === "idle" && !blankHint ? (
@@ -273,7 +283,7 @@ export function TodayClient({
         ) : null}
 
         {phase === "idle" && changed ? (
-          <div className="flex items-start gap-3 rounded-3xl border border-dashed border-control p-4">
+          <div className="flex items-start gap-3 rounded-[14px] border border-dashed border-control p-4">
             <RefreshCw aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0 text-text-muted" />
             <p className="text-sm text-text-muted">
               {textChanged
@@ -291,21 +301,5 @@ export function TodayClient({
         ) : null}
       </div>
     </div>
-  );
-}
-
-/**
- * The printed heading of an Indonesian school notebook page, "Hari" and
- * "Tanggal", filled in with today's day in ink (DESIGN.md §6, version 4). It is
- * the only place the date shows on Hari Ini.
- */
-function NotebookHeading({ weekday, fullDate }: { weekday: string; fullDate: string }) {
-  return (
-    <dl className="mb-3 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 border-b-[1.5px] border-rule pb-3">
-      <dt className="text-sm text-text-muted">Hari</dt>
-      <dd className="border-b border-dotted border-control/50 font-serif text-lg italic text-primary">{weekday}</dd>
-      <dt className="text-sm text-text-muted">Tanggal</dt>
-      <dd className="border-b border-dotted border-control/50 font-serif text-lg italic text-primary">{fullDate}</dd>
-    </dl>
   );
 }

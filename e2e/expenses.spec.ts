@@ -59,7 +59,7 @@ test("tambah pengeluaran: nominal berpemisah ribuan, kategori, catatan; total da
   await page.getByLabel("Catatan (opsional)").fill("makan siang");
   await page.getByRole("button", { name: "Simpan" }).click();
 
-  await expect(page.getByRole("button", { name: /Makan, makan siang\s*Rp 25\.000/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Makan,?\s+makan siang\s*Rp 25\.000/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Hari ini" })).toBeVisible();
 
   // A second one on the same day adds to the day and the month.
@@ -93,14 +93,14 @@ test("ubah dan hapus pengeluaran (EXP-2)", async ({ page }) => {
   await seedExpense(user, today, 30000, "hiburan", "nonton");
   await page.goto("/expenses");
 
-  await page.getByRole("button", { name: /Hiburan, nonton/ }).click();
+  await page.getByRole("button", { name: /Hiburan,?\s+nonton/ }).click();
   await expect(page.getByLabel("Nominal")).toHaveValue("30.000");
   await page.getByLabel("Nominal").fill("35000");
   await page.getByRole("radio", { name: "Tagihan" }).check({ force: true });
   await page.getByRole("button", { name: "Simpan" }).click();
-  await expect(page.getByRole("button", { name: /Tagihan, nonton\s*Rp 35\.000/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Tagihan,?\s+nonton\s*Rp 35\.000/ })).toBeVisible();
 
-  await page.getByRole("button", { name: /Tagihan, nonton/ }).click();
+  await page.getByRole("button", { name: /Tagihan,?\s+nonton/ }).click();
   await page.getByRole("button", { name: "Hapus pengeluaran" }).click();
   await page.getByRole("button", { name: "Ya, hapus" }).click();
   await expect(page.getByText("Belum ada catatan uang di bulan ini.")).toBeVisible();
@@ -135,12 +135,12 @@ test("ubah dan hapus pemasukan tidak menyentuh pengeluaran (EXP-5)", async ({ pa
   await seedExpense(user, today, 20000, "transport");
   await page.goto("/expenses");
 
-  await page.getByRole("button", { name: /Uang saku, dari ayah/ }).click();
+  await page.getByRole("button", { name: /Uang saku,?\s+dari ayah/ }).click();
   await page.getByLabel("Nominal").fill("600000");
   await page.getByRole("button", { name: "Simpan" }).click();
-  await expect(page.getByRole("button", { name: /Uang saku, dari ayah\s*\+Rp 600\.000/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Uang saku,?\s+dari ayah\s*\+Rp 600\.000/ })).toBeVisible();
 
-  await page.getByRole("button", { name: /Uang saku, dari ayah/ }).click();
+  await page.getByRole("button", { name: /Uang saku,?\s+dari ayah/ }).click();
   await page.getByRole("button", { name: "Hapus pemasukan" }).click();
   await page.getByRole("button", { name: "Ya, hapus" }).click();
   await expect(page.getByRole("button", { name: /Uang saku/ })).toHaveCount(0);

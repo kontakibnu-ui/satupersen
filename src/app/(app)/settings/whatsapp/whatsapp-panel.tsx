@@ -31,13 +31,16 @@ function LinkView() {
   const code = result?.ok ? result : null;
 
   return (
-    <section aria-label="Hubungkan nomor" className="mt-6 rounded-3xl border border-border bg-surface p-5 md:p-6">
+    <section aria-labelledby="link-title" className="mt-6 rounded-[14px] border border-border bg-surface p-[18px] md:p-6">
+      <h2 id="link-title" className="font-heading text-base font-bold text-text">
+        Hubungkan nomor
+      </h2>
       {code ? (
         <>
-          <p className="text-sm text-text-muted">Kodemu, berlaku 15 menit</p>
+          <p className="mt-3 text-sm text-text-muted">Kodemu, berlaku 15 menit</p>
           <p
             aria-label={`Kode ${code.code.split("").join(" ")}`}
-            className="mt-1 font-serif text-focus font-light tracking-widest text-text"
+            className="font-heading text-[36px] leading-[1.15] font-bold tracking-widest text-primary tabular-nums"
           >
             {code.code}
           </p>
@@ -47,7 +50,7 @@ function LinkView() {
           </p>
           <a
             href={`https://wa.me/${code.businessPhone}?text=${encodeURIComponent(`LINK ${code.code}`)}`}
-            className={buttonVariants({ variant: "primary", className: "mt-4 w-full" })}
+            className={buttonVariants({ variant: "primary", className: "mt-[18px] w-full" })}
             rel="noreferrer noopener"
             target="_blank"
           >
@@ -56,12 +59,12 @@ function LinkView() {
         </>
       ) : (
         <>
-          <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface-muted/60 p-4 text-base text-text transition-colors duration-200 has-checked:border-primary has-checked:bg-primary-soft">
+          <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 text-sm text-text-muted">
             <input
               type="checkbox"
               checked={consent}
               onChange={(event) => setConsent(event.target.checked)}
-              className="mt-0.5 h-6 w-6 shrink-0 rounded-sm border border-control accent-primary"
+              className="mt-0.5 size-6 shrink-0 rounded-sm border border-control accent-primary"
             />
             <span>
               Saya paham pesan WhatsApp saya diproses lewat server Meta, dan saya tidak akan mengirim
@@ -69,7 +72,7 @@ function LinkView() {
             </span>
           </label>
 
-          <Button onClick={() => void make()} disabled={pending} className="mt-4 w-full">
+          <Button onClick={() => void make()} disabled={pending} className="mt-[18px] w-full">
             {pending ? "Membuat kode…" : "Buat kode"}
           </Button>
         </>
@@ -99,19 +102,27 @@ function LinkedView({ linked }: { linked: Linked }) {
   }
 
   return (
-    <section aria-label="Nomor terhubung" className="mt-6 rounded-3xl border border-border bg-surface p-5 md:p-6">
+    <section aria-label="Nomor terhubung" className="mt-6 rounded-[14px] border border-border bg-surface p-[18px] md:p-6">
       <p className="text-base text-text">
-        Terhubung ke nomor berakhiran <span className="tabular-nums">{linked.lastDigits}</span>.
+        Terhubung ke nomor berakhiran <span className="font-bold tabular-nums">{linked.lastDigits}</span>.
       </p>
 
-      <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface-muted/60 p-4 text-base text-text transition-colors duration-200 has-checked:border-primary has-checked:bg-primary-soft">
-        <input
-          type="checkbox"
-          checked={optedIn}
-          onChange={(event) => void change(event.target.checked)}
-          className="mt-0.5 h-6 w-6 shrink-0 rounded-sm border border-control accent-primary"
-        />
+      {/* A switch (DESIGN.md §14 wireframe) built on a native checkbox, so the browser keeps its state and keys. */}
+      <label className="mt-2 flex min-h-14 cursor-pointer items-center justify-between gap-4 border-t border-rule py-2 text-base text-text">
         <span>Balas ceritaku secara otomatis</span>
+        <span className="relative inline-flex h-[30px] w-[52px] shrink-0">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={optedIn}
+            onChange={(event) => void change(event.target.checked)}
+            className="peer absolute inset-0 cursor-pointer appearance-none rounded-full border border-control bg-surface-muted transition-colors duration-200 checked:border-primary checked:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1 left-1 size-[22px] rounded-full bg-control transition-transform duration-200 peer-checked:translate-x-[22px] peer-checked:bg-surface"
+          />
+        </span>
       </label>
 
       <p role="status" className="mt-2 text-sm text-text-muted">

@@ -142,18 +142,15 @@ test("batas 3 kebiasaan untuk paket gratis, arsip membuka slot, premium tanpa ba
   await expect(page.getByText("Paket gratis memuat 3 kebiasaan aktif")).toBeVisible();
   await expect(page.getByLabel("Nama kebiasaan")).toHaveCount(0);
 
-  // Archive one: the habit leaves the list and a new one fits.
-  await page.getByRole("button", { name: "Kelola" }).click();
+  // Archive one from "Kelola": the habit leaves the list and a new one fits.
   await page.getByRole("button", { name: "Arsipkan" }).first().click();
   await page.getByRole("button", { name: "Ya, arsipkan" }).click();
-  // The page refreshes into the checklist once the archive is saved.
-  await expect(page.getByRole("button", { name: "Kelola", exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /Satu/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Tambah kebiasaan" }).click();
   await page.getByLabel("Nama kebiasaan").fill("Empat");
   await page.getByRole("button", { name: "Simpan" }).click();
-  await expect(page.getByText("Empat", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Empat" })).toBeVisible();
 
   // The page was told it is full; the database is what really refuses. A premium
   // account passes the same trigger (the payment webhook sets the plan).
@@ -162,7 +159,7 @@ test("batas 3 kebiasaan untuk paket gratis, arsip membuka slot, premium tanpa ba
   await page.getByRole("button", { name: "Tambah kebiasaan" }).click();
   await page.getByLabel("Nama kebiasaan").fill("Lima");
   await page.getByRole("button", { name: "Simpan" }).click();
-  await expect(page.getByText("Lima", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Lima" })).toBeVisible();
 });
 
 test("nama kosong ditolak dengan pesan jelas dan tidak membuat kebiasaan", async ({ page }) => {

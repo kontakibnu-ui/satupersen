@@ -40,7 +40,7 @@ export function DeleteMaterial({ materialId, title, isFree }: { materialId: stri
   }
 
   return (
-    <div className="mt-8 rounded-3xl border border-border bg-surface p-5 md:p-6">
+    <div className="mt-8 rounded-[14px] border border-border bg-surface p-[18px] md:p-6">
       <p className="text-base text-text">
         Hapus “{title}” beserta pertanyaan dan riwayat reviewnya? Ini tidak bisa dibatalkan.
       </p>

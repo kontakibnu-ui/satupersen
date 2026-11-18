@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BinderSheet } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import { MAX_EXPLANATION_LENGTH } from "@/lib/study/rules";
 import { checkMaterialExplanation } from "../actions";
@@ -82,8 +83,8 @@ export function ExplainPanel({
   }
 
   return (
-    <section aria-labelledby="explain-title" className="mt-4 rounded-3xl border border-border bg-surface p-5 md:p-6">
-      <h2 id="explain-title" className="font-heading text-lg font-bold text-text">
+    <BinderSheet aria-labelledby="explain-title" className="mt-6">
+      <h2 id="explain-title" className="font-heading text-base font-bold text-text">
         Jelaskan dengan kata sendiri
       </h2>
       <p id="explain-hint" className="mt-1 text-sm text-text-muted">
@@ -92,7 +93,7 @@ export function ExplainPanel({
           : "Tutup bahannya, lalu tulis apa yang kamu pahami seolah menjelaskan ke teman."}
       </p>
 
-      <label htmlFor="explanation" className="mt-4 block text-sm font-semibold text-text">
+      <label htmlFor="explanation" className="mt-3 block text-sm font-semibold text-text">
         Penjelasanmu
       </label>
       <LinedTextarea
@@ -104,7 +105,8 @@ export function ExplainPanel({
         invalid={tooLong}
         disabled={phase === "checking"}
         placeholder="Mulai dari yang paling kamu ingat."
-        className="mt-1"
+        onSheet
+        className="mt-1.5 border-t-[3px] border-double border-rule-strong"
       />
       {explanation.length > MAX_EXPLANATION_LENGTH - 500 ? (
         <p className={`mt-2 text-sm tabular-nums ${tooLong ? "font-semibold text-text" : "text-text-muted"}`}>
@@ -112,18 +114,18 @@ export function ExplainPanel({
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button onClick={check} disabled={phase === "checking"} className="w-full sm:w-auto">
+      <div className="mt-[18px] flex flex-col gap-3">
+        <Button onClick={check} disabled={phase === "checking"} className="w-full">
           {phase === "checking" ? "Memeriksa…" : "Periksa penjelasan"}
         </Button>
         {again ? (
-          <Button variant="link" onClick={() => setOpen(false)} disabled={phase === "checking"}>
+          <Button variant="link" onClick={() => setOpen(false)} disabled={phase === "checking"} className="self-center">
             Batal
           </Button>
         ) : null}
       </div>
 
-      <div aria-live="polite" className="mt-3">
+      <div aria-live="polite" className="mt-2.5 text-center">
         {phase === "checking" ? (
           <p className="text-sm text-text-muted">Sedang membandingkan dengan bahanmu…</p>
         ) : message ? (
@@ -141,6 +143,6 @@ export function ExplainPanel({
           </p>
         )}
       </div>
-    </section>
+    </BinderSheet>
   );
 }

@@ -139,6 +139,14 @@ test("Paket: kuota bulan ini terbaca dari ai_usage, empat paket, dan tombol baya
   await page.goto("/settings/plan");
   await expect(page.getByRole("heading", { level: 1, name: "Paket" })).toBeVisible();
   await expect(page.getByRole("meter", { name: "Kuota AI bulan ini" })).toHaveAttribute("aria-valuenow", "20");
-  await expect(page.getByRole("radio")).toHaveCount(4);
-  await expect(page.getByRole("button", { name: /^Bayar / })).toBeDisabled();
+  // DESIGN §14.3: four sticky notes, longest first, each a real radio; the one
+  // button follows the choice and stays off until payment is connected.
+  const notes = page.getByRole("radiogroup", { name: "Lama paket premium" });
+  await expect(notes.getByRole("radio")).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Pilih 12 bulan" })).toBeDisabled();
+  // Tapped again until the page has hydrated and follows the choice.
+  await expect(async () => {
+    await notes.getByText("6 bulan", { exact: true }).click();
+    await expect(page.getByRole("button", { name: "Pilih 6 bulan" })).toBeDisabled({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
 });

@@ -1,6 +1,7 @@
-import { BookOpen, ChevronRight, RotateCcw } from "lucide-react";
+import { BookOpen, ChevronRight, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BinderSheet, SectionHead } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { isValidTimeZone, todayKey } from "@/lib/dates";
 import { canAddMaterial } from "@/lib/study/limits";
 import { materialState, reviewDayLabel, type MaterialState } from "@/lib/study/schedule";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { BookShelf, BookShelfUnavailable, type ShelfBook } from "./book-shelf";
 
 export const metadata: Metadata = {
@@ -125,7 +127,8 @@ export default async function LearnPage() {
   const due = materials.filter((material) => material.state.kind === "due");
 
   const addLink = canAdd ? (
-    <Link href="/learn/new" className={buttonVariants({ variant: "link", className: "mt-2 font-semibold text-primary" })}>
+    <Link href="/learn/new" className={buttonVariants({ variant: "link", className: "gap-2 text-sm font-semibold text-primary" })}>
+      <Plus aria-hidden="true" size={18} strokeWidth={1.8} />
       Tambah materi
     </Link>
   ) : (
@@ -177,18 +180,17 @@ export default async function LearnPage() {
       ) : (
         <>
           {due.length > 0 ? (
-            <Card className="mt-6" aria-labelledby="review-today">
-              <CardHeader id="review-today" title="Review hari ini" icon={RotateCcw} />
-              <MaterialLinks materials={due} today={today} hash="#review" />
-            </Card>
+            <BinderSheet className="mt-6" aria-labelledby="review-today">
+              <SectionHead id="review-today" title="Review hari ini" aside={`${due.length} materi`} />
+              <MaterialLinks materials={due} today={today} hash="#review" lastRule={false} />
+            </BinderSheet>
           ) : null}
 
-          <Card className="mt-4" aria-labelledby="my-materials">
-            <CardHeader id="my-materials" title="Materimu" icon={BookOpen} />
+          <section className="mt-6" aria-labelledby="my-materials">
+            <SectionHead id="my-materials" title="Materimu" aside={`${materials.length} materi`} />
             <MaterialLinks materials={materials} today={today} />
-          </Card>
-
-          {addLink}
+            {addLink}
+          </section>
 
           {shelf}
         </>
@@ -197,28 +199,31 @@ export default async function LearnPage() {
   );
 }
 
+/** Rows of 56 px on pale rules (§14.3 "Kepala bagian"); on a binder sheet the last one has no rule. */
 function MaterialLinks({
   materials,
   today,
   hash = "",
+  lastRule = true,
 }: {
   materials: (MaterialRow & { state: MaterialState })[];
   today: string;
   hash?: string;
+  lastRule?: boolean;
 }) {
   return (
-    <ul className="mt-2 flex flex-col">
+    <ul className="flex flex-col">
       {materials.map((material) => (
-        <li key={material.id} className="border-b border-border last:border-b-0">
+        <li key={material.id} className={cn("border-b border-rule", !lastRule && "last:border-b-0")}>
           <Link
             href={`/learn/${material.id}${hash}`}
-            className="-mx-2 flex min-h-14 items-center gap-3 rounded-2xl px-2 py-2 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary"
+            className="flex min-h-14 items-center gap-3 py-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate text-base font-semibold text-text">{material.title}</span>
               <span className="block text-sm text-text-muted">{statusLine(material.state, today)}</span>
             </span>
-            <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="shrink-0 text-text-muted" />
+            <ChevronRight aria-hidden="true" size={18} strokeWidth={1.6} className="shrink-0 text-text-muted" />
           </Link>
         </li>
       ))}

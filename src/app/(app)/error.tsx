@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 export default function AppError({ retry }: { error: unknown; retry: () => void }) {
   return (
     <main className="py-6 md:py-10">
-      <div className="rounded-3xl border border-border bg-surface p-6">
+      <div className="rounded-[14px] border border-border bg-surface p-6">
         <h1 className="font-heading text-title font-bold text-text">Halaman ini belum bisa ditampilkan</h1>
         <p className="mt-2 text-base text-text-muted">
           Ada gangguan saat mengambil datamu. Tulisanmu yang sudah tersimpan tetap aman.

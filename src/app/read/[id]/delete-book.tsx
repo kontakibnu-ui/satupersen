@@ -52,7 +52,7 @@ export function DeleteBook({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4">
+    <div className="rounded-[14px] border border-border bg-surface p-4">
       <p className="text-base text-text">Hapus “{title}” beserta filenya? Ini tidak bisa dibatalkan.</p>
       {isFree ? (
         <p className="mt-2 text-sm text-text-muted">

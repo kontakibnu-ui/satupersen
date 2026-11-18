@@ -2,17 +2,20 @@
 
 import { Check, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BLEED, StickyNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import { MAX_CONTENT_LENGTH } from "@/lib/entries";
 import { cueForDay } from "@/lib/writing-cues";
 import { saveEntry } from "./actions";
 
 /**
- * The diary editor (DIARY-1 to DIARY-3, DESIGN.md §5 to §7). Version 4 writes
- * in blue ink on pale blue rules, like a school notebook.
+ * The diary editor (DIARY-1 to DIARY-3, DESIGN.md §5 to §7). It writes in
+ * blue ink on pale blue rules that run to the edges of the binder sheet
+ * (§14.3).
  *
- * - One writing cue sits above the page so it is never blank, and "Pertanyaan
- *   lain" moves to the next one. The cue is a hint, never part of the entry.
+ * - One writing cue sits on a sticky note above the lines so the page is never
+ *   blank, and "Pertanyaan lain" moves to the next one. The cue is a hint,
+ *   never part of the entry.
  * - Auto-save two seconds after the typing stops, and one row per day: the
  *   server action upserts on (user_id, date).
  * - The textarea grows with its content and never scrolls itself; the page
@@ -166,8 +169,8 @@ export function EntryEditor({
         </div>
       ) : null}
 
-      <div className="flex items-start justify-between gap-2">
-        <p id="entry-cue" className="pt-2.5 font-serif text-base italic text-text-muted md:text-lg">
+      <StickyNote className="mt-[18px] mb-3.5 flex items-center gap-1 py-2 pr-0.5 pl-3.5">
+        <p id="entry-cue" className="min-w-0 flex-1 font-serif text-base italic text-text">
           {cueForDay(date, cueStep)}
         </p>
         <Button
@@ -178,31 +181,33 @@ export function EntryEditor({
           // stays open while writing.
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => setCueStep((step) => step + 1)}
-          className="-mr-2 size-11 shrink-0 rounded-full text-text-muted hover:bg-surface-muted hover:text-text"
+          className="size-11 shrink-0 rounded-full text-primary hover:bg-surface/60"
         >
           <Shuffle aria-hidden="true" size={18} strokeWidth={1.7} />
         </Button>
-      </div>
+      </StickyNote>
 
       <label htmlFor="entry" className="sr-only">
         Tulisan hari ini
       </label>
-      <textarea
-        id="entry"
-        ref={textareaRef}
-        value={content}
-        aria-describedby="entry-cue"
-        onChange={(event) => {
-          setContent(event.target.value);
-          onContentChange?.(event.target.value);
-        }}
-        onFocus={() => setWriting(true)}
-        onBlur={() => setWriting(false)}
-        rows={6}
-        autoCapitalize="sentences"
-        placeholder="Tulis bebas. Satu kalimat juga cukup untuk mulai."
-        className="paper-lines mt-2 min-h-[204px] w-full resize-none bg-transparent font-serif text-editor text-primary placeholder:text-text-muted focus:outline-none md:min-h-[272px]"
-      />
+      <div className={`${BLEED} paper-lines`}>
+        <textarea
+          id="entry"
+          ref={textareaRef}
+          value={content}
+          aria-describedby="entry-cue"
+          onChange={(event) => {
+            setContent(event.target.value);
+            onContentChange?.(event.target.value);
+          }}
+          onFocus={() => setWriting(true)}
+          onBlur={() => setWriting(false)}
+          rows={6}
+          autoCapitalize="sentences"
+          placeholder="Tulis bebas. Satu kalimat juga cukup untuk mulai."
+          className="block min-h-[204px] w-full resize-none bg-transparent font-serif text-editor text-primary placeholder:text-text-muted focus:outline-none md:min-h-[272px]"
+        />
+      </div>
 
       <div className="mt-3 flex min-h-6 items-center justify-between gap-4">
         <p role="status" className="inline-flex items-center gap-1.5 text-sm text-text-muted">

@@ -1,11 +1,11 @@
 "use client";
 
-import { ChevronRight, Library } from "lucide-react";
+import { ChevronRight, Library, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
+import { SectionHead } from "@/components/notebook";
 import { PLAN_LIMITS, type Plan } from "@/config/plans";
 import { finishBookUpload, startBookUpload } from "@/lib/books/actions";
 import {
@@ -36,15 +36,25 @@ type UploadState =
   | { kind: "checking"; title: string }
   | { kind: "failed"; message: string };
 
-/** The error state of the sheet: the books could not be read, the rest of Belajar still works. */
+/** "Ruang baca" with its library icon, as the section head of §14.3. */
+function ShelfTitle() {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Library aria-hidden="true" size={18} strokeWidth={1.6} className="text-text-muted" />
+      Ruang baca
+    </span>
+  );
+}
+
+/** The error state of the shelf: the books could not be read, the rest of Belajar still works. */
 export function BookShelfUnavailable() {
   return (
-    <Card className="mt-4" aria-labelledby="reading-room">
-      <CardHeader id="reading-room" title="Ruang baca" icon={Library} />
+    <section className="mt-6" aria-labelledby="reading-room">
+      <SectionHead id="reading-room" title={<ShelfTitle />} />
       <p role="alert" className="mt-3 text-sm text-text">
         Ruang baca belum bisa dibuka. Coba muat ulang halaman ini sebentar lagi.
       </p>
-    </Card>
+    </section>
   );
 }
 
@@ -53,8 +63,9 @@ const NEARLY_FULL_BYTES = 200 * 1024 * 1024;
 
 /**
  * Ruang baca on /learn (PRD.md READ-1, READ-2; DESIGN.md §6 "Lembaran Ruang
- * baca"). A quiet sheet under the materials: the books, then "Unggah buku" as a
- * link that opens the file picker. The file is checked on the phone first (type
+ * baca", §14.2). Laid straight on the page under its section head, below the
+ * materials: the books, then "Unggah buku" as a link that opens the file
+ * picker. The file is checked on the phone first (type
  * from its content, size, plan room) so nothing doomed is uploaded; the server
  * and the database check again.
  *
@@ -152,23 +163,27 @@ export function BookShelf({
       : null;
 
   return (
-    <Card className="mt-4" aria-labelledby="reading-room">
-      <CardHeader id="reading-room" title="Ruang baca" icon={Library} />
+    <section className="mt-6" aria-labelledby="reading-room">
+      <SectionHead
+        id="reading-room"
+        title={<ShelfTitle />}
+        aside={books.length > 0 ? `${books.length} buku` : undefined}
+      />
 
       {books.length === 0 ? (
         <p className="mt-3 text-sm text-text-muted">
           Unggah PDF, EPUB, DOCX, atau TXT untuk dibaca di sini, lalu jadikan bagian pentingnya materi.
         </p>
       ) : (
-        <ul className="mt-2 flex flex-col">
+        <ul className="flex flex-col">
           {books.map((book) => {
             const percent = progressPercent(book.progress);
 
             return (
-              <li key={book.id} className="border-b border-border last:border-b-0">
+              <li key={book.id} className="border-b border-rule">
                 <a
                   href={`/read/${book.id}`}
-                  className="-mx-2 flex min-h-14 items-center gap-3 rounded-2xl px-2 py-2 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-primary"
+                  className="flex min-h-14 items-center gap-3 py-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-base font-semibold text-text">{book.title}</span>
@@ -177,7 +192,7 @@ export function BookShelf({
                       {percent === null ? "" : ` · ${percent}%`}
                     </span>
                   </span>
-                  <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="shrink-0 text-text-muted" />
+                  <ChevronRight aria-hidden="true" size={18} strokeWidth={1.6} className="shrink-0 text-text-muted" />
                 </a>
               </li>
             );
@@ -188,7 +203,7 @@ export function BookShelf({
       {/* Opened by the "Unggah buku" button; hidden, so it is never a second control. */}
       <input ref={input} id="book-file" type="file" accept={ACCEPT_ATTRIBUTE} hidden onChange={pick} />
 
-      <div className="mt-2" aria-live="polite">
+      <div aria-live="polite">
         {state.kind === "uploading" ? (
           <p className="py-3 text-sm text-text tabular-nums">
             Mengunggah {state.title}… {state.percent}%
@@ -196,7 +211,13 @@ export function BookShelf({
         ) : state.kind === "checking" ? (
           <p className="py-3 text-sm text-text">Memeriksa file…</p>
         ) : roomForAny.ok ? (
-          <Button variant="link" onClick={() => input.current?.click()} disabled={busy} className="font-semibold text-primary">
+          <Button
+            variant="link"
+            onClick={() => input.current?.click()}
+            disabled={busy}
+            className="gap-2 text-sm font-semibold text-primary"
+          >
+            <Upload aria-hidden="true" size={18} strokeWidth={1.8} />
             Unggah buku
           </Button>
         ) : (
@@ -218,6 +239,6 @@ export function BookShelf({
         ) : null}
         {usedNote ? <p className="pb-2 text-sm text-text-muted">{usedNote}</p> : null}
       </div>
-    </Card>
+    </section>
   );
 }

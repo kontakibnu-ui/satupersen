@@ -1,6 +1,7 @@
-import { ChartLine, Lock, TrendingUp } from "lucide-react";
+import { ChartLine, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ScribbleUnderline, SectionHead } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { ProgressTabs } from "@/components/progress-tabs";
 import { buttonVariants } from "@/components/ui/button";
@@ -37,14 +38,6 @@ const PERIODS = [
   { key: "365", days: 365, label: "1 tahun", previous: "tahun sebelumnya", short: "1 tahun" },
 ] as const;
 
-/** One calm hue per part of the score; none of them signals good or bad. */
-const DIMENSION_BARS: Record<DimensionName, string> = {
-  habits: "bg-primary",
-  productivity: "bg-sage",
-  mood: "bg-plum",
-  finance: "bg-accent-warm",
-};
-
 const DIMENSION_LABELS: Record<DimensionName, string> = {
   habits: "Kebiasaan",
   productivity: "Produktivitas",
@@ -53,9 +46,10 @@ const DIMENSION_LABELS: Record<DimensionName, string> = {
 };
 
 /**
- * Progres (DASH-1 to DASH-3, DESIGN.md §2 and §8). The one focus is the average
- * score of the chosen period, with its line. Everything else stays quiet: the
- * dimension bars are neutral and "sejak mulai" is one line. Riwayat and Laporan
+ * Progres (DASH-1 to DASH-3, DESIGN.md §2, §8, §14.3 "Grafik"). The one focus
+ * is the average score of the chosen period, with its line, laid straight on
+ * the page: charts never sit on paper (§14.1). Everything else stays quiet: the
+ * dimension bars share the one ink and "sejak mulai" is one line. Riwayat and Laporan
  * are the other two tabs of Progres (DESIGN.md §6 "Tab Progres", 2026-11-15).
  *
  * The period comes from the URL, and the server decides what it may show: the
@@ -98,8 +92,8 @@ export default async function DashboardPage({
       <PageHeader title="Progres" description="Lihat arahmu, bukan hanya satu hari." />
       <ProgressTabs current="grafik" />
 
-      <nav aria-label="Periode" className="mt-5">
-        <ul className="inline-flex gap-1 rounded-full border border-border bg-surface-muted p-1">
+      <nav aria-label="Periode" className="mt-6 max-w-[640px]">
+        <ul className="grid grid-cols-3 gap-1 rounded-full bg-surface-muted p-1">
           {PERIODS.map((candidate) => {
             const active = candidate.key === period.key;
 
@@ -108,8 +102,8 @@ export default async function DashboardPage({
                 <Link
                   href={`/dashboard?periode=${candidate.key}`}
                   aria-current={active ? "page" : undefined}
-                  className={`flex min-h-11 min-w-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors duration-200 ${
-                    active ? "bg-surface text-primary" : "text-text-muted hover:text-text"
+                  className={`flex min-h-11 min-w-11 items-center justify-center rounded-full px-4 text-sm transition-colors duration-200 ${
+                    active ? "bg-surface font-bold text-primary" : "text-text-muted hover:text-text"
                   }`}
                 >
                   {candidate.label}
@@ -122,7 +116,7 @@ export default async function DashboardPage({
 
       {locked ? (
         <Card as="div" className="mt-6 flex items-start gap-4">
-          <IconBadge icon={Lock} tone="plum" />
+          <IconBadge icon={Lock} />
           <p className="text-base text-text">
             Riwayat 1 tahun ada di Premium. Grafik 7 hari dan 30 hari tetap bisa kamu lihat.
           </p>
@@ -205,7 +199,7 @@ async function Overview({
   if (current.average === null) {
     return (
       <Card aria-label="Ringkasan progres" className="mt-6 flex flex-col items-center py-10 text-center">
-        <IconBadge icon={ChartLine} tone="primary" size="lg" />
+        <IconBadge icon={ChartLine} size="lg" />
         <p className="mt-4 max-w-sm text-base text-text-muted">
           Belum ada skor di {period.short === "1 tahun" ? "setahun ini" : `${period.short} terakhir`}.
           Tulis satu entri, lalu tekan Analisa hari ini.
@@ -245,58 +239,68 @@ async function Overview({
   const averageLabel = period.days === 365 ? "rata-rata 1 tahun" : `rata-rata ${period.days} hari`;
 
   return (
-    <div className="mt-6 flex flex-col gap-4">
-      <Card aria-label="Ringkasan progres">
-        <p className="font-serif text-focus font-light text-text tabular-nums">{average}</p>
-        <p
-          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${
-            delta !== null && delta >= 0 ? "bg-primary-soft text-primary" : "bg-surface-muted text-text-muted"
-          }`}
-        >
-          {delta === null
-            ? `${averageLabel}. Persen muncul setelah ${MIN_SCORED_DAYS_FOR_DELTA} hari berskor di tiap periode.`
-            : `${averageLabel}, ${formatPercent(Math.abs(delta))}% ${delta >= 0 ? "di atas" : "di bawah"} ${period.previous}`}
+    <div className="mt-6 flex flex-col gap-6">
+      <section aria-label="Ringkasan progres">
+        <p className="font-heading text-[44px] leading-[1.05] font-bold tracking-[-0.02em] text-primary tabular-nums">
+          {average}
+        </p>
+        <p className="mt-1.5 text-sm text-text-muted">
+          {delta === null ? (
+            `${averageLabel}. Persen muncul setelah ${MIN_SCORED_DAYS_FOR_DELTA} hari berskor di tiap periode.`
+          ) : (
+            <>
+              {averageLabel},{" "}
+              <ScribbleUnderline className="font-bold text-text">
+                {formatPercent(Math.abs(delta))}% {delta >= 0 ? "di atas" : "di bawah"}
+              </ScribbleUnderline>{" "}
+              {period.previous}
+            </>
+          )}
         </p>
 
         <div className="mt-5">
           <ScoreChart
             points={points}
             description={`Grafik skor ${period.label}, rata-rata ${average} dari 100`}
+            lastLabel={period.days === 365 ? "bulan ini" : "hari ini"}
           />
         </div>
-      </Card>
+      </section>
 
-      <div className="grid items-start gap-4 md:grid-cols-2">
-        <Card as="div" className="flex items-start gap-4">
-          <IconBadge icon={TrendingUp} tone="accent" />
-          <p className="text-base text-text">
-            {sinceStart === null
-              ? `Sejak mulai muncul setelah 14 hari berskor (${Math.min(totalResult.count ?? 0, 14)}/14).`
-              : `Sejak mulai: ${formatPercent(Math.abs(sinceStart))}% ${sinceStart >= 0 ? "lebih baik" : "di bawah awal"}`}
-          </p>
-        </Card>
+      <p className="text-base text-text">
+        {sinceStart === null ? (
+          `Sejak mulai muncul setelah 14 hari berskor (${Math.min(totalResult.count ?? 0, 14)}/14).`
+        ) : (
+          <>
+            Sejak mulai:{" "}
+            <span className="font-bold">
+              {formatPercent(Math.abs(sinceStart))}% {sinceStart >= 0 ? "lebih baik" : "di bawah awal"}
+            </span>
+          </>
+        )}
+      </p>
 
-        {dimensions.length > 0 ? (
-          <Card as="div">
-            <ul aria-label="Skor per bagian" className="flex flex-col gap-3">
-              {dimensions.map((dimension) => (
-                <li key={dimension.name} className="flex items-center gap-3">
-                  <span className="w-32 shrink-0 text-sm font-medium text-text">{DIMENSION_LABELS[dimension.name]}</span>
-                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                    <span
-                      className={`block h-full rounded-full ${DIMENSION_BARS[dimension.name]}`}
-                      style={{ width: `${Math.round(dimension.average)}%` }}
-                    />
-                  </span>
-                  <span className="w-8 shrink-0 text-right text-sm font-semibold text-text tabular-nums">
-                    {Math.round(dimension.average)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ) : null}
-      </div>
+      {dimensions.length > 0 ? (
+        <section aria-labelledby="dimensions-title" className="max-w-[640px]">
+          <SectionHead id="dimensions-title" title="Per bagian" aside={period.short} />
+          <ul aria-label="Skor per bagian" className="flex flex-col">
+            {dimensions.map((dimension) => (
+              <li key={dimension.name} className="flex min-h-14 items-center gap-3 border-b border-rule py-2">
+                <span className="w-[120px] shrink-0 text-base text-text">{DIMENSION_LABELS[dimension.name]}</span>
+                <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
+                  <span
+                    className="block h-full rounded-full bg-primary"
+                    style={{ width: `${Math.round(dimension.average)}%` }}
+                  />
+                </span>
+                <span className="w-7 shrink-0 text-right text-sm text-text-muted tabular-nums">
+                  {Math.round(dimension.average)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

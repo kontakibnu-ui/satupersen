@@ -52,8 +52,11 @@ export function MonthCalendar({
   const canGoForward = nextMonth <= today.slice(0, 7);
 
   return (
-    <div className="mt-6 rounded-3xl border border-border bg-surface px-0 py-4 sm:px-3 md:p-6">
-      <div className="flex items-center justify-between px-2 sm:px-0">
+    <section
+      aria-label={`Kalender ${formatMonthLabel(first)}`}
+      className="mt-6 rounded-[14px] border border-border bg-surface px-1 pt-2.5 pb-4 sm:px-3.5 md:p-6"
+    >
+      <div className="flex items-center justify-between px-1 sm:px-0">
         <Link
           href={historyHref(previousMonth)}
           aria-label={`Bulan sebelumnya, ${formatMonthLabel(`${previousMonth}-01`)}`}
@@ -62,7 +65,7 @@ export function MonthCalendar({
           <ChevronLeft aria-hidden="true" size={20} strokeWidth={1.5} />
         </Link>
 
-        <h2 className="font-serif text-xl font-medium text-text">{formatMonthLabel(first)}</h2>
+        <h2 className="font-heading text-base font-bold text-text">{formatMonthLabel(first)}</h2>
 
         {canGoForward ? (
           <Link
@@ -77,12 +80,12 @@ export function MonthCalendar({
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-7 text-center">
+      <div className="mt-2 grid grid-cols-7 gap-y-0.5 text-center">
         {WEEKDAYS.map((weekday) => (
           <abbr
             key={weekday.short}
             title={weekday.full}
-            className="pb-2 text-sm font-semibold text-text-muted no-underline"
+            className="pb-1.5 text-xs text-text-muted no-underline"
           >
             {weekday.short}
           </abbr>
@@ -107,7 +110,22 @@ export function MonthCalendar({
             ),
           )}
       </div>
-    </div>
+
+      <ul aria-hidden="true" className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1 px-2 text-xs text-text-muted sm:px-0">
+        <li className="flex items-center gap-1.5">
+          <span className="size-3 rounded-full border border-rule-strong bg-primary-soft" />
+          Ada tulisan
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="size-3 rounded-full border-2 border-primary" />
+          Hari ini
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="size-3 rounded-full bg-primary" />
+          Dipilih
+        </li>
+      </ul>
+    </section>
   );
 }
 
@@ -147,9 +165,9 @@ function DayCell({
       aria-current={isSelected ? "date" : undefined}
       className={`relative flex size-11 items-center justify-center rounded-full text-base tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
         isSelected
-          ? "bg-primary font-semibold text-primary-foreground"
+          ? "bg-primary font-bold text-primary-foreground"
           : isToday
-            ? "border-2 border-primary font-semibold text-text"
+            ? `border-2 border-primary font-semibold text-text ${hasEntry ? "bg-primary-soft" : ""}`
             : hasEntry
               ? "bg-primary-soft text-text hover:brightness-95"
               : "text-text hover:bg-surface-muted"

@@ -15,6 +15,7 @@ import { loadActiveHabits } from "@/lib/habits";
 import { comparedToLabel } from "@/lib/score-delta";
 import { streakLength } from "@/lib/streak";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ScribbleUnderline } from "@/components/notebook";
 import { CrisisView } from "./crisis-view";
 import type { SummaryResult, WeekDay } from "./summary-result";
 import { TodayClient } from "./today-client";
@@ -138,9 +139,16 @@ export default async function TodayPage({
         <h1 className="font-heading text-title font-bold text-text">
           Gimana harimu{name ? `, ${name}` : ""}?
         </h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <p className="mt-2.5 text-sm text-text-muted">
           {greeting}.
-          {writingStreak > 0 ? ` Sudah ${writingStreak} hari kamu menulis beruntun.` : ""}
+          {writingStreak > 0 ? (
+            <>
+              {" "}
+              Sudah{" "}
+              <ScribbleUnderline className="font-bold text-text">{writingStreak} hari</ScribbleUnderline> kamu
+              menulis beruntun.
+            </>
+          ) : null}
         </p>
       </header>
 

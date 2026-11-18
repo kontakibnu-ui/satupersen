@@ -606,7 +606,7 @@ export function Reader({ book, userId, isFree }: { book: ReaderBook; userId: str
           >
             <ChevronLeft aria-hidden="true" size={22} strokeWidth={2} />
           </Link>
-          <div className="min-w-0 flex-1 text-center">
+          <div className="min-w-0 flex-1 px-1">
             <h1 className="truncate text-sm font-semibold text-text">{title}</h1>
             <p className="text-xs text-text-muted tabular-nums">
               {FORMAT_LABELS[format]} · {formatBytes(book.sizeBytes)}
@@ -651,7 +651,7 @@ export function Reader({ book, userId, isFree }: { book: ReaderBook; userId: str
           <div id="reader-settings" className="border-t border-border bg-surface-muted">
             <div className="mx-auto flex max-w-[960px] flex-col gap-3 px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span id="flow-label" className="text-sm text-text">
+                <span id="flow-label" className="text-sm font-semibold text-text">
                   Cara baca
                 </span>
                 {fixed ? (
@@ -679,7 +679,7 @@ export function Reader({ book, userId, isFree }: { book: ReaderBook; userId: str
 
               {fixed ? null : (
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm text-text">Ukuran huruf</span>
+                  <span className="text-sm font-semibold text-text">Ukuran huruf</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -752,7 +752,7 @@ export function Reader({ book, userId, isFree }: { book: ReaderBook; userId: str
                 <p className="min-w-0 flex-1 text-sm text-text-muted tabular-nums">
                   {new Intl.NumberFormat("id-ID").format(selection.length)} karakter terpilih
                 </p>
-                <Button onClick={makeMaterial} className="shrink-0">
+                <Button onClick={makeMaterial} className="min-h-11 shrink-0 px-[18px] text-[15px]">
                   Jadikan materi
                 </Button>
               </>

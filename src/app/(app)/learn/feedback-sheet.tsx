@@ -15,8 +15,8 @@ export function FeedbackSheet({ feedback, headingId }: { feedback: FeedbackView;
   ];
 
   return (
-    <section aria-labelledby={headingId} className="rounded-3xl border border-border bg-surface p-5 md:p-6">
-      <h2 id={headingId} className="font-heading text-lg font-bold text-text">
+    <section aria-labelledby={headingId} className="rounded-[14px] border border-border bg-surface p-[18px] md:p-6">
+      <h2 id={headingId} className="font-heading text-base font-bold text-text">
         Umpan balik penjelasan
       </h2>
       <p className="mt-1 text-sm text-text-muted">Diperiksa AI dari bahanmu</p>

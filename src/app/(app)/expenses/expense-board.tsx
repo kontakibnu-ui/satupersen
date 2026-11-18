@@ -24,9 +24,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { BinderSheet, BLEED, ScribbleUnderline, SectionHead } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, IconBadge, type IconTone } from "@/components/ui/card";
+import { Card, IconBadge } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { formatDayLabel } from "@/lib/dates";
@@ -64,26 +65,29 @@ function formatSigned(amount: number): string {
   return amount < 0 ? `−${formatRupiah(-amount)}` : formatRupiah(amount);
 }
 
-/** How each built-in category looks in the list and the picker (EXP-3). */
-const CATEGORY_LOOK: Record<EntryType, Record<string, { icon: LucideIcon; tone: IconTone }>> = {
+/**
+ * The icon of each built-in category in the list and the picker (EXP-3). In
+ * the list every icon sits in the same 36 px `primary-soft` circle (§14.3).
+ */
+const CATEGORY_LOOK: Record<EntryType, Record<string, { icon: LucideIcon }>> = {
   expense: {
-    makan: { icon: Utensils, tone: "accent" },
-    transport: { icon: Bus, tone: "sage" },
-    kuliah_kerja: { icon: GraduationCap, tone: "plum" },
-    hiburan: { icon: Clapperboard, tone: "primary" },
-    tagihan: { icon: Receipt, tone: "neutral" },
-    lainnya: { icon: Ellipsis, tone: "neutral" },
+    makan: { icon: Utensils },
+    transport: { icon: Bus },
+    kuliah_kerja: { icon: GraduationCap },
+    hiburan: { icon: Clapperboard },
+    tagihan: { icon: Receipt },
+    lainnya: { icon: Ellipsis },
   },
   income: {
-    gaji: { icon: Banknote, tone: "sage" },
-    uang_saku: { icon: HandCoins, tone: "sage" },
-    usaha: { icon: Store, tone: "sage" },
-    bonus: { icon: Gift, tone: "sage" },
-    lainnya: { icon: Briefcase, tone: "neutral" },
+    gaji: { icon: Banknote },
+    uang_saku: { icon: HandCoins },
+    usaha: { icon: Store },
+    bonus: { icon: Gift },
+    lainnya: { icon: Briefcase },
   },
 };
 
-function lookFor(type: EntryType, category: string): { icon: LucideIcon; tone: IconTone } {
+function lookFor(type: EntryType, category: string): { icon: LucideIcon } {
   return CATEGORY_LOOK[type][category] ?? CATEGORY_LOOK[type].lainnya;
 }
 
@@ -94,14 +98,15 @@ type Editing =
   | { kind: "receipt"; image: File; id: number };
 
 /**
- * The Uang screen (DESIGN.md §2, §6, §8, version 3). What is left of the month
- * (money in minus money out) is the focus; until income is logged it is the
- * total spent. The single primary button adds an expense and sits right under
- * the card, so logging takes one tap, and a secondary button adds income
- * (EXP-5). Under them the month is set against the month before and against the
- * last few months (EXP-6). Going over the
- * budget is written as a plain sentence and the bar stays the same colour: no
- * red anywhere except deleting data (§12).
+ * The Uang screen (DESIGN.md §2, §8, §14.3 "Uang"). The month is a cash book on
+ * a binder sheet: what is left (money in minus money out) is the focus,
+ * underlined in pen; until income is logged it is the total spent. The single
+ * primary button adds an expense and sits right under the sheet, so logging
+ * takes one tap, and a secondary button adds income (EXP-5). Under them a plain
+ * card sets the month against the month before and the last few months
+ * (EXP-6), and the month's entries follow on a second binder sheet, one section
+ * head per day. Going over the budget is written as a plain sentence and the
+ * bar stays the same colour: no red anywhere except deleting data (§12).
  *
  * "Isi dari screenshot" (EXP-7) is a quiet link under the two buttons: the
  * picture is read on the phone, the form opens filled in, and the user checks
@@ -182,73 +187,69 @@ export function ExpenseBoard({
     <>
       <PageHeader title="Uang" description="Catat uang masuk dan keluar, lihat ke mana uangmu pergi." />
 
-      <div className="mt-6 rounded-3xl border border-border bg-surface p-5 text-text md:p-6">
-        <div className="flex items-center justify-between gap-2">
+      <BinderSheet aria-label={`Buku kas ${monthLabel}`} className="mt-6 text-text">
+        <div className="-mx-2.5 -mt-1.5 flex items-center justify-between gap-2">
           <Link
             href={`/expenses?bulan=${previousMonth}`}
             aria-label="Bulan sebelumnya"
-            className="-ml-2 flex size-11 items-center justify-center rounded-full hover:bg-surface-muted"
+            className="flex size-11 items-center justify-center rounded-full text-text-muted hover:bg-surface-muted"
           >
-            <ChevronLeft aria-hidden="true" size={20} strokeWidth={2} />
+            <ChevronLeft aria-hidden="true" size={18} strokeWidth={1.8} />
           </Link>
-          <p className="text-sm font-semibold">{monthLabel}</p>
+          <h2 className="font-heading text-base font-bold">{monthLabel}</h2>
           {nextMonth ? (
             <Link
               href={`/expenses?bulan=${nextMonth}`}
               aria-label="Bulan berikutnya"
-              className="-mr-2 flex size-11 items-center justify-center rounded-full hover:bg-surface-muted"
+              className="flex size-11 items-center justify-center rounded-full text-text-muted hover:bg-surface-muted"
             >
-              <ChevronRight aria-hidden="true" size={20} strokeWidth={2} />
+              <ChevronRight aria-hidden="true" size={18} strokeWidth={1.8} />
             </Link>
           ) : (
-            <span aria-hidden="true" className="-mr-2 size-11" />
+            <span aria-hidden="true" className="size-11" />
           )}
         </div>
 
-        <p className="mt-4 text-sm text-text-muted">{hasIncome ? "Sisa uang bulan ini" : "Total pengeluaran bulan ini"}</p>
-        <p className="mt-1 font-serif text-focus font-light text-primary tabular-nums">
-          {formatSigned(hasIncome ? left : expense)}
+        <p className="mt-1.5 text-sm text-text-muted">{hasIncome ? "Sisa uang bulan ini" : "Total pengeluaran bulan ini"}</p>
+        <p className="mt-0.5 font-heading text-[36px] leading-[1.15] font-bold tracking-[-0.02em] text-primary tabular-nums">
+          <ScribbleUnderline>{formatSigned(hasIncome ? left : expense)}</ScribbleUnderline>
         </p>
 
         {hasIncome ? (
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div>
+          <dl className={cn(BLEED, "mt-[18px] border-t-[3px] border-double border-rule-strong")}>
+            <div className="flex items-baseline justify-between gap-3 border-b border-rule py-2">
               <dt className="text-text-muted">Masuk</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums">{formatRupiah(income)}</dd>
+              <dd className="tabular-nums">{formatRupiah(income)}</dd>
             </div>
-            <div>
+            <div className="flex items-baseline justify-between gap-3 border-b border-rule py-2">
               <dt className="text-text-muted">Keluar</dt>
-              <dd className="mt-0.5 font-semibold tabular-nums">{formatRupiah(expense)}</dd>
+              <dd className="tabular-nums">{formatRupiah(expense)}</dd>
             </div>
           </dl>
         ) : (
-          <p className="mt-2 text-sm text-text-muted">Catat pemasukan supaya sisa uangmu kelihatan.</p>
+          <p className="mt-3 text-sm text-text-muted">Catat pemasukan supaya sisa uangmu kelihatan.</p>
         )}
 
         {remaining !== null && budget !== null ? (
-          <div className="mt-4">
+          <div className="mt-3.5">
             <p className="text-sm text-text-muted tabular-nums">
               {remaining >= 0
-                ? `Sisa budget ${formatRupiah(remaining)}`
-                : `Lewat ${formatRupiah(-remaining)} dari budget`}
+                ? `Sisa budget ${formatRupiah(remaining)} dari ${formatRupiah(budget)}`
+                : `Lewat ${formatRupiah(-remaining)} dari budget ${formatRupiah(budget)}`}
             </p>
             <div aria-hidden="true" className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted">
-              <div className="h-full rounded-full bg-accent-warm" style={{ width: `${usedPercent}%` }} />
+              <div className="h-full rounded-full bg-primary" style={{ width: `${usedPercent}%` }} />
             </div>
           </div>
         ) : null}
 
         {isCurrentMonth ? (
-          <button
-            type="button"
-            onClick={openBudget}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-control px-4 text-sm font-semibold text-text transition-colors duration-200 hover:bg-surface-muted active:scale-[0.98]"
-          >
-            <Target aria-hidden="true" size={16} strokeWidth={2.2} />
+          <Button variant="link" onClick={openBudget} className="mt-1 gap-2 text-sm font-semibold text-primary">
+            <Target aria-hidden="true" size={16} strokeWidth={1.8} />
             {budget === null ? "Atur budget" : "Ubah budget"}
-          </button>
+          </Button>
         ) : null}
-      </div>
+      </BinderSheet>
 
       <p role="status" className="mt-2 text-sm text-text-muted">
         {notice}
@@ -267,7 +268,7 @@ export function ExpenseBoard({
 
       {isCurrentMonth ? (
         <>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button onClick={() => startAdd("expense")} className="w-full sm:flex-1">
               <Plus aria-hidden="true" size={20} strokeWidth={2.2} />
               Tambah pengeluaran
@@ -287,8 +288,8 @@ export function ExpenseBoard({
       ) : null}
 
       {hasHistory ? (
-        <Card as="section" aria-label="Perkembangan uang" className="mt-4">
-          <h2 className="font-serif text-xl font-normal text-text">Perkembangan</h2>
+        <Card as="section" aria-label="Perkembangan uang" className="mt-6">
+          <h2 className="font-heading text-base font-bold text-text">Perkembangan</h2>
           <ComparisonLines
             comparison={comparison}
             hasIncome={hasIncome || comparison.previous.income > 0}
@@ -304,42 +305,44 @@ export function ExpenseBoard({
       ) : null}
 
       {groups.length === 0 ? (
-        <Card as="div" className="mt-4 flex flex-col items-center py-10 text-center">
-          <IconBadge icon={Wallet} tone="accent" size="lg" />
+        <Card as="div" className="mt-6 flex flex-col items-center py-10 text-center">
+          <IconBadge icon={Wallet} size="lg" />
           <p className="mt-4 max-w-sm text-base text-text-muted">
             Belum ada catatan uang di bulan ini. Catat yang pertama, nominalnya saja sudah cukup.
           </p>
         </Card>
       ) : (
-        // One ledger sheet like a cash book (DESIGN.md §6): a day is a section
-        // with its own total, divided by hairlines rather than cards.
-        <Card as="div" className="mt-4 divide-y divide-border py-2 md:py-3">
-          {groups.map((group) => (
-            <section key={group.date} aria-label={group.label} className="py-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-text">{group.label}</h2>
-                <p className="text-sm font-semibold text-text-muted tabular-nums">
-                  {group.net > 0 ? "+" : ""}
-                  {formatSigned(group.net)}
-                </p>
-              </div>
-              <ul className="mt-2 flex flex-col">
+        // The month's entries on a binder sheet like a cash book (§14.3): one
+        // section head per day with the day's total, rows on pale rules.
+        <BinderSheet as="div" className="mt-6">
+          {groups.map((group, groupIndex) => (
+            <section key={group.date} aria-label={group.label} className={groupIndex > 0 ? "mt-[22px]" : undefined}>
+              <SectionHead
+                title={group.label}
+                aside={
+                  <>
+                    {group.net > 0 ? "+" : ""}
+                    {formatSigned(group.net)}
+                  </>
+                }
+              />
+              <ul className={cn(groupIndex === groups.length - 1 && "[&>li:last-child]:border-b-0")}>
                 {group.items.map((item) => {
                   const look = lookFor(item.type, item.category);
 
                   return (
-                    <li key={item.id}>
+                    <li key={item.id} className="border-b border-rule">
                       <button
                         type="button"
                         onClick={() => setEditing({ kind: "edit", item })}
-                        className="-mx-2 flex min-h-14 w-[calc(100%+1rem)] items-center gap-3 rounded-2xl px-2 text-left text-base text-text transition-colors duration-200 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        className="flex min-h-14 w-full items-center gap-3.5 py-2 text-left text-base text-text transition-colors duration-200 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
-                        <IconBadge icon={look.icon} tone={look.tone} />
-                        <span className="min-w-0 flex-1 truncate">
-                          {categoryLabel(item.category, item.type)}
-                          {item.note ? `, ${item.note}` : ""}
+                        <IconBadge icon={look.icon} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{categoryLabel(item.category, item.type)}</span>
+                          {item.note ? <span className="block truncate text-sm text-text-muted">{item.note}</span> : null}
                         </span>
-                        <span className="shrink-0 font-semibold tabular-nums">
+                        <span className="shrink-0 tabular-nums">
                           {item.type === "income" ? "+" : ""}
                           {formatRupiah(item.amount)}
                         </span>
@@ -350,7 +353,7 @@ export function ExpenseBoard({
               </ul>
             </section>
           ))}
-        </Card>
+        </BinderSheet>
       )}
 
       <Sheet
@@ -649,10 +652,10 @@ function AmountField({
   const shown = value === "" ? "" : new Intl.NumberFormat("id-ID").format(Number(value));
 
   return (
-    <label className="block text-sm text-text-muted">
+    <label className="block text-sm font-semibold text-text">
       {label}
-      <span className="mt-1 flex min-h-11 items-center gap-2 rounded-md border border-control bg-surface px-3 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
-        <span aria-hidden="true" className="text-base text-text-muted">
+      <span className="mt-1.5 flex min-h-16 items-center gap-2 rounded-xl border border-control bg-surface px-4 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
+        <span aria-hidden="true" className="text-sm font-bold text-text-muted">
           Rp
         </span>
         <input
@@ -662,7 +665,7 @@ function AmountField({
           value={shown}
           onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 10))}
           placeholder="0"
-          className="min-h-11 w-full bg-transparent text-base text-text tabular-nums placeholder:text-text-muted focus:outline-none"
+          className="min-h-14 w-full min-w-0 bg-transparent font-heading text-[28px] font-bold text-primary tabular-nums placeholder:text-text-muted focus:outline-none"
         />
       </span>
     </label>
@@ -671,7 +674,7 @@ function AmountField({
 
 /** A choice drawn as a pill: the categories, and the type of a screenshot entry. */
 const CHOICE_CHIP_CLASS =
-  "flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-control bg-surface px-4 text-sm text-text transition-colors duration-200 ease-out has-checked:border-primary has-checked:bg-primary-soft has-checked:font-semibold has-checked:text-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary";
+  "flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border border-control bg-transparent px-3.5 text-sm text-text transition-colors duration-200 ease-out has-checked:border-primary has-checked:bg-primary-soft has-checked:font-bold has-checked:text-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary";
 
 /**
  * Adds or edits one entry. A new entry carries a day (EXP-8), today unless the
@@ -779,10 +782,10 @@ function ExpenseForm({
 
   return (
     // noValidate: the date limits are explained in the form's own words, not the browser's.
-    <form noValidate onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-4">
+    <form noValidate onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-[18px]">
       {draft ? (
         <>
-          <p className="rounded-2xl bg-surface-muted px-4 py-3 text-sm text-text">
+          <p className="rounded-xl bg-surface-muted px-4 py-3 text-sm text-text">
             Diisi dari screenshot. Cek nominal, jenis, dan tanggalnya dulu sebelum disimpan.
           </p>
           <div role="radiogroup" aria-label="Jenis" className="grid grid-cols-2 gap-2">
@@ -810,28 +813,33 @@ function ExpenseForm({
 
       <AmountField label="Nominal" value={digits} onChange={setDigits} />
 
-      <div role="radiogroup" aria-label="Kategori" className="flex flex-wrap gap-2">
-        {categories.map((entry) => (
-          <label key={entry.value} className={CHOICE_CHIP_CLASS}>
-            <input
-              type="radio"
-              name="category"
-              value={entry.value}
-              checked={category === entry.value}
-              onChange={() => setCategory(entry.value)}
-              className="sr-only"
-            />
-            {(() => {
-              const Icon = lookFor(type, entry.value).icon;
+      <div>
+        <p id="category-label" className="text-sm font-semibold text-text">
+          Kategori
+        </p>
+        <div role="radiogroup" aria-labelledby="category-label" className="mt-1.5 flex flex-wrap gap-2">
+          {categories.map((entry) => (
+            <label key={entry.value} className={CHOICE_CHIP_CLASS}>
+              <input
+                type="radio"
+                name="category"
+                value={entry.value}
+                checked={category === entry.value}
+                onChange={() => setCategory(entry.value)}
+                className="sr-only"
+              />
+              {(() => {
+                const Icon = lookFor(type, entry.value).icon;
 
-              return <Icon aria-hidden="true" size={16} strokeWidth={2} />;
-            })()}
-            {entry.label}
-          </label>
-        ))}
+                return <Icon aria-hidden="true" size={16} strokeWidth={2} />;
+              })()}
+              {entry.label}
+            </label>
+          ))}
+        </div>
       </div>
 
-      <label className="block text-sm text-text-muted">
+      <label className="block text-sm font-semibold text-text">
         Catatan (opsional)
         <Input
           value={note}
@@ -839,12 +847,12 @@ function ExpenseForm({
           maxLength={MAX_NOTE_LENGTH}
           autoComplete="off"
           placeholder={type === "income" ? "Contoh: gaji bulan ini" : "Contoh: makan siang"}
-          className="mt-1"
+          className="mt-1.5 font-serif font-normal text-primary"
         />
       </label>
 
       {item ? null : (
-        <label className="block text-sm text-text-muted">
+        <label className="block text-sm font-semibold text-text">
           Tanggal
           <Input
             type="date"
@@ -852,7 +860,7 @@ function ExpenseForm({
             min={earliestEntryDate(today)}
             max={today}
             onChange={(event) => setDate(event.target.value)}
-            className="mt-1"
+            className="mt-1.5 font-normal"
           />
         </label>
       )}

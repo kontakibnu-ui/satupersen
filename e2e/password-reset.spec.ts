@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import {
   applyColorScheme,
@@ -15,10 +16,14 @@ import { BASE_URL, createTestUser, deleteTestUser, localStackIsRunning, type Tes
  * where the new password is saved and the user goes into the app.
  *
  * The full flow reads the email from Mailpit, the inbox of the local Supabase
- * stack (supabase/config.toml, port 54324), so it only runs against that stack.
+ * stack, so it only runs against that stack. Its port is read from
+ * supabase/config.toml ([local_smtp] port), so moving the stack's ports does
+ * not break the test.
  */
 
-const MAILPIT = "http://127.0.0.1:54324";
+const MAILPIT_PORT =
+  /\[local_smtp\][^[]*?\nport = (\d+)/.exec(readFileSync("supabase/config.toml", "utf8"))?.[1] ?? "54324";
+const MAILPIT = `http://127.0.0.1:${MAILPIT_PORT}`;
 const NEW_PASSWORD = "PasswordBaru456!";
 
 const pages = [

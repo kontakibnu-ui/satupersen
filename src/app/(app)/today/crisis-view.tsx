@@ -1,10 +1,11 @@
-import { HeartHandshake, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { crisisResponseFor, CRISIS_SERVICE, type CrisisLanguage } from "@/config/crisis";
 
 /**
- * DESIGN.md §9: when the day carries crisis signs the screen changes entirely.
- * No score ring, no delta, no streak, nothing playful, and no animation. The
+ * DESIGN.md §9 and §14.3: when the day carries crisis signs the screen changes
+ * entirely. No stamp, delta, streak, binder sheet, sticky note, or pen mark,
+ * nothing playful, and no animation. The
  * text is the fixed one written by a human in src/config/crisis.ts, never the
  * model's answer.
  *
@@ -25,18 +26,12 @@ export function CrisisView({
   const isEnglish = language === "en";
 
   return (
-    <section className="mt-6 rounded-3xl border border-border bg-surface-muted p-6">
-      <span
-        aria-hidden="true"
-        className="inline-flex size-12 items-center justify-center rounded-2xl bg-plum-soft text-plum"
-      >
-        <HeartHandshake size={24} strokeWidth={1.8} />
-      </span>
-      <p className="mt-4 whitespace-pre-line text-base leading-relaxed text-text">{crisisResponseFor(language)}</p>
+    <section className="mt-6 rounded-[14px] border border-border bg-surface-muted p-6">
+      <p className="whitespace-pre-line text-lg leading-relaxed text-text">{crisisResponseFor(language)}</p>
 
       <a
         href={`tel:${CRISIS_SERVICE.phone}`}
-        className={buttonVariants({ variant: "primary", className: "mt-6 min-h-14 w-full text-lg" })}
+        className={buttonVariants({ variant: "primary", className: "mt-6 w-full text-[17px]" })}
       >
         <Phone aria-hidden="true" size={20} strokeWidth={2} />
         {isEnglish ? `Call ${CRISIS_SERVICE.phone}` : `Telepon ${CRISIS_SERVICE.phone}`}

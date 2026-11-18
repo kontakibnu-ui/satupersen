@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BinderSheet, BLEED, Kop } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { ProgressTabs } from "@/components/progress-tabs";
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   endOfMonthKey,
   formatDayLabel,
+  formatDayParts,
   isDateKey,
   isValidTimeZone,
   startOfMonthKey,
@@ -101,6 +103,7 @@ export default async function HistoryPage({
   }
 
   const isToday = selected === today;
+  const parts = selected === null ? null : formatDayParts(selected);
 
   return (
     <main data-wide className="py-6 md:py-10">
@@ -110,38 +113,42 @@ export default async function HistoryPage({
       <div className="max-w-[640px]">
         <MonthCalendar monthKey={monthKey} today={today} selected={selected} entryDays={entryDays} />
 
-        {/* The reading sheet: the chosen day as a diary page, read only (DIARY-4). */}
-        <section
-          id="entri"
-          aria-live="polite"
-          className="mt-4 scroll-mt-4 rounded-3xl border border-border bg-surface p-5 md:p-6"
-        >
+        {/* The reading sheet: the chosen day as a diary page on a binder sheet, read only (DIARY-4, §14.2). */}
+        <div id="entri" aria-live="polite" className="mt-6 scroll-mt-4">
           {selected === null ? (
             <p className="text-base text-text-muted">
               {entryDays.size === 0 ? "Belum ada entri di bulan ini." : "Pilih tanggal yang bertitik untuk membaca entrinya."}
             </p>
-          ) : (
-            <>
-              <h2 className="font-serif text-xl font-medium text-text">{formatDayLabel(selected)}</h2>
+          ) : parts === null ? null : (
+            <BinderSheet aria-label={`Tulisan ${formatDayLabel(selected)}`}>
+              <h2 className="sr-only">{formatDayLabel(selected)}</h2>
+              <Kop
+                rows={[
+                  ["Hari", parts.weekday],
+                  ["Tanggal", `${parts.day} ${parts.monthYear}`],
+                ]}
+              />
 
               {selectedContent ? (
-                <p className="paper-lines mt-3 max-w-[65ch] whitespace-pre-line font-serif text-editor font-[350] text-text">{selectedContent}</p>
+                <p className={`${BLEED} paper-lines max-w-none whitespace-pre-line font-serif text-editor text-primary`}>
+                  {selectedContent}
+                </p>
               ) : (
-                <p className="mt-2 text-base text-text-muted">
+                <p className="mt-3 text-base text-text-muted">
                   {isToday ? "Belum ada entri. Mulai dari satu kalimat saja." : "Tidak ada entri di tanggal ini."}
                 </p>
               )}
 
               {isToday ? (
-                <Link href="/today" className={buttonVariants({ variant: "link", className: "mt-2" })}>
+                <Link href="/today" className={buttonVariants({ variant: "link", className: "mt-2 text-sm font-semibold text-primary" })}>
                   {selectedContent ? "Lanjut menulis di Hari Ini" : "Mulai menulis"}
                 </Link>
               ) : selectedContent ? (
-                <p className="mt-3 text-sm text-text-muted">Entri hari lampau hanya bisa dibaca.</p>
+                <p className="mt-3.5 text-sm text-text-muted">Entri hari lampau hanya bisa dibaca.</p>
               ) : null}
-            </>
+            </BinderSheet>
           )}
-        </section>
+        </div>
       </div>
     </main>
   );

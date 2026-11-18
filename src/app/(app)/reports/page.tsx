@@ -1,4 +1,6 @@
+import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
+import { BinderSheet, BLEED, Kop, ScribbleRing, ScribbleUnderline, SectionHead, StickyNote } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { ProgressTabs } from "@/components/progress-tabs";
 import { formatPercent } from "@/lib/format";
@@ -64,83 +66,168 @@ export default async function ReportsPage() {
 
       <div className="max-w-[640px]">
         {reports.length === 0 ? (
-          <p className="mt-6 rounded-3xl border border-border bg-surface p-6 text-base text-text-muted">
+          <p className="mt-6 rounded-[14px] border border-border bg-surface p-[18px] text-base text-text-muted md:p-6">
             Belum ada laporan. Laporan mingguan muncul tiap Senin pagi, kalau minggu sebelumnya punya
             minimal 3 hari yang sudah dianalisa.
           </p>
         ) : (
-          <div className="mt-6 flex flex-col gap-4">
-            {reports.map((report) => (
-              <ReportView key={`${report.type}-${report.start}`} {...report} />
-            ))}
-          </div>
+          <ReportList reports={reports} />
         )}
       </div>
     </main>
   );
 }
 
-function ReportView({
-  type,
-  start,
-  end,
-  content,
-}: {
-  type: ReportType;
-  start: string;
-  end: string;
-  content: ReportContent;
-}) {
-  const label = formatPeriodLabel(type, { start, end });
-  const previous = type === "weekly" ? "minggu sebelumnya" : "bulan sebelumnya";
-  const average = Math.round(content.average_score);
+function ReportList({ reports }: { reports: { type: ReportType; start: string; end: string; content: ReportContent }[] }) {
+  const [latest, ...earlier] = reports;
 
   return (
-    <section
-      aria-label={`${type === "weekly" ? "Laporan mingguan" : "Laporan bulanan"} ${label}`}
-      className="rounded-3xl border border-border bg-surface p-5 md:p-6"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-full px-2.5 py-1 text-sm font-semibold ${type === "weekly" ? "bg-sage-soft text-sage" : "bg-plum-soft text-plum"}`}>
-          {type === "weekly" ? "Mingguan" : "Bulanan"}
-        </span>
-        <h2 className="text-base font-semibold text-text">{label}</h2>
-      </div>
-      <p className="mt-3 font-serif text-3xl font-light text-text tabular-nums">{average}</p>
-      <p className="mt-1 text-sm text-text-muted">
-        {content.delta_pct === null
-          ? `rata-rata ${average}`
-          : `rata-rata ${average}, ${formatPercent(Math.abs(content.delta_pct))}% ${
-              content.delta_pct >= 0 ? "di atas" : "di bawah"
-            } ${previous}`}
+    <div className="mt-6 flex flex-col gap-6">
+      <LatestReport {...latest} />
+
+      {earlier.length > 0 ? (
+        <div>
+          <SectionHead title="Laporan sebelumnya" aside={`${earlier.length} laporan`} />
+          <ul>
+            {earlier.map((report) => (
+              <li key={`${report.type}-${report.start}`} className="border-b border-rule">
+                <EarlierReport {...report} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <p className="text-sm text-text-muted">
+        Laporan mingguan muncul tiap Senin pagi, kalau minggu sebelumnya punya minimal 3 hari yang sudah dianalisa.
       </p>
-
-      <p className="mt-4 text-base text-text">{content.trend}</p>
-
-      <BulletList title="Pola yang terlihat" items={content.patterns} />
-      <BulletList title="Kaitan antar bagian" items={content.insights} />
-
-      <div className="mt-6 rounded-2xl bg-accent-soft p-4">
-        <p className="text-sm font-semibold text-accent-warm">{type === "weekly" ? "Fokus minggu ini" : "Fokus bulan ini"}</p>
-        <p className="mt-1 text-base text-text">{content.focus}</p>
-      </div>
-    </section>
+    </div>
   );
 }
 
-function BulletList({ title, items }: { title: string; items: string[] }) {
+type ReportProps = { type: ReportType; start: string; end: string; content: ReportContent };
+
+function regionLabel(type: ReportType, label: string): string {
+  return `${type === "weekly" ? "Laporan mingguan" : "Laporan bulanan"} ${label}`;
+}
+
+/** The newest report, read back as a note: a binder sheet headed "Laporan / Periode" (§14.2, §14.3 "Kop"). */
+function LatestReport({ type, start, end, content }: ReportProps) {
+  const label = formatPeriodLabel(type, { start, end });
+  const average = Math.round(content.average_score);
+
+  return (
+    <BinderSheet aria-label={regionLabel(type, label)}>
+      <Kop
+        rows={[
+          ["Laporan", type === "weekly" ? "Mingguan" : "Bulanan"],
+          ["Periode", label],
+        ]}
+      />
+      <p className="mt-4 font-heading text-[44px] leading-[1.05] font-bold tracking-[-0.02em] text-primary tabular-nums">
+        {average}
+      </p>
+      <AverageLine type={type} average={average} delta={content.delta_pct} />
+
+      <div className={`${BLEED} paper-lines mt-3.5 border-t-[3px] border-double border-rule-strong font-serif text-editor text-primary`}>
+        <p>{content.trend}</p>
+        <MarkedList title="Pola yang terlihat" items={content.patterns} />
+        <MarkedList title="Kaitan antar bagian" items={content.insights} />
+      </div>
+
+      <FocusNote type={type} focus={content.focus} />
+    </BinderSheet>
+  );
+}
+
+/** An older report: one row that opens in place, so every report stays readable without a page of its own. */
+function EarlierReport({ type, start, end, content }: ReportProps) {
+  const label = formatPeriodLabel(type, { start, end });
+  const average = Math.round(content.average_score);
+
+  return (
+    <details className="group">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-2 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-semibold text-text">{label}</span>
+          <span className="block text-sm text-text-muted">
+            {type === "weekly" ? "Mingguan" : "Bulanan"}, rata-rata {average}
+          </span>
+        </span>
+        <ChevronRight
+          aria-hidden="true"
+          size={18}
+          strokeWidth={1.6}
+          className="shrink-0 text-text-muted transition-transform duration-200 group-open:rotate-90"
+        />
+      </summary>
+
+      <section aria-label={regionLabel(type, label)} className="pb-5">
+        <AverageLine type={type} average={average} delta={content.delta_pct} />
+        <p className="mt-3 text-base text-text">{content.trend}</p>
+        <div className="text-base text-text">
+          <MarkedList title="Pola yang terlihat" items={content.patterns} ruled={false} />
+          <MarkedList title="Kaitan antar bagian" items={content.insights} ruled={false} />
+        </div>
+        <FocusNote type={type} focus={content.focus} />
+      </section>
+    </details>
+  );
+}
+
+function AverageLine({ type, average, delta }: { type: ReportType; average: number; delta: number | null }) {
+  const previous = type === "weekly" ? "minggu sebelumnya" : "bulan sebelumnya";
+
+  return (
+    <p className="mt-1.5 text-sm text-text-muted">
+      {delta === null ? (
+        `rata-rata ${average}`
+      ) : (
+        <>
+          rata-rata {average},{" "}
+          <ScribbleUnderline className="font-bold text-text">
+            {formatPercent(Math.abs(delta))}% {delta >= 0 ? "di atas" : "di bawah"}
+          </ScribbleUnderline>{" "}
+          {previous}
+        </>
+      )}
+    </p>
+  );
+}
+
+function FocusNote({ type, focus }: { type: ReportType; focus: string }) {
+  return (
+    <StickyNote className="mt-7">
+      <h3 className="text-sm font-bold text-primary">{type === "weekly" ? "Fokus minggu ini" : "Fokus bulan ini"}</h3>
+      <p className="mt-1 font-serif text-lg leading-relaxed text-text italic">{focus}</p>
+    </StickyNote>
+  );
+}
+
+/**
+ * A heading, then one item per line behind a small pen circle (§14.3). On the
+ * ruled sheet the heading takes a ruled line of its own; elsewhere it is spaced
+ * like any short list.
+ */
+function MarkedList({ title, items, ruled = true }: { title: string; items: string[]; ruled?: boolean }) {
   if (items.length === 0) {
     return null;
   }
 
   return (
     <>
-      <h3 className="mt-5 text-sm font-semibold text-text">{title}</h3>
-      <ul className="mt-2 flex flex-col gap-1">
+      <h3
+        className={
+          ruled ? "pt-[34px] font-sans text-sm leading-[34px] font-bold text-text" : "mt-5 text-sm font-bold text-text"
+        }
+      >
+        {title}
+      </h3>
+      <ul className={ruled ? undefined : "mt-2 flex flex-col gap-1.5"}>
         {items.map((item) => (
-          <li key={item} className="flex gap-3 text-base text-text">
-            <span aria-hidden="true" className="mt-[0.6rem] size-1.5 shrink-0 rounded-full bg-primary" />
-            <span>{item}</span>
+          <li key={item} className="flex gap-2.5">
+            <ScribbleRing className={`${ruled ? "mt-1.5" : "mt-0.5"} size-5 shrink-0`} />
+            <span className="min-w-0">{item}</span>
           </li>
         ))}
       </ul>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparedToLabel, deltaFigure, deltaSentence } from "@/lib/score-delta";
+import { comparedToLabel, deltaFigure, deltaSentence, deltaSentenceParts } from "@/lib/score-delta";
 
 describe("comparedToLabel", () => {
   it("says kemarin for the day before", () => {
@@ -36,6 +36,34 @@ describe("deltaSentence", () => {
 
   it("never shows the score itself", () => {
     expect(deltaSentence(30, "kemarin")).not.toMatch(/\/100|dari 100|skor/i);
+  });
+});
+
+describe("deltaSentenceParts", () => {
+  it("puts the figure in the key phrase, which is what gets underlined", () => {
+    expect(deltaSentenceParts(4, "kemarin")).toEqual({
+      before: "Kamu ",
+      key: "4% lebih baik",
+      after: " dibanding kemarin",
+    });
+    expect(deltaSentenceParts(-3, "hari Kamis")).toEqual({ before: "", key: "Turun 3%", after: " dibanding hari Kamis" });
+    expect(deltaSentenceParts(0, "kemarin")).toEqual({ before: "", key: "Stabil", after: ", sama seperti kemarin" });
+  });
+
+  it("has no key phrase for the first analysis", () => {
+    expect(deltaSentenceParts(null, null).key).toBeNull();
+  });
+
+  it("joins back into exactly the sentence", () => {
+    for (const [delta, compared] of [
+      [7, "kemarin"],
+      [-1, "12 Oktober"],
+      [0, "hari Senin"],
+      [null, null],
+    ] as const) {
+      const { before, key, after } = deltaSentenceParts(delta, compared);
+      expect(`${before}${key ?? ""}${after}`).toBe(deltaSentence(delta, compared));
+    }
   });
 });
 

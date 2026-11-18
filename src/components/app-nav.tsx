@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChartLine, ListChecks, NotebookPen, Wallet } from "lucide-react";
+import { BookOpen, ChartLine, CircleCheck, PenLine, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brand } from "@/components/brand";
@@ -14,16 +14,17 @@ import { cn } from "@/lib/utils";
  * - from 1024 px the five pages sit in that header as words;
  * - below 1024 px they sit in a flat bar at the bottom, within thumb reach.
  *
- * The active item is darker and bolder **and** carries `aria-current`, so
- * colour is never the only signal (§13); a short gold line marks it as well.
+ * The active item is bolder **and** carries `aria-current`, so colour is never
+ * the only signal (§13). Version 5 (§14.3) draws the bottom bar as divider
+ * tabs: the active page hangs from the bar's top line as a paper tab.
  *
  * Since 2026-11-15 Belajar takes the slot Riwayat had, and Progres holds
  * Riwayat and Laporan as tabs, so Progres is active on all three routes.
  * Belajar carries a small ink dot while a review is due today (LEARN-9).
  */
-const NAV_ITEMS: { href: string; label: string; icon: typeof NotebookPen; also?: string[] }[] = [
-  { href: "/today", label: "Hari Ini", icon: NotebookPen },
-  { href: "/habits", label: "Kebiasaan", icon: ListChecks },
+const NAV_ITEMS: { href: string; label: string; icon: typeof PenLine; also?: string[] }[] = [
+  { href: "/today", label: "Hari Ini", icon: PenLine },
+  { href: "/habits", label: "Kebiasaan", icon: CircleCheck },
   { href: "/learn", label: "Belajar", icon: BookOpen },
   { href: "/expenses", label: "Uang", icon: Wallet },
   { href: "/dashboard", label: "Progres", icon: ChartLine, also: ["/history", "/reports"] },
@@ -63,7 +64,7 @@ export function AppHeader({ initial, learnDue }: { initial: string; learnDue: bo
                 className={cn(
                   "flex min-h-11 items-center gap-1.5 px-3 text-[15px] underline-offset-[10px] transition-colors duration-200",
                   active
-                    ? "font-semibold text-text underline decoration-accent-warm decoration-2"
+                    ? "font-semibold text-text underline decoration-primary decoration-2"
                     : "text-text-muted hover:text-text",
                 )}
               >
@@ -90,7 +91,7 @@ export function AppHeader({ initial, learnDue }: { initial: string; learnDue: bo
               aria-hidden="true"
               className={cn(
                 "inline-flex size-9 items-center justify-center rounded-full bg-primary font-heading text-sm font-bold text-primary-foreground transition-shadow duration-200",
-                onAccount && "ring-2 ring-accent-warm ring-offset-2 ring-offset-background",
+                onAccount && "ring-2 ring-primary ring-offset-2 ring-offset-background",
               )}
             >
               {initial}
@@ -110,9 +111,9 @@ export function AppNav({ learnDue }: { learnDue: boolean }) {
     <nav
       aria-label="Navigasi utama"
       data-app-nav
-      className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background lg:hidden"
     >
-      <div className="mx-auto flex max-w-[560px] items-stretch justify-around px-1">
+      <div className="mx-auto grid max-w-[560px] grid-cols-5 gap-0.5 px-2 pb-[max(12px,env(safe-area-inset-bottom))]">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href, item.also);
           const due = learnDue && item.href === LEARN_HREF;
@@ -123,16 +124,22 @@ export function AppNav({ learnDue }: { learnDue: boolean }) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex min-h-16 min-w-11 flex-1 flex-col items-center justify-center gap-1 text-label transition-colors duration-200",
+                "flex min-h-[58px] min-w-11 flex-col items-center justify-center gap-[3px] rounded-b-[14px] border border-t-0 text-xs transition-colors duration-200",
                 active
-                  ? "font-semibold text-text before:absolute before:top-0 before:h-0.5 before:w-7 before:rounded-full before:bg-accent-warm"
-                  : "text-text-muted",
+                  ? "border-border bg-surface font-bold text-primary"
+                  : "border-transparent font-medium text-text-muted hover:text-text",
               )}
             >
               <span className="relative">
-                <item.icon aria-hidden="true" size={21} strokeWidth={active ? 2 : 1.5} />
+                <item.icon aria-hidden="true" size={22} strokeWidth={active ? 1.9 : 1.6} />
                 {due ? (
-                  <span aria-hidden="true" className="absolute -right-1 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute -right-1.5 -top-0.5 size-2 rounded-full bg-primary ring-2",
+                      active ? "ring-surface" : "ring-background",
+                    )}
+                  />
                 ) : null}
               </span>
               {item.label}

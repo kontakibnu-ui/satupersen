@@ -9,13 +9,16 @@ import { cn } from "@/lib/utils";
  * - soft: a `primary-soft` pill for a quiet second action.
  * - link: plain `text`, underlined on hover and keyboard focus.
  *
- * Every kind is at least 44 px tall (DESIGN.md §5); the pills are 48 px.
+ * Every kind is at least 44 px tall (DESIGN.md §5). Version 5 (§14.4): the
+ * primary pill is 56 px, the secondary and soft pills 48 px.
  * `size: "inline"` is only for a link inside a sentence, where WCAG 2.5.8
  * exempts the target. The focus ring is 2 px `primary` (DESIGN.md §13).
  *
- * `buttonVariants` is exported for anchors that must look like a button.
+ * `buttonVariants` is exported for anchors that must look like a button. It
+ * runs through `cn`, so a compound size (the link's `px-0`) and a caller's
+ * `className` replace the base classes instead of fighting them in CSS order.
  */
-export const buttonVariants = cva(
+const variants = cva(
   "inline-flex items-center justify-center gap-2 text-base font-semibold transition-[transform,background-color,border-color,color,opacity] duration-200 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60",
   {
     variants: {
@@ -31,12 +34,19 @@ export const buttonVariants = cva(
         inline: "inline px-0 text-[length:inherit]",
       },
     },
-    compoundVariants: [{ variant: "link", size: "default", className: "min-h-11 px-0" }],
+    compoundVariants: [
+      { variant: "primary", size: "default", className: "min-h-14" },
+      { variant: "link", size: "default", className: "min-h-11 px-0" },
+    ],
     defaultVariants: { variant: "primary", size: "default" },
   },
 );
 
-export type ButtonVariantProps = VariantProps<typeof buttonVariants>;
+export type ButtonVariantProps = VariantProps<typeof variants>;
+
+export function buttonVariants(props?: Parameters<typeof variants>[0]): string {
+  return cn(variants(props));
+}
 
 export function Button({
   variant,

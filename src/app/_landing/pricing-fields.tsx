@@ -1,181 +1,90 @@
-"use client";
-
-import { Check } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { ScribbleTick } from "@/components/notebook";
+import { PackagePicker } from "@/components/package-picker";
 import { buttonVariants } from "@/components/ui/button";
-import type { PackageValue, PremiumPackage } from "@/config/plans";
-import { formatRupiah } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { MONTHLY_TOKEN_SOFT_CAP, PLAN_LIMITS, type PackageValue, type PremiumPackage } from "@/config/plans";
 
 type PackageOption = PremiumPackage & PackageValue;
 
+const FREE = PLAN_LIMITS.free;
+const formatTokens = (value: number) => new Intl.NumberFormat("id-ID").format(value);
+
+/** What the free plan holds, from src/config/plans.ts, the limits the server enforces. */
+const FREE_ITEMS = [
+  `${FREE.activeHabits} kebiasaan aktif`,
+  `${FREE.studyMaterials} materi Belajar dan ${FREE.books} buku di Ruang baca`,
+  `Analisa harian, plus ${FREE.reanalysesPerDay} analisa ulang`,
+  `Grafik ${FREE.chartDays} hari dan laporan mingguan`,
+  `Kuota AI ${formatTokens(MONTHLY_TOKEN_SOFT_CAP.free)} token sebulan`,
+];
+
 /**
- * Two plans as two fields that meet at a hard edge (DESIGN.md §10). Premium is
- * the wider field, so it reads as the one that matters more without a badge.
- * Its length is chosen with round stamps, the motif of the page. Prices come
- * from src/config/plans.ts, the numbers the app itself uses.
+ * "Harga" on the landing page (wireframe "Landing", DESIGN.md §14.3, §14.9).
  *
- * From 768 px both fields share their first two rows (CSS subgrid), so the plan
- * names and the two prices sit on the same lines and can be compared at a
- * glance (design audit 2026-11-14). What each plan holds is a short list, not a
- * paragraph, and the note that payment is not open yet sits right under the
- * button it qualifies.
+ * Below 1024 px it is the wireframe: Gratis as a plain card (name and Rp 0 on
+ * one line, one sentence, the secondary "Mulai gratis"), then Premium as a row
+ * of sticky notes. From 1024 px the two plans sit side by side on shared rows
+ * (CSS subgrid), so their headings line up and the Gratis card stands as tall
+ * as the notes, with its price, what it holds ticked in pen, and its button at
+ * the bottom (user 2026-11-17: the small card "kaya aneh"). Premium's one
+ * primary button follows the chosen note and leads to sign up, since payment
+ * is not open yet.
  */
-export function PricingFields({
-  packages,
-  freeTokens,
-  premiumTokens,
-}: {
-  packages: PackageOption[];
-  freeTokens: string;
-  premiumTokens: string;
-}) {
-  const [selectedId, setSelectedId] = useState<PremiumPackage["id"]>("12m");
-  const selected = packages.find((pkg) => pkg.id === selectedId) ?? packages[packages.length - 1];
-
-  const freeItems = [
-    "Diary tanpa batas",
-    "Analisa dan skor tiap hari, plus 1 analisa ulang",
-    "3 kebiasaan aktif",
-    "Belajar: 1 materi, diperiksa AI 1x sehari",
-    "Catatan pengeluaran",
-    "Grafik 30 hari dan laporan mingguan ringkas",
-  ];
-
-  const premiumItems = [
-    "3 analisa ulang per hari",
-    "Kebiasaan tanpa batas dan budget bulanan",
-    "Materi Belajar tanpa batas, diperiksa AI 10x per materi sehari",
-    "Grafik 365 hari",
-    "Laporan mingguan lengkap dan laporan bulanan",
-    "30 balasan AI di WhatsApp per hari",
-  ];
-
+export function PricingFields({ packages }: { packages: PackageOption[] }) {
   return (
-    <div className="grid overflow-hidden rounded-3xl md:grid-cols-12">
-      <div className="grid content-start gap-8 bg-surface p-6 md:col-span-5 md:row-span-3 md:grid-rows-subgrid md:p-10">
-        <PlanHeading name="Gratis" tagline="Untuk mulai membangun kebiasaan menulis." />
-
-        <div>
-          <p className={priceClass}>Rp 0</p>
-          <p className="mt-2 text-base text-text-muted">selamanya</p>
+    // minmax(0, 1fr) and min-w-0: the sideways row of notes must not widen its column to its full length.
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:gap-10 lg:grid-cols-12 lg:grid-rows-[auto_1fr_auto_auto] lg:gap-y-0">
+      <div className="min-w-0 lg:col-span-4 lg:row-span-4 lg:grid lg:grid-rows-subgrid">
+        <div className="hidden lg:block">
+          <h3 className="text-base font-bold text-text">Gratis</h3>
+          <p className="mt-1 text-sm text-text-muted">Untuk mulai membangun kebiasaan menulis.</p>
         </div>
 
-        <div className="flex flex-col items-start gap-8">
-          <Link href="/login" className={buttonVariants({ variant: "secondary" })}>
-            Mulai gratis
-          </Link>
-          <PlanList heading="Yang kamu dapat" items={freeItems} tokens={freeTokens} />
+        <div className="flex flex-col rounded-[14px] border border-border bg-surface p-[18px] md:p-7 lg:row-span-3 lg:mt-[22px]">
+          {/* Phone and tablet: the card of the wireframe. */}
+          <div className="flex items-baseline justify-between gap-3 lg:hidden">
+            <h3 className="text-base font-bold text-text">Gratis</h3>
+            <p className="text-xl font-bold text-text tabular-nums">Rp 0</p>
+          </div>
+          <p className="mt-1.5 text-sm text-text-muted lg:hidden">
+            {FREE.activeHabits} kebiasaan, {FREE.studyMaterials} materi, {FREE.books} buku, grafik {FREE.chartDays} hari,
+            dan analisa harian.
+          </p>
+
+          {/* Laptop: as tall as the notes beside it. */}
+          <div className="hidden lg:block">
+            <p className="font-heading text-[34px] leading-[1.05] font-bold tracking-[-0.02em] text-text tabular-nums">Rp 0</p>
+            <p className="mt-2.5 text-sm text-text-muted">Selamanya, tanpa kartu.</p>
+            <ul className="mt-5 flex flex-col gap-2.5 border-t border-rule pt-5">
+              {FREE_ITEMS.map((item) => (
+                <li key={item} className="flex gap-2.5 text-base text-text">
+                  <ScribbleTick className="mt-0.5 size-5 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-3.5 lg:mt-auto lg:pt-7">
+            <Link href="/login" className={buttonVariants({ variant: "secondary", className: "w-full" })}>
+              Mulai gratis
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="grid content-start gap-8 bg-primary-soft p-6 md:col-span-7 md:row-span-3 md:grid-rows-subgrid md:p-10">
-        <PlanHeading name="Premium" tagline="Untuk yang ingin melihat polanya lebih dalam." />
-
-        <div aria-live="polite">
-          <p className={priceClass}>{formatRupiah(selected.price)}</p>
-          <p className="mt-2 text-base text-text-muted">
-            {selected.months === 1 ? "per bulan" : `untuk ${selected.months} bulan`}
+      <div className="min-w-0 lg:col-span-8 lg:row-span-4 lg:grid lg:grid-rows-subgrid">
+        <div>
+          <h3 className="text-base font-bold text-text">Premium</h3>
+          <p className="mt-1 text-sm text-text-muted">
+            Semua yang gratis, ditambah batas yang lebih longgar dan grafik 1 tahun.{" "}
+            <span className="md:hidden">Geser catatannya untuk melihat pilihan lain.</span>
+            <span className="hidden md:inline">Pilih catatan lama paketnya.</span>
           </p>
         </div>
-
-        <div className="flex flex-col items-start gap-8">
-          <div className="w-full">
-            <fieldset>
-              <legend className="text-sm font-medium text-text-muted">Lama paket</legend>
-              <div className="mt-3 grid grid-cols-4 gap-2 sm:gap-3">
-                {packages.map((pkg) => (
-                  <label key={pkg.id} className="group flex cursor-pointer flex-col items-center gap-2 text-center">
-                    <input
-                      type="radio"
-                      name="landing-package"
-                      value={pkg.id}
-                      checked={pkg.id === selectedId}
-                      onChange={() => setSelectedId(pkg.id)}
-                      className="peer sr-only"
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="flex size-14 items-center justify-center rounded-full border border-primary/40 bg-surface font-heading text-lg font-semibold text-primary transition-[transform,background-color,color] duration-200 group-hover:-translate-y-0.5 peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary sm:size-16"
-                    >
-                      {pkg.months}
-                    </span>
-                    <span className="text-sm text-text">{pkg.months === 12 ? "1 tahun" : `${pkg.months} bulan`}</span>
-                    {pkg.savingsPercent > 0 ? (
-                      <span className="text-sm font-semibold text-accent-warm">hemat {pkg.savingsPercent}%</span>
-                    ) : (
-                      <span className="text-sm text-text-muted">bulanan</span>
-                    )}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <p className="mt-6 text-base text-text">
-              {selected.months === 1
-                ? "Bebas berhenti kapan saja."
-                : `Sama dengan ${formatRupiah(selected.perMonth)} sebulan. Lebih murah ${formatRupiah(selected.savedRupiah)} dibanding bayar bulanan.`}
-            </p>
-          </div>
-
-          <div>
-            <Link href="/login" className={cn(buttonVariants({ variant: "secondary" }), "bg-surface")}>
-              Pilih premium
-            </Link>
-            <p className="mt-3 max-w-[44ch] text-sm text-text-muted">
-              Pembayaran premium segera dibuka. Mulai gratis dulu; semua catatanmu ikut terbawa.
-            </p>
-          </div>
-
-          <PlanList heading="Semua yang gratis, ditambah" items={premiumItems} tokens={premiumTokens} />
-        </div>
+        {/* `lg:contents` puts the notes, the button, and the note under it on the shared rows. */}
+        <PackagePicker packages={packages} href="/login" className="lg:contents" />
       </div>
-    </div>
-  );
-}
-
-/** Big numbers are Plus Jakarta Sans 700 in version 4 (DESIGN.md §4). */
-const priceClass =
-  "font-heading text-[clamp(2.5rem,7vw,4rem)] leading-none font-bold tracking-[-0.03em] text-text tabular-nums";
-
-function PlanHeading({ name, tagline }: { name: string; tagline: string }) {
-  return (
-    <div>
-      <h3 className="font-heading text-[clamp(1.75rem,4vw,2.5rem)] leading-none font-bold tracking-[-0.02em] text-text">
-        {name}
-      </h3>
-      <p className="mt-4 max-w-[34ch] text-lg text-text">{tagline}</p>
-    </div>
-  );
-}
-
-/**
- * What a plan holds. The AI quota is the last line and links to the question
- * that explains what a token is, instead of leaving the word unexplained.
- */
-function PlanList({ heading, items, tokens }: { heading: string; items: string[]; tokens: string }) {
-  return (
-    <div>
-      <p className="text-sm font-semibold text-text">{heading}</p>
-      <ul className="mt-3 flex flex-col gap-2 text-base text-text">
-        {items.map((item) => (
-          <li key={item} className="flex gap-3">
-            <Check aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0 text-text-muted" />
-            {item}
-          </li>
-        ))}
-        <li className="flex gap-3">
-          <Check aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0 text-text-muted" />
-          <span>
-            Kuota AI {tokens} token sebulan (
-            <a href="#faq-kuota" className="underline underline-offset-4">
-              apa itu?
-            </a>
-            )
-          </span>
-        </li>
-      </ul>
     </div>
   );
 }

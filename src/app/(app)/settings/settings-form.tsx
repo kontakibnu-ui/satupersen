@@ -1,12 +1,14 @@
 "use client";
 
-import { ChevronRight, Gem, LogOut, MessageCircle } from "lucide-react";
+import { ChevronRight, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
+import { SectionHead } from "@/components/notebook";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Card, Chip, IconBadge } from "@/components/ui/card";
+import { Input, inputClassName } from "@/components/ui/input";
 import { forgetAllBooks } from "@/lib/books/cache";
+import { cn } from "@/lib/utils";
 import { AccountData } from "./account-data";
 import { signOut, updateProfile, type ProfileActionResult } from "./actions";
 
@@ -55,44 +57,30 @@ export function SettingsForm({
   // so the field never shows (and never saves) a zone the user did not pick.
   const zoneOptions = zones.includes(timezone) ? zones : [timezone, ...zones];
 
-  const initial = (name.trim()[0] ?? email.trim()[0] ?? "S").toUpperCase();
-
   return (
-    <div className="mt-6 flex flex-col gap-4">
-      <Card aria-label="Profil">
-        <div className="flex items-center gap-4">
-          <span
-            aria-hidden="true"
-            className="inline-flex size-14 shrink-0 items-center justify-center rounded-full bg-primary font-serif text-2xl font-medium text-primary-foreground"
-          >
-            {initial}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-text">{name || "Tanpa nama"}</p>
-            <p className="truncate text-sm text-text-muted">Email: {email}</p>
-          </div>
-          <Chip tone={plan === "premium" ? "accent" : "neutral"} className="ml-auto shrink-0">
-            Paket: {plan === "premium" ? "Premium" : "Gratis"}
-          </Chip>
-        </div>
+    <div className="mt-6 flex flex-col gap-8">
+      <section aria-labelledby="profile-title">
+        <SectionHead
+          id="profile-title"
+          title="Profil"
+          aside={plan === "premium" ? "Paket premium" : "Paket gratis"}
+        />
 
-        <form action={formAction} className="mt-6 flex flex-col gap-5">
+        <form action={formAction} className="mt-4 flex flex-col gap-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-text-muted">
+            <label htmlFor="name" className="block text-sm font-semibold text-text">
               Nama
             </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              defaultValue={name}
-              autoComplete="name"
-              className="mt-1 min-h-12 w-full rounded-2xl border border-control bg-surface px-4 text-base text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            />
+            <Input id="name" name="name" type="text" defaultValue={name} autoComplete="name" className="mt-1.5" />
           </div>
 
           <div>
-            <label htmlFor="timezone" className="block text-sm font-medium text-text-muted">
+            <p className="text-sm font-semibold text-text">Email</p>
+            <p className="mt-1.5 truncate text-base text-text-muted">{email}</p>
+          </div>
+
+          <div>
+            <label htmlFor="timezone" className="block text-sm font-semibold text-text">
               Timezone
             </label>
             <select
@@ -101,79 +89,83 @@ export function SettingsForm({
               id="timezone"
               name="timezone"
               defaultValue={timezone}
-              className="mt-1 min-h-12 w-full rounded-2xl border border-control bg-surface px-4 text-base text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+              aria-describedby="timezone-hint"
+              className={cn(inputClassName, "mt-1.5")}
+            >
               {zoneOptions.map((zone) => (
                 <option key={zone} value={zone}>
                   {zone}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-sm text-text-muted">Hari baru dimulai mengikuti timezone ini.</p>
+            <p id="timezone-hint" className="mt-1.5 text-sm text-text-muted">
+              Hari baru dimulai mengikuti timezone ini.
+            </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Button type="submit" variant="secondary" disabled={pending}>
-              {pending ? "Menyimpan…" : "Simpan"}
-            </Button>
+          <Button type="submit" variant="secondary" disabled={pending} className="w-full sm:w-auto sm:self-start">
+            {pending ? "Menyimpan…" : "Simpan"}
+          </Button>
 
-            {state?.message ? (
-              <p role="status" className="text-sm text-text-muted">
-                {state.message}
-              </p>
-            ) : null}
-          </div>
+          {state?.message ? (
+            <p role="status" className="text-sm text-text-muted">
+              {state.message}
+            </p>
+          ) : null}
         </form>
-      </Card>
+      </section>
 
-      <Card as="div" className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="font-serif text-xl font-medium text-text">Mode malam</p>
-          <p className="mt-0.5 text-sm text-text-muted">Bawaannya mode siang. Pilihanmu diingat di browser ini.</p>
+      <section aria-labelledby="look-title">
+        <SectionHead id="look-title" title="Tampilan" />
+        <div className="flex min-h-14 items-center justify-between gap-4 border-b border-rule py-2">
+          <div className="min-w-0">
+            <p className="text-base text-text">Mode malam</p>
+            <p className="text-sm text-text-muted">Bawaannya mode siang. Pilihanmu diingat di browser ini.</p>
+          </div>
+          <ThemeToggle />
         </div>
-        <ThemeToggle />
-      </Card>
+      </section>
 
-      <nav aria-label="Pengaturan lain" className="flex flex-col gap-4">
-        <Link
-          href="/settings/plan"
-          className="flex min-h-11 items-center gap-4 rounded-3xl border border-border bg-surface p-5 transition-colors duration-200 hover:bg-surface-muted"
-        >
-          <IconBadge icon={Gem} tone="accent" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold text-text">Paket</span>
-            <span className="block text-sm text-text-muted">Kuota AI bulan ini dan pilihan premium</span>
-          </span>
-          <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="text-text-muted" />
-        </Link>
-        <Link
-          href="/settings/whatsapp"
-          className="flex min-h-11 items-center gap-4 rounded-3xl border border-border bg-surface p-5 transition-colors duration-200 hover:bg-surface-muted"
-        >
-          <IconBadge icon={MessageCircle} tone="primary" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold text-text">WhatsApp</span>
-            <span className="block text-sm text-text-muted">Curhat lewat chat, masuk ke diary</span>
-          </span>
-          <ChevronRight aria-hidden="true" size={20} strokeWidth={1.75} className="text-text-muted" />
-        </Link>
+      <nav aria-labelledby="more-title">
+        <SectionHead id="more-title" title="Pengaturan lain" />
+        <ul>
+          <li className="border-b border-rule">
+            <Link href="/settings/plan" className="flex min-h-14 items-center gap-3 py-2 hover:text-primary">
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-semibold text-text">Paket</span>
+                <span className="block text-sm text-text-muted">Kuota AI bulan ini dan pilihan premium</span>
+              </span>
+              <ChevronRight aria-hidden="true" size={18} strokeWidth={1.6} className="shrink-0 text-text-muted" />
+            </Link>
+          </li>
+          <li className="border-b border-rule">
+            <Link href="/settings/whatsapp" className="flex min-h-14 items-center gap-3 py-2 hover:text-primary">
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-semibold text-text">WhatsApp</span>
+                <span className="block text-sm text-text-muted">Curhat lewat chat, masuk ke diary</span>
+              </span>
+              <ChevronRight aria-hidden="true" size={18} strokeWidth={1.6} className="shrink-0 text-text-muted" />
+            </Link>
+          </li>
+        </ul>
       </nav>
 
-      <Card as="div" className="flex flex-col gap-2">
-        {/* Book copies kept for Ruang baca go before the session does (READ-9). */}
-        <form
-          action={async () => {
-            await forgetAllBooks();
-            await signOut();
-          }}
-        >
-          <Button type="submit" variant="secondary" className="w-full">
-            <LogOut aria-hidden="true" size={18} strokeWidth={2} />
-            Keluar
-          </Button>
-        </form>
-
-        <AccountData />
-      </Card>
+      <AccountData
+        signOut={
+          // Book copies kept for Ruang baca go before the session does (READ-9).
+          <form
+            action={async () => {
+              await forgetAllBooks();
+              await signOut();
+            }}
+          >
+            <Button type="submit" variant="link" className="gap-2 text-sm font-semibold text-primary">
+              <LogOut aria-hidden="true" size={16} strokeWidth={1.8} />
+              Keluar
+            </Button>
+          </form>
+        }
+      />
     </div>
   );
 }

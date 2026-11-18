@@ -1,6 +1,7 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BinderSheet, SectionHead } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -71,8 +72,8 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   }
 
   const backLink = (
-    <Link href="/learn" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm text-text-muted hover:text-text">
-      <ChevronLeft aria-hidden="true" size={16} strokeWidth={2} />
+    <Link href="/learn" className="-ml-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
+      <ChevronLeft aria-hidden="true" size={18} strokeWidth={1.8} />
       Belajar
     </Link>
   );
@@ -171,11 +172,9 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
       ) : null}
 
       {state.kind !== "draft" && state.kind !== "due" && reviewedQuestions.length > 0 ? (
-        <section aria-labelledby="reviewed-title" className="mt-6 rounded-3xl border border-border bg-surface p-5 md:p-6">
-          <h2 id="reviewed-title" className="font-heading text-lg font-bold text-text">
-            Review hari ini selesai
-          </h2>
-          <ol className="mt-4 flex flex-col gap-6">
+        <BinderSheet aria-labelledby="reviewed-title" className="mt-6">
+          <SectionHead id="reviewed-title" title="Review hari ini selesai" />
+          <ol className="mt-[18px] flex flex-col gap-6">
             {reviewedQuestions.map((question, index) => {
               const review = reviewsToday.find((row) => row.question_id === question.id)!;
 
@@ -187,7 +186,9 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
                   {review.answer.trim() === "" ? (
                     <p className="mt-2 text-sm text-text-muted">Kamu tidak menulis jawaban.</p>
                   ) : (
-                    <p className="mt-2 whitespace-pre-line font-serif text-lg leading-8 text-primary">{review.answer}</p>
+                    <p className="binder-bleed paper-lines mt-2 whitespace-pre-line font-serif text-editor text-primary">
+                      {review.answer}
+                    </p>
                   )}
                   <p className="mt-2 text-sm text-text-muted">
                     Kamu menilai: {RATING_LABELS[review.rating]}. {nextLabel(question.due_date, today)}.
@@ -210,7 +211,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
               <p className="mt-5 text-sm text-text-muted">{ai.reason}</p>
             )
           ) : null}
-        </section>
+        </BinderSheet>
       ) : null}
 
       {state.kind === "finished" ? (
@@ -237,13 +238,11 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
       ) : null}
 
       {state.kind !== "draft" ? (
-        <section aria-labelledby="questions-title" className="mt-4 rounded-3xl border border-border bg-surface p-5 md:p-6">
-          <h2 id="questions-title" className="font-heading text-lg font-bold text-text">
-            Pertanyaan review
-          </h2>
-          <ol className="mt-3 flex flex-col">
+        <section aria-labelledby="questions-title" className="mt-6">
+          <SectionHead id="questions-title" title="Pertanyaan review" aside={`${questions.length} pertanyaan`} />
+          <ol className="flex flex-col">
             {questions.map((question, index) => (
-              <li key={question.id} className="border-b border-border py-3 last:border-b-0">
+              <li key={question.id} className="flex min-h-14 flex-col justify-center border-b border-rule py-2">
                 <p className="text-base text-text">
                   {index + 1}. {question.prompt}
                 </p>
@@ -254,23 +253,23 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
         </section>
       ) : null}
 
-      <details className="group mt-4 rounded-3xl border border-border bg-surface p-5 md:p-6">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-heading text-lg font-bold text-text [&::-webkit-details-marker]:hidden">
+      <details className="group mt-6 rounded-[14px] border border-border bg-surface px-[18px] py-1 md:px-6">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-primary [&::-webkit-details-marker]:hidden">
+          <ChevronRight
+            aria-hidden="true"
+            size={18}
+            strokeWidth={1.8}
+            className="shrink-0 transition-transform duration-200 group-open:rotate-90"
+          />
           Lihat bahan
-          <span aria-hidden="true" className="text-sm font-normal text-text-muted group-open:hidden">
-            Buka
-          </span>
-          <span aria-hidden="true" className="hidden text-sm font-normal text-text-muted group-open:inline">
-            Tutup
-          </span>
         </summary>
-        <p className="mt-3 max-w-[65ch] whitespace-pre-line font-serif text-base leading-7 text-text">
+        <p className="mt-2 mb-3 max-w-[65ch] whitespace-pre-line font-serif text-base leading-7 text-text">
           {material.source as string}
         </p>
         {state.kind === "draft" ? (
           <Link
             href={`/learn/${material.id}/edit`}
-            className={buttonVariants({ variant: "link", className: "mt-2 font-semibold text-primary" })}
+            className={buttonVariants({ variant: "link", className: "mb-1 text-sm font-semibold text-primary" })}
           >
             Ubah bahan
           </Link>

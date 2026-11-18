@@ -485,6 +485,8 @@ test("Laporan: hanya laporan yang selesai tampil, lengkap dengan pola dan fokus,
   await expect(weekly).toContainText("Kaitan antar bagian");
   await expect(weekly).toContainText("Pertahankan olahraga pagi sedikitnya tiga kali.");
 
+  // The newest report is open on its sheet; an older one opens from its row (DESIGN §14).
+  await page.getByText("Oktober 2026", { exact: true }).click();
   const monthly = page.getByRole("region", { name: "Laporan bulanan Oktober 2026" });
   await expect(monthly).toContainText("Oktober terasa lebih stabil");
   // No insights were written for the month, so the heading for them is not drawn either.
@@ -548,13 +550,13 @@ test("WhatsApp terhubung: hanya empat digit terakhir tampil, dan pilihan balasan
   await expect(page.getByText("Terhubung ke nomor berakhiran 7890.")).toBeVisible();
   await expect(page.getByText(chatterPhone)).toHaveCount(0);
 
-  const toggle = page.getByRole("checkbox", { name: "Balas ceritaku secara otomatis" });
+  const toggle = page.getByRole("switch", { name: "Balas ceritaku secara otomatis" });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
 
   await expect(async () => {
     await page.reload();
-    await expect(page.getByRole("checkbox", { name: "Balas ceritaku secara otomatis" })).not.toBeChecked({ timeout: 2000 });
+    await expect(page.getByRole("switch", { name: "Balas ceritaku secara otomatis" })).not.toBeChecked({ timeout: 2000 });
   }).toPass({ timeout: 15_000 });
 });
 

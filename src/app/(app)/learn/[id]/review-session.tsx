@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BinderSheet, SectionHead, StickyNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import { MAX_ANSWER_LENGTH, RATING_LABELS, RATINGS, type Rating } from "@/lib/study/rules";
 import { checkReview, saveReview } from "../actions";
@@ -90,26 +91,24 @@ export function ReviewSession({
   }
 
   return (
-    <section id="review" aria-labelledby="review-title" className="mt-6 scroll-mt-4 rounded-3xl border border-border bg-surface p-5 md:p-6">
-      <h2 id="review-title" className="font-heading text-lg font-bold text-text">
-        Review hari ini
-      </h2>
-      <p className="mt-1 text-sm text-text-muted">
+    <BinderSheet id="review" aria-labelledby="review-title" className="mt-6 scroll-mt-4">
+      <SectionHead id="review-title" title="Review hari ini" />
+      <p className="mt-2 text-sm text-text-muted">
         {revealed
           ? "Bandingkan dengan bahan, lalu nilai seberapa ingat kamu."
           : "Jawab dari ingatan dulu, tanpa membuka bahan. Kosong juga tidak apa-apa."}
       </p>
 
-      <ol className="mt-5 flex flex-col gap-7">
+      <ol className="mt-[18px] flex flex-col">
         {questions.map((question, index) => {
           const answer = answers[question.id] ?? "";
           const fieldId = `answer-${question.id}`;
 
           return (
-            <li key={question.id}>
-              <p className="text-base font-semibold text-text">
+            <li key={question.id} className="border-rule not-first:mt-[30px] not-first:border-t not-first:pt-[22px]">
+              <h3 className="text-base font-semibold text-text">
                 {index + 1}. {question.prompt}
-              </p>
+              </h3>
               {question.kind === "elaboration" ? (
                 <p className="mt-0.5 text-sm text-text-muted">Hubungkan dengan pemahamanmu</p>
               ) : null}
@@ -119,17 +118,22 @@ export function ReviewSession({
                   {answer.trim() === "" ? (
                     <p className="mt-2 text-sm text-text-muted">Kamu tidak menulis jawaban.</p>
                   ) : (
-                    <p className="mt-2 whitespace-pre-line font-serif text-lg leading-8 text-primary">{answer}</p>
+                    <>
+                      <p className="mt-2.5 text-xs text-text-muted">Jawabanmu</p>
+                      <p className="binder-bleed paper-lines whitespace-pre-line font-serif text-editor text-primary">
+                        {answer}
+                      </p>
+                    </>
                   )}
 
-                  <div className="mt-3 rounded-2xl bg-primary-soft p-4">
-                    <p className="text-sm font-bold text-text">Menurut bahan</p>
-                    <p className="mt-1 text-base text-text">{question.answer}</p>
-                  </div>
+                  <StickyNote className="mt-[18px]">
+                    <h4 className="text-sm font-bold text-primary">Menurut bahan</h4>
+                    <p className="mt-0.5 text-base text-text">{question.answer}</p>
+                  </StickyNote>
 
-                  <fieldset className="mt-3" disabled={phase !== "revealed"}>
-                    <legend className="text-sm font-semibold text-text">Seberapa ingat?</legend>
-                    <div className="mt-2 flex gap-1 rounded-full border border-border bg-surface-muted p-1">
+                  <fieldset className="mt-[18px]" disabled={phase !== "revealed"}>
+                    <legend className="text-sm font-bold text-text">Seberapa ingat?</legend>
+                    <div className="mt-2 flex gap-1 rounded-full bg-surface-muted p-1">
                       {RATINGS.map((rating) => (
                         <label key={rating} className="relative flex-1 cursor-pointer">
                           <input
@@ -151,7 +155,7 @@ export function ReviewSession({
                 </>
               ) : (
                 <>
-                  <label htmlFor={fieldId} className="mt-3 block text-sm text-text-muted">
+                  <label htmlFor={fieldId} className="mt-2.5 block text-sm text-text-muted">
                     Jawabanmu
                   </label>
                   <LinedTextarea
@@ -160,6 +164,7 @@ export function ReviewSession({
                     onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))}
                     rows={3}
                     invalid={answer.length > MAX_ANSWER_LENGTH}
+                    onSheet
                   />
                 </>
               )}
@@ -168,13 +173,13 @@ export function ReviewSession({
         })}
       </ol>
 
-      <div className="mt-7">
+      <div className="mt-[26px]">
         {phase === "answering" ? (
-          <Button onClick={reveal} className="w-full sm:w-auto">
+          <Button onClick={reveal} className="w-full">
             Lihat jawaban
           </Button>
         ) : (
-          <Button onClick={save} disabled={phase !== "revealed"} className="w-full sm:w-auto">
+          <Button onClick={save} disabled={phase !== "revealed"} className="w-full">
             {phase === "saving" ? "Menyimpan…" : phase === "checking" ? "Tersimpan" : "Simpan review"}
           </Button>
         )}
@@ -191,6 +196,6 @@ export function ReviewSession({
           </p>
         ) : null}
       </div>
-    </section>
+    </BinderSheet>
   );
 }

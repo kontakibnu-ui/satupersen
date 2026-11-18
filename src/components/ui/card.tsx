@@ -2,16 +2,18 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * The card of DESIGN.md §6 (version 3): a sheet of lighter paper on the page,
- * drawn with a hairline and a 20 px radius, without a shadow. Sections of a
- * screen are cards; a card never sits inside another card.
+ * The plain card of DESIGN.md §14.2 and §14.4 (version 5): `surface`, a
+ * hairline, a 14 px radius, no holes, no ruled lines, no shadow. For groups
+ * that are status or tools rather than notes (calendar, quota, a WhatsApp
+ * number). What the user writes goes on a binder sheet instead
+ * (`components/notebook.tsx`). A card never sits inside another card.
  */
 export function Card({
   as: Tag = "section",
   className,
   ...props
 }: React.HTMLAttributes<HTMLElement> & { as?: "section" | "div" | "article" | "li" }) {
-  return <Tag className={cn("rounded-3xl border border-border bg-surface p-5 md:p-6", className)} {...props} />;
+  return <Tag className={cn("rounded-[14px] border border-border bg-surface p-[18px] md:p-6", className)} {...props} />;
 }
 
 /** The heading row of a card: a small ink icon, the title in bold sans, and an optional item at the right. */

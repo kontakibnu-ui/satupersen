@@ -1,6 +1,14 @@
 import { Sprout, Stamp } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { deltaFigure, deltaSentence } from "@/lib/score-delta";
+import {
+  BinderSheet,
+  BLEED,
+  InkStamp,
+  ScribbleRing,
+  ScribbleTick,
+  ScribbleUnderline,
+  StickyNote,
+} from "@/components/notebook";
+import { deltaFigure, deltaSentenceParts } from "@/lib/score-delta";
 import { cn } from "@/lib/utils";
 
 /** What the screen needs, which is all the endpoint returns. */
@@ -20,85 +28,91 @@ export type SummaryResult = {
 export type WeekDay = { date: string; label: string; score: number | null };
 
 /**
- * "Hari Ini, hasil" from DESIGN.md §6 (version 4, "Buku tulis"): one sheet of
- * the notebook, not a stack of cards. From the top:
+ * "Hari Ini, hasil" from DESIGN.md §14.3 (version 5, "Meja Tulis"): one binder
+ * sheet, in this order:
  * - "Analisa hari ini", so it is plain that the AI wrote what follows;
- * - the change against the last scored day as a large figure in ink ("+2%")
- *   beside the same change in words (SCORE-2: no 0 to 100 number);
+ * - the ink stamp with the change against the last scored day ("+4%"), beside
+ *   the same change in words with the figure underlined in pen (SCORE-2: no
+ *   0 to 100 number). The first analysis has a sprout and no stamp;
  * - the week strip: the six days before as pale bars and today in ink, a day
- *   without an analysis as a hairline. Today's bar always comes from `result`,
- *   so a fresh analysis shows without a reload. Bar heights follow the score but no
- *   number is printed, so the strip is decoration for screen readers;
+ *   without an analysis as a 2 px line. Today's bar always comes from `result`,
+ *   so a fresh analysis shows without a reload. Heights follow the score but
+ *   no number is printed, so the strip is decoration for screen readers;
  * - the reason for the score, always visible (SCORE-3);
- * - the analysis, the two lists, and "Untuk besok" written on the ruled lines.
+ * - the analysis and the two lists on the ruled lines, ticked and circled in pen;
+ * - "Untuk besok" on a sticky note, without an underline until the AI can mark
+ *   the phrase (§14.8).
  * A lower day reads as calmly as a better one: one ink, never red.
  */
 export function SummaryResultView({ result, week }: { result: SummaryResult; week: WeekDay[] }) {
   const compared = result.delta !== null && result.comparedTo !== null;
   const strip = week.map((day, index) => (index === week.length - 1 ? { ...day, score: result.score } : day));
+  const sentence = deltaSentenceParts(result.delta, result.comparedTo);
 
   return (
-    <Card aria-labelledby="analysis-heading" className="flex flex-col gap-5">
-      <h2 id="analysis-heading" className="inline-flex items-center gap-1.5 text-sm font-medium text-text-muted">
-        <Stamp aria-hidden="true" size={15} strokeWidth={1.7} className="text-primary" />
+    <BinderSheet aria-labelledby="analysis-heading">
+      <h2 id="analysis-heading" className="flex items-center gap-2 text-sm text-text-muted">
+        <Stamp aria-hidden="true" size={18} strokeWidth={1.6} className="text-primary" />
         Analisa hari ini
       </h2>
 
-      <div className="flex items-end gap-4">
+      <div className="mt-3 flex items-center gap-3.5">
         {compared ? (
-          <p aria-hidden="true" className="font-heading text-[44px] leading-none font-bold tracking-tight text-primary tabular-nums">
-            {deltaFigure(result.delta ?? 0)}
-          </p>
+          <InkStamp figure={deltaFigure(result.delta ?? 0)} caption={`dari ${result.comparedTo}`} />
         ) : (
           <Sprout aria-hidden="true" size={44} strokeWidth={1.4} className="shrink-0 text-primary" />
         )}
-        <p className="max-w-[28ch] pb-1 text-sm text-text">{deltaSentence(result.delta, result.comparedTo)}</p>
+        <p className={cn("text-text", compared ? "text-[17px] font-semibold" : "text-base")}>
+          {sentence.before}
+          {sentence.key ? <ScribbleUnderline>{sentence.key}</ScribbleUnderline> : null}
+          {sentence.after}
+          {compared ? "." : ""}
+        </p>
       </div>
 
       <WeekStrip days={strip} />
 
       {/* SCORE-3: the reason sits right under the score and is always visible. */}
-      <p className="text-base text-text">{result.scoreReason}</p>
+      <p className="mt-4 text-base text-text">{result.scoreReason}</p>
 
-      <div className="paper-lines font-serif text-editor text-primary">
+      <div
+        className={cn(
+          BLEED,
+          "paper-lines mt-3.5 border-t-[3px] border-double border-rule-strong font-serif text-editor text-primary",
+        )}
+      >
         <p>{result.summary}</p>
-        <ResultList title="Yang sudah bagus" items={result.strengths} />
-        <ResultList title="Ruang untuk tumbuh" items={result.improvements} />
+        <ResultList title="Yang sudah bagus" items={result.strengths} mark="tick" />
+        <ResultList title="Ruang untuk tumbuh" items={result.improvements} mark="ring" />
       </div>
 
-      <div className="rounded-2xl bg-primary-soft px-4 py-3.5">
-        <h3 className="font-serif text-lg italic text-primary">Untuk besok</h3>
-        <p className="mt-0.5 text-base text-text">{result.tomorrowTip}</p>
-      </div>
-    </Card>
+      {result.tomorrowTip ? (
+        <StickyNote className="mt-7">
+          <h3 className="text-sm font-bold text-primary">Untuk besok</h3>
+          <p className="mt-1 font-serif text-lg leading-relaxed text-text italic">{result.tomorrowTip}</p>
+        </StickyNote>
+      ) : null}
+    </BinderSheet>
   );
 }
 
 /**
- * Seven bars, oldest first. Heights follow the score on a 56 px track; a day
- * with no analysis is a hairline, so a skipped day looks skipped, not low.
+ * Seven bars, oldest first, on an 84 px cell with the weekday under each. A
+ * day with no analysis is a 2 px line, so a skipped day looks skipped, not low.
  */
 function WeekStrip({ days }: { days: WeekDay[] }) {
   return (
-    <div aria-hidden="true" className="grid grid-cols-7 items-end gap-2">
+    <div aria-hidden="true" className="mt-[18px] grid grid-cols-7 gap-2">
       {days.map((day, index) => {
         const isToday = index === days.length - 1;
 
         return (
-          <div key={day.date} className="flex flex-col items-center gap-1.5">
-            <div className="flex h-14 w-full items-end">
-              <span
-                className={cn(
-                  "w-full rounded-[4px]",
-                  isToday ? "bg-primary" : "bg-rule",
-                  day.score === null && "rounded-none",
-                )}
-                style={{ height: day.score === null ? 1 : Math.max(4, Math.round((day.score / 100) * 56)) }}
-              />
-            </div>
-            <span className={cn("text-xs", isToday ? "font-semibold text-text" : "text-text-muted")}>
-              {day.label}
-            </span>
+          <div key={day.date} className="flex h-[84px] flex-col items-center justify-end gap-1.5">
+            <span
+              className={cn("block w-full rounded-t-[3px]", isToday ? "bg-primary" : "bg-rule")}
+              style={{ height: day.score === null ? 2 : Math.max(4, Math.round((day.score / 100) * 58)) }}
+            />
+            <span className={cn("text-xs", isToday ? "font-bold text-text" : "text-text-muted")}>{day.label}</span>
           </div>
         );
       })}
@@ -106,14 +120,25 @@ function WeekStrip({ days }: { days: WeekDay[] }) {
   );
 }
 
-/** A heading and its lines, written on the same ruled paper as the analysis. */
-function ResultList({ title, items }: { title: string; items: string[] }) {
+/** A heading on its own ruled line, then one line per item behind a pen mark. */
+function ResultList({ title, items, mark }: { title: string; items: string[]; mark: "tick" | "ring" }) {
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <>
-      <h3 className="font-sans text-sm leading-[34px] font-bold text-text">{title}</h3>
+      <h3 className="pt-[34px] font-sans text-sm leading-[34px] font-bold text-text">{title}</h3>
       <ul>
         {items.map((item) => (
-          <li key={item}>{item}</li>
+          <li key={item} className="flex gap-2.5">
+            {mark === "tick" ? (
+              <ScribbleTick className="mt-1.5 size-5 shrink-0" />
+            ) : (
+              <ScribbleRing className="mt-1.5 size-5 shrink-0" />
+            )}
+            <span className="min-w-0">{item}</span>
+          </li>
         ))}
       </ul>
     </>

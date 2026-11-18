@@ -1,10 +1,12 @@
 "use client";
 
-import { ListChecks, Plus, Sprout } from "lucide-react";
+import { Plus, Sprout } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { HabitChecklist } from "@/components/habit-checklist";
+import { BinderSheet, SectionHead } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, IconBadge } from "@/components/ui/card";
+import { Card, IconBadge } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { FREE_HABIT_LIMIT, type HabitView } from "@/lib/habits";
@@ -13,10 +15,11 @@ import { archiveHabit, createHabit, updateHabit } from "./actions";
 type Editing = { kind: "create" } | { kind: "edit"; habit: HabitView };
 
 /**
- * The Kebiasaan screen (DESIGN.md §2, §6, §8): the checklist for today is the
- * one focus. "Tambah kebiasaan" is the primary button only while the list is
- * empty; after that it is a quiet link, next to "Kelola" for editing and
- * archiving. A habit is archived, never deleted (HABIT-1).
+ * The Kebiasaan screen (DESIGN.md §2, §14.2, §14.3): today's checklist on a
+ * binder sheet is the one focus. Under it, laid straight on the page, "Kelola"
+ * lists the active habits with "Ubah" and "Arsipkan", and "Tambah kebiasaan"
+ * is a quiet link. Only while the list is empty is it the primary button. A
+ * habit is archived, never deleted (HABIT-1).
  *
  * The free limit is only announced here when the user tries to go past it; the
  * server and the database are what actually refuse (HABIT-3).
@@ -32,21 +35,21 @@ export function HabitManager({
   atFreeLimit: boolean;
 }) {
   const [habits, setHabits] = useState(initialHabits);
-  const [managing, setManaging] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [limitHit, setLimitHit] = useState(false);
   const [pending, setPending] = useState(false);
 
   const openCreate = () => {
+    setNotice(undefined);
+
     if (atFreeLimit) {
-      setNotice(
-        `Paket gratis memuat ${FREE_HABIT_LIMIT} kebiasaan aktif. Arsipkan satu dulu untuk menambah yang baru.`,
-      );
+      setLimitHit(true);
       return;
     }
 
-    setNotice(undefined);
+    setLimitHit(false);
     setEditing({ kind: "create" });
   };
 
@@ -63,14 +66,13 @@ export function HabitManager({
   }
 
   const doneToday = habits.filter((habit) => habit.doneDates.includes(date)).length;
-  const percent = habits.length === 0 ? 0 : Math.round((doneToday / habits.length) * 100);
 
   return (
     <>
       {habits.length === 0 ? (
         <Card as="div" className="mt-6 flex flex-col items-center py-10 text-center">
-          <IconBadge icon={Sprout} tone="plum" size="lg" />
-          <p className="mt-4 font-serif text-xl font-medium text-text">Mulai dari satu kebiasaan kecil</p>
+          <IconBadge icon={Sprout} size="lg" />
+          <p className="mt-4 font-heading text-lg font-bold text-text">Mulai dari satu kebiasaan kecil</p>
           <p className="mt-2 max-w-sm text-base text-text-muted">
             Belum ada kebiasaan. Mulai dari satu yang kecil saja, yang bisa kamu lakukan hari ini.
           </p>
@@ -80,88 +82,76 @@ export function HabitManager({
           </Button>
         </Card>
       ) : (
-        <div className="mt-6 flex flex-col gap-4">
-          {/* One sheet: the checklist is the focus, so its progress is one quiet line in it (DESIGN.md §2, §6). */}
-          <Card aria-label="Kebiasaan hari ini">
-            <CardHeader
-              title={managing ? "Kelola kebiasaan" : "Centang hari ini"}
-              icon={ListChecks}
+        <div className="mt-6 flex flex-col gap-6">
+          <BinderSheet aria-labelledby="checklist-heading">
+            <SectionHead
+              id="checklist-heading"
+              title="Centang hari ini"
               aside={
-                <Button
-                  variant="link"
-                  className="font-semibold text-primary"
-                  onClick={() => {
-                    setManaging((current) => !current);
-                    setConfirmingId(null);
-                    setNotice(undefined);
-                  }}
-                >
-                  {managing ? "Selesai mengelola" : "Kelola"}
-                </Button>
+                <>
+                  {doneToday} dari {habits.length}
+                  <span className="sr-only"> selesai</span>
+                </>
               }
             />
+            <HabitChecklist date={date} habits={habits} setHabits={setHabits} lastRule={false} />
+          </BinderSheet>
 
-            {managing ? null : (
-              <div className="mt-2 flex items-center gap-3">
-                <div aria-hidden="true" className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                  <div
-                    className="h-full rounded-full bg-sage transition-[width] duration-200 ease-out"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-                <p className="shrink-0 text-sm font-semibold text-text tabular-nums">
-                  {percent === 100 ? "Semua beres hari ini" : `${doneToday}/${habits.length} selesai`}
-                </p>
-              </div>
-            )}
+          <section aria-labelledby="manage-heading">
+            <SectionHead id="manage-heading" title="Kelola" aside={`${habits.length} aktif`} />
+            <ul>
+              {habits.map((habit) => (
+                <li key={habit.id} className="flex min-h-14 flex-wrap items-center gap-x-4 border-b border-rule py-1.5">
+                  {confirmingId === habit.id ? (
+                    <>
+                      <span className="min-w-0 flex-1 text-base text-text">Arsipkan “{habit.name}”?</span>
+                      <Button variant="secondary" disabled={pending} onClick={() => void archive(habit.id)}>
+                        Ya, arsipkan
+                      </Button>
+                      <Button variant="link" className="min-w-11" onClick={() => setConfirmingId(null)}>
+                        Batal
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="min-w-0 flex-1 text-base text-text">{habit.name}</span>
+                      <Button
+                        variant="link"
+                        className="min-w-11 text-sm font-semibold text-primary"
+                        onClick={() => setEditing({ kind: "edit", habit })}
+                      >
+                        Ubah
+                      </Button>
+                      <Button
+                        variant="link"
+                        className="min-w-11 text-sm font-semibold text-primary"
+                        onClick={() => setConfirmingId(habit.id)}
+                      >
+                        Arsipkan
+                      </Button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
 
-            <div className="mt-3">
-              {managing ? (
-                <ul className="flex flex-col gap-1">
-                  {habits.map((habit) => (
-                    <li
-                      key={habit.id}
-                      className="flex min-h-14 flex-wrap items-center gap-2 rounded-2xl px-2 py-2 hover:bg-surface-muted"
-                    >
-                      {confirmingId === habit.id ? (
-                        <>
-                          <span className="min-w-0 flex-1 text-base text-text">Arsipkan “{habit.name}”?</span>
-                          <Button variant="secondary" disabled={pending} onClick={() => void archive(habit.id)}>
-                            Ya, arsipkan
-                          </Button>
-                          <Button variant="link" className="min-w-11" onClick={() => setConfirmingId(null)}>
-                            Batal
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-base font-medium text-text">{habit.name}</span>
-                            {habit.identity ? (
-                              <span className="block text-sm text-text-muted">{habit.identity}</span>
-                            ) : null}
-                          </span>
-                          <Button variant="link" className="min-w-11" onClick={() => setEditing({ kind: "edit", habit })}>
-                            Ubah
-                          </Button>
-                          <Button variant="link" className="min-w-11" onClick={() => setConfirmingId(habit.id)}>
-                            Arsipkan
-                          </Button>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <HabitChecklist date={date} habits={habits} setHabits={setHabits} />
-              )}
-            </div>
-
-            <Button variant="soft" onClick={openCreate} className="mt-3 w-full">
-              <Plus aria-hidden="true" size={20} strokeWidth={2.2} />
+          <div>
+            <Button variant="link" onClick={openCreate} className="gap-2 text-sm font-semibold text-primary">
+              <Plus aria-hidden="true" size={18} strokeWidth={1.8} />
               Tambah kebiasaan
             </Button>
-          </Card>
+            {limitHit ? (
+              <p className="text-sm text-text-muted">
+                Paket gratis memuat {FREE_HABIT_LIMIT} kebiasaan aktif. Arsipkan satu dulu untuk menambah yang baru,
+                atau{" "}
+                <Link href="/settings/plan" className="font-semibold text-primary underline underline-offset-4">
+                  lihat paket
+                </Link>
+                .
+              </p>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -207,8 +197,8 @@ function HabitForm({ editing, onDone }: { editing: Editing; onDone: () => void }
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-4">
-      <label className="block text-sm text-text-muted">
+    <form onSubmit={(event) => void submit(event)} className="mt-4 flex flex-col gap-[18px]">
+      <label className="block text-sm font-semibold text-text">
         Nama kebiasaan
         <Input
           data-autofocus
@@ -217,21 +207,27 @@ function HabitForm({ editing, onDone }: { editing: Editing; onDone: () => void }
           maxLength={120}
           autoComplete="off"
           placeholder="Contoh: olahraga 15 menit"
-          className="mt-1"
+          className="mt-1.5 font-normal"
         />
       </label>
 
-      <label className="block text-sm text-text-muted">
-        Identitas (opsional)
-        <Input
-          value={identity}
-          onChange={(event) => setIdentity(event.target.value)}
-          maxLength={200}
-          autoComplete="off"
-          placeholder="Aku orang yang rutin bergerak"
-          className="mt-1"
-        />
-      </label>
+      <div>
+        <label className="block text-sm font-semibold text-text">
+          Identitas (opsional)
+          <Input
+            value={identity}
+            onChange={(event) => setIdentity(event.target.value)}
+            maxLength={200}
+            autoComplete="off"
+            aria-describedby="identity-hint"
+            placeholder="Aku orang yang rutin bergerak"
+            className="mt-1.5 font-serif font-normal italic"
+          />
+        </label>
+        <p id="identity-hint" className="mt-1.5 text-sm text-text-muted">
+          Kalimat tentang kamu yang sedang dibangun lewat kebiasaan ini.
+        </p>
+      </div>
 
       <p role="status" className="min-h-5 text-sm text-text-muted">
         {message}

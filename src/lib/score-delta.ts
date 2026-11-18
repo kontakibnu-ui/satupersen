@@ -29,22 +29,37 @@ export function comparedToLabel(today: DateKey, previous: DateKey): string {
   return gap < 7 ? `hari ${format("EEEE")}` : format("d MMMM");
 }
 
-/** The line under the stamp and the first line of the WhatsApp summary. */
-export function deltaSentence(delta: number | null, comparedTo: string | null): string {
+/**
+ * The sentence beside the stamp split round its key phrase, so the screen can
+ * draw the one pen underline of DESIGN.md §14.3 under the figure ("Kamu
+ * [2% lebih baik] dibanding kemarin"). `key` is null for the first analysis,
+ * which has nothing to compare and so nothing to underline.
+ */
+export function deltaSentenceParts(
+  delta: number | null,
+  comparedTo: string | null,
+): { before: string; key: string | null; after: string } {
   if (delta === null || comparedTo === null) {
-    return "Ini analisa pertamamu. Mulai besok kamu bisa lihat perbandingannya.";
+    return { before: "Ini analisa pertamamu. Mulai besok kamu bisa lihat perbandingannya.", key: null, after: "" };
   }
 
   if (delta > 0) {
-    return `Kamu ${delta}% lebih baik dibanding ${comparedTo}`;
+    return { before: "Kamu ", key: `${delta}% lebih baik`, after: ` dibanding ${comparedTo}` };
   }
 
   // A lower day reads as calmly as a better one (DESIGN.md §6: never red).
   if (delta < 0) {
-    return `Turun ${Math.abs(delta)}% dibanding ${comparedTo}`;
+    return { before: "", key: `Turun ${Math.abs(delta)}%`, after: ` dibanding ${comparedTo}` };
   }
 
-  return `Stabil, sama seperti ${comparedTo}`;
+  return { before: "", key: "Stabil", after: `, sama seperti ${comparedTo}` };
+}
+
+/** The line under the stamp and the first line of the WhatsApp summary. */
+export function deltaSentence(delta: number | null, comparedTo: string | null): string {
+  const { before, key, after } = deltaSentenceParts(delta, comparedTo);
+
+  return `${before}${key ?? ""}${after}`;
 }
 
 /** The short figure inside the stamp: "+2%", "−3%", "0%". */

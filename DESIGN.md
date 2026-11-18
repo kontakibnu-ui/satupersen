@@ -1,6 +1,7 @@
 # DESIGN.md — arah dan aturan desain Satu Persen
 
-> Versi 4 · 2026-11-08. Baca file ini sebelum mengerjakan tugas UI apa pun. Isinya keputusan terkunci.
+> Versi 5 · 2026-11-17. Baca file ini sebelum mengerjakan tugas UI apa pun. Isinya keputusan terkunci.
+> Versi 5 "Meja Tulis" dipilih user (2026-11-17) dari tiga arah mockup (A Halaman Buku, B Meja Tulis, C Tinta Pekat), lalu dijabarkan menjadi wireframe 21 layar dan dikoreksi user. Palet satu tinta, huruf, dan aturan versi 4 tetap; yang baru adalah karakter dari benda dan coretan tangan: lembaran binder, catatan tempel, cap tinta, coretan pulpen, dan navigasi tab pembatas. **§14 menggantikan butir lama yang bertentangan dengannya**, dan memuat panduan untuk fitur atau menu baru (§14.6).
 > Versi 4 "Buku tulis" dipilih user (2026-11-08) setelah audit UI dan perbandingan mockup (arah E2 di kanvas desain): user menilai versi 3 terasa generik, "terlalu warna warni", dan tidak suka angka tanggal besar Fraunces; yang dipertahankan atas permintaannya adalah menulis seperti di kertas bergaris dan ikon perasaan serta energi. Yang berubah: **satu tinta biru pulpen** untuk semua highlight (emas, sage, plum, dan lima warna mood dihapus; nama token lama tetap ada tetapi menunjuk ke tinta), kertas putih-gading dengan garis biru muda, huruf **Plus Jakarta Sans** (antarmuka dan judul) dan **Lora** (yang tertulis di kertas), kop "Hari / Tanggal" ala buku tulis sekolah menggantikan halaman kalender, mood dan energi tanpa kotak, kebiasaan bergaris tanpa chip api, dan hasil analisa satu lembar (angka selisih besar, strip 7 hari, analisa di garis buku). Keputusan user 2026-11-01 tetap: skor 0 sampai 100 tidak pernah tampil. Bagian di bawah yang menyebut emas, Fraunces, halaman kalender, atau warna per mood sudah diganti oleh catatan versi 4 di §3, §4, dan §6; layar selain Hari Ini menerima token dan huruf baru tetapi tata letaknya belum dirombak.
 > Versi 3.1 dibuat atas permintaan user (2026-10-31: pengalaman menulis harus lebih nyaman dan fokus; kata "rangkum" diganti "analisa"; layar lain lebih sesuai fungsinya). Palet, font, dan arah visual versi 3 tetap. Panduan yang dipakai: skill `ui-ux-pro-max` (kategori produk "Diary & Journal App": kertas hangat, tinta redup, aksen per mood; aturan UX label terlihat, fokus tidak tertutup, panjang baris 65 sampai 75 karakter, AI diberi label jelas) dan referensi aplikasi menulis (mode fokus iA Writer, pertanyaan pemantik Apple Journal dan Stoic). Yang berubah: lembaran tulisan pindah ke atas, pemantik yang bisa diganti, bar menulis di HP, label "Analisa hari ini" pada hasil, Kebiasaan satu lembaran, Uang satu lembaran buku kas, dan Riwayat langsung melompat ke tulisan.
 > Versi 3 dibuat atas permintaan user (2026-10-29: versi 2 "terlalu generik, tone warna terlalu kaku, typography terlalu biasa"; brand "minimalist namun aesthetic, ada kesan vintage, jangan terpaku"; profil di pojok kanan atas; mode siang dan malam yang bisa dinyalakan dan dimatikan, bawaannya siang). Panduan desain yang dipakai: skill resmi Anthropic `frontend-design` (hindari kombinasi bawaan seperti krem plus aksen terakota, kartu SaaS seragam, label kapital, dan animasi masuk di setiap bagian). Prinsip versi 1 dan 2 yang tetap: hari buruk tidak pernah merah, satu tombol primary per layar, aksesibilitas AA.
@@ -65,6 +66,7 @@ Definisikan sebagai CSS variables di `globals.css` (siang dan malam, lewat `ligh
 | surface-muted | #ECE9E1 | #262A33 | Track batang, skeleton, kontrol segmen, layar krisis |
 | border | #E4E0D6 | #2F343E | Garis rambut lembaran dan pemisah baris (dekoratif saja) |
 | rule | #D6DEEB | #2E3850 | Garis buku tulis (biru muda) di editor dan analisa, batang hari lain di strip minggu |
+| rule-strong | #C5D0E3 | #3B4767 | Versi 5 (§14.5): garis margin lembaran binder, garis ganda kop dan kepala bagian, batang "Keluar", titik penanda tidak aktif. Dekoratif saja |
 | control | #8A8577 | #7F8796 | Tepi checkbox, radio, input, tombol sekunder |
 | text | #1F2330 | #E8E6E1 | Teks utama |
 | text-muted | #5E6372 | #A3A8B5 | Teks pendukung, ikon tidak aktif |
@@ -462,3 +464,105 @@ Pakai "kamu". Hangat, singkat, tidak menggurui. Tombol berupa kata kerja ("Anali
    - axe tanpa pelanggaran `serious` atau `critical` (termasuk kontras dan label);
    - di 360 px, setiap tombol, tautan, dan input minimal 44 × 44 px.
 2. AI **tidak boleh mengklaim tampilan sudah rapi** tanpa hasil tes di atas. Tampilan akhir dicek oleh user di HP-nya sendiri.
+
+## 14. Versi 5 "Meja Tulis" (2026-11-17)
+
+Dipilih user dari tiga arah mockup, lalu dijabarkan menjadi wireframe 21 layar HP dan dikoreksi user. Wireframe acuan: https://claude.ai/artifact/DdKUfohKNt5JupsTwBxiS2 (privat, milik user). Bila wireframe dan teks ini berbeda, **teks ini yang berlaku**. Angka dan teks di wireframe hanya ilustrasi.
+
+Tetap dari versi 4: palet satu tinta (§3), Plus Jakarta Sans untuk antarmuka, Lora untuk yang tertulis, Newsreader hanya untuk wordmark (§4), skor 0 sampai 100 tidak pernah tampil, hari buruk tidak pernah merah, satu tombol primary per layar (§2), dan aksesibilitas (§13).
+
+### 14.1 Prinsip
+
+1. **Karakter dari benda dan coretan tangan, bukan dari warna.** Kertas bertumpuk, catatan tempel, cap tinta, dan coretan pulpen, semuanya dalam satu tinta.
+2. **Kertas hanya untuk yang ditulis atau dibaca sebagai catatan.** Grafik, pengaturan, dan isi buku tidak pernah diletakkan di atas kertas (user, 2026-11-17: grafik di atas kertas "aneh", Akun "jangan terlalu banyak kertas, yang relevan saja").
+3. **Coretan hanya untuk poin highlight**: angka atau frasa kunci, **tidak pernah judul**. Paling banyak satu garis bawah coretan per blok, dan tidak pernah di teks yang sudah punya garis di bawahnya (user, 2026-11-17: garis di bawah judul "nabrak").
+4. **Isi buku di Ruang baca tampil apa adanya dari file** (user, 2026-11-17: "itu perjanjian kita"). Gaya Satu Persen hanya berlaku di luar buku: bar atas, panel Aa, dan bar bawah.
+
+### 14.2 Kapan memakai apa
+
+| Wadah | Dipakai untuk | Tidak dipakai untuk |
+| --- | --- | --- |
+| Lembaran binder | Tulisan Hari Ini (termasuk mode fokus), hasil analisa, "Centang hari ini" di Kebiasaan, buku kas dan daftar catatan Uang, "Review hari ini" di Belajar, menjelaskan dan review materi, tulisan lampau di Riwayat, laporan terbaru | Grafik, Akun, Paket, WhatsApp, isi buku, sheet bawah, mode krisis |
+| Kartu polos (`surface`, garis rambut, radius 14, tanpa lubang dan garis buku) | Grup status atau alat yang bukan catatan: kalender Riwayat, Perkembangan uang, kuota AI, nomor WhatsApp, bahan tertutup, paket Gratis di landing | Tulisan user |
+| Langsung di halaman, dengan kepala bagian (§14.3) | Mood dan energi, kebiasaan di Hari Ini, Materimu, Ruang baca, Kelola kebiasaan, profil dan pengaturan Akun, isi Premium, laporan sebelumnya, grafik | |
+| Catatan tempel | Pemantik, "Untuk besok", "Menurut bahan", "Fokus minggu ini" atau "Fokus bulan ini", pilihan paket premium | Tombol, peringatan, error |
+| Cap tinta | Selisih di hasil analisa Hari Ini dan contohnya di landing | Angka lain |
+
+### 14.3 Komponen
+
+Butir-butir ini menggantikan butir §6 dengan nama yang sama.
+
+- **Lembaran binder.** `surface`, garis rambut `border`, radius 14, padding 18 px (kiri 52 px), tanpa bayangan. Di kiri tiga lubang binder 14 px (isi `background`, tepi `border`): 64 px dari atas, di tengah, dan 64 px dari bawah. Garis margin ganda `rule-strong` (dua garis 1 px berjarak 2 px) 40 px dari tepi kiri. Di bawahnya dua lembar mengintip (masuk 5 dan 10 px dari sisi, turun 5 dan 10 px), `surface` bergaris rambut. Garis buku (`paper-lines`) dan garis ganda pemisah menembus sampai tepi lembaran. Fokus pada editor tetap mengubah garis lembaran menjadi `primary`. Menggantikan "Lembaran tulisan" versi 4 (radius 20).
+- **Kop Hari / Tanggal.** Grid dua kolom di atas lembaran: label 14 `text-muted`, isian Lora miring 18 `primary` di atas garis titik `control`, ditutup garis ganda `rule-strong` 3 px. Varian Laporan: "Laporan / Periode".
+- **Kepala bagian.** Judul 16/700 `text` di kiri, info 14 `text-muted` di kanan ("2 dari 3", "1 buku"), garis ganda `rule-strong` 3 px di bawah. Baris di bawahnya minimal 56 px, dipisah garis `rule` 1 px. Pola ini dipakai untuk semua bagian yang langsung di halaman.
+- **Catatan tempel.** `primary-soft`, radius 3, miring -1°, padding 14 × 16 px, selotip `rule` 48 × 15 px (opasitas 85%, miring 2°) di tengah atas. Judul 14/700 `primary`, isi Lora miring 18 `text` (atau 16 `text` biasa untuk "Menurut bahan"). Tanpa bayangan. Di deret yang bisa digeser, kemiringan bergantian -1° dan +1°.
+- **Cap tinta.** 112 px, miring -8°: cincin luar `primary` 2,5 px, cincin dalam titik-titik `primary` 1 px, selisih ("+4%") Plus Jakarta Sans 32/700 `primary`, "dari kemarin" Lora miring 13 `primary`. Kalimat delta 17/600 di sampingnya, dengan garis bawah coretan di bagian angkanya ("4% lebih baik"). Cap bersifat `aria-hidden`; kalimatnya yang dibaca. Analisa pertama: ikon tunas dan "Ini analisa pertamamu…", tanpa cap. Menggantikan angka 44 px di hasil analisa versi 4.
+- **Coretan tangan.** SVG garis `primary`, ujung bulat, selalu dari bentuk di bawah. Jangan menggambar bentuk baru tanpa persetujuan user.
+
+  | Bentuk | viewBox | path | Dipakai untuk |
+  | --- | --- | --- | --- |
+  | Garis bawah | `0 0 100 9`, `preserveAspectRatio="none"`, `vector-effect="non-scaling-stroke"` | `M1 6C18 2 30 7.5 49 4.5S82 2.5 99 5.5` | Angka atau frasa kunci. Tebal 1,6 sampai 2, tinggi 7 sampai 8 px, 3 px lebih lebar di tiap sisi, 5 px di bawah teks |
+  | Lingkaran pilihan | `0 0 52 52` | `M27 4C15 3 5 12 4.5 25.5 4 39 13.5 48.5 26.5 48 39 47.5 48 38.5 48 26 48 13.5 39.5 5.5 25 3.5` | Mood dan energi terpilih (52 px), titik hari ini di grafik. Tebal 1,8 |
+  | Centang | `0 0 32 30` | `M5 17c2.5 2 4.5 4.5 6 7.5C14.5 16 20 9 28 4` | Kotak kebiasaan, "Yang sudah bagus", isi Premium, poin privasi. Tebal 2,6 sampai 3 |
+  | Lingkaran kecil | `0 0 24 24` | `M12.5 5C8 4.5 5 8 5 12s3 7.5 7.5 7 7-3.5 6.5-8S15.5 4.5 11 5.5` | "Ruang untuk tumbuh", "Pola yang terlihat", "Kaitan antar bagian". Tebal 2 |
+  | Turus | `0 0 20 18` | 1 sampai 4 garis tegak `M3 2.5v13`, `M7 2v13.5`, `M11 2.5v13`, `M15 2v13.5`; hari kelima garis miring `M1 12.5 17.5 5` | Streak kebiasaan, di samping "5 hari" (warna `text-muted`, tebal 1,5) |
+
+- **Mood dan energi.** Langsung di halaman. Ikon garis 24 px dan kata 12 px `text-muted`; terpilih: ikon dan kata `primary` 700, dilingkari coretan. Tanpa lingkaran berisi `primary`. Kata terpilih juga tampil di kanan pertanyaan dalam Lora miring `primary`.
+- **Baris kebiasaan.** Kotak 26 px radius 6, tepi `control` 1,5 px. Tercentang: centang coretan `primary` yang keluar dari kotak (kotaknya tetap kosong). Nama 16 px; di halaman Kebiasaan, identitas Lora miring 14 `text-muted` di bawahnya. Di kanan turus dan "5 hari" 14 `text-muted`. Target sentuh seluruh baris, minimal 56 px.
+- **Navigasi bawah: tab pembatas.** Garis `border` di atas bar. Item aktif berupa tab `surface` dengan tepi `border` di kiri, kanan, dan bawah, radius bawah 14, ikon dan teks `primary` 700, `aria-current`. Item lain `text-muted` 500. Titik penanda Belajar (§5) tetap. Menggantikan garis emas pendek di bar bawah. Lingkaran profil aktif mendapat cincin `primary` 2 px berjarak 2 px.
+- **Hasil analisa.** Satu lembaran binder, berurutan: label "Analisa hari ini" dengan ikon Stamp; cap tinta dengan kalimat delta; strip minggu (batang `rule`, hari ini `primary`, radius atas 3, hari tanpa analisa garis 2 px); alasan skor 16 px; garis ganda; teks analisa Lora 18 di garis buku; "Yang sudah bagus" (centang coretan) dan "Ruang untuk tumbuh" (lingkaran kecil), judul 14/700 di garis buku; lalu catatan tempel "Untuk besok". Di bawah lembaran: kepala bagian "Tulisanmu" dengan tautan "Ubah tulisan", lalu empat baris tulisan Lora `primary`.
+- **Grafik.** Tidak pernah di atas kertas. Angka fokus 44/700 `primary`, kalimat perbandingan 14 `text-muted` dengan garis bawah coretan di angkanya ("5% di atas"). Garis 2,5 px `primary`, area di bawah garis `primary` 7% rata (tanpa gradasi), kisi putus-putus `border`, sumbu bawah `control`, titik hari ini 4 px dengan lingkaran coretan dan label "hari ini" Lora miring 14 `primary`. Batang dimensi: track `surface-muted`, isi `primary`, angka 14 `text-muted` di kanan. Grafik batang uang: Masuk `primary`, Keluar `rule-strong`; karena kontras batang Keluar rendah, legenda teks dan tabel tersembunyi tetap wajib (§6 Perkembangan uang).
+- **Uang.** Buku kas di lembaran binder: bulan dengan panah 44 px, "Sisa uang bulan ini" 14 `text-muted`, angka rupiah 36/700 `primary` dengan garis bawah coretan, baris Masuk dan Keluar di bawah garis ganda, sisa budget dengan track, tautan "Atur budget". Lalu tombol primary "Tambah pengeluaran", sekunder "Tambah pemasukan", dan tautan "Isi dari screenshot bank". Perkembangan di kartu polos. Daftar catatan bulan ini di lembaran binder, satu kepala bagian per hari (total hari di kanan), ikon kategori dalam lingkaran `primary-soft` 36 px.
+- **Pilihan paket premium (Akun > Paket dan landing).** Deret catatan tempel 262 px yang digeser ke samping (scroll-snap ke tengah); catatan berikutnya mengintip di tepi. Urutan 12, 6, 3, lalu 1 bulan. Isi catatan: lama paket Lora miring 20 `primary`, harga 34/700 `primary`, "Rp 16.583 sebulan, hemat 43%" 14 `text-muted` dengan coretan di "hemat 43%", lalu kalimat `note` paket. Harga, harga per bulan, dan persen hemat diambil dari `src/config/plans.ts` (`PREMIUM_PACKAGES`, `packageValue`), tidak ditulis tangan. Di bawahnya titik penanda 8 px (aktif `primary`, lainnya `rule-strong`) dan **satu** tombol primary yang labelnya mengikuti catatan yang tampil ("Pilih 12 bulan"), lalu "Pembayaran premium segera dibuka." Judul "Premium" polos. Di Paket, isi Premium berupa daftar centang coretan langsung di halaman di bawah tombol; di landing, paket Gratis berupa kartu polos dengan tombol sekunder "Mulai gratis".
+- **Akun, Paket, WhatsApp.** Tanpa lembaran binder dan tanpa garis buku. Profil berupa form langsung di halaman dengan input biasa (Plus Jakarta Sans, bukan Lora), tombol sekunder "Simpan". Kuota AI dan nomor WhatsApp di kartu polos. "Hapus akun" tetap tautan kecil `danger` paling bawah.
+- **Pembaca.** Area buku memakai warna, huruf, dan tata letak file, tanpa kertas, garis buku, Lora, atau warna tinta; seleksi teks memakai sorotan bawaan perangkat. Bar atas, panel Aa, dan bar bawah memakai gaya versi 5. Panel Aa tetap `surface-muted`.
+- **Sheet bawah.** `surface`, radius atas 28, pegangan 40 × 4 px, latar meredup. Label terlihat 14/600, input radius 12 minimal 52 px tinggi, satu tombol primary, tautan "Batal" bila perlu.
+- **Mode krisis.** Seperti §9: `surface-muted`, tanpa lembaran binder, catatan tempel, cap, coretan, atau turus.
+
+### 14.4 Radius dan ukuran versi 5
+
+Lembaran binder dan kartu polos 14, input 12, catatan tempel 3, kotak kebiasaan 6, sheet bawah 28 (atas), tombol dan chip bulat penuh. Judul layar 28/700; judul bagian 16/700; angka fokus 44/700 (rupiah 36/700, harga paket 34/700); teks 16; pendukung 14; label navigasi dan strip 12. Tombol primary 56 px, sekunder dan soft 48 px, target sentuh minimal 44 px.
+
+### 14.5 Token tambahan
+
+`rule-strong` (siang `#C5D0E3`, malam `#3B4767`) masuk ke tabel §3. Dekoratif saja, sama seperti `border` dan `rule`: dilarang sebagai satu-satunya penanda batas kontrol interaktif. Warna lain di wireframe yang tidak ada di §3 dipetakan ke token terdekat: garis bar navigasi dan tepi tab ke `border`, lubang binder ke `background` dan `border`, pegangan sheet ke `border`.
+
+### 14.6 Untuk fitur atau menu baru
+
+Sebelum menggambar atau menulis kode layar baru, jawab berurutan:
+
+1. **Apakah user menulis, atau membaca catatan yang ditulis?** Ya: lembaran binder (kop Hari/Tanggal bila terikat ke tanggal). Grup status atau pengaturan: kartu polos, atau langsung di halaman dengan kepala bagian. Grafik dan data: langsung di halaman.
+2. **Ada satu hal yang perlu diingat (saran, kutipan, fokus, jawaban acuan)?** Catatan tempel, paling banyak satu per blok.
+3. **Apa angka atau frasa terpenting?** Boleh satu garis bawah coretan per blok, bukan di judul.
+4. **Memilih satu dari beberapa?** Pilihan pendek: kontrol segmen. Pilihan yang masing-masing punya penjelasan dan harga: deret catatan tempel yang digeser, dengan satu tombol yang labelnya mengikuti.
+5. **Daftar?** Kepala bagian lalu baris 56 px bergaris `rule`. Status selesai: centang coretan. Hitungan beruntun: turus.
+6. Pakai token §3 dan komponen di atas. **Jangan menambah warna, font, bentuk coretan, atau wadah baru** tanpa persetujuan user. Tetap ikuti §2 (satu fokus, satu primary), §12, dan §13.
+
+### 14.7 Larangan dan pengecualian versi 5
+
+Menambah dan melonggarkan §12:
+- Miring hanya untuk catatan tempel (±1°) dan cap tinta (-8°). Kemiringannya diam, tidak beranimasi.
+- Lubang binder, garis margin, dan selotip hanya ada di lembaran binder dan catatan tempel; tidak pernah menjadi pola latar.
+- Coretan tangan selalu SVG dari bentuk §14.3, bukan font tulisan tangan, gambar, atau emoji.
+- Lembaran binder tidak boleh di dalam lembaran atau kartu lain. Catatan tempel boleh di dalam lembaran binder.
+- Garis bawah coretan tidak boleh di judul atau di teks yang sudah bergaris bawah.
+
+### 14.8 Belum diputuskan
+
+Jangan dikerjakan atau ditebak sampai user memutuskan:
+- Layar Masuk dan Onboarding masih memakai lembaran binder di wireframe. Belum diputuskan apakah ikut prinsip 2 (kertas hanya untuk catatan). (Contoh hasil di hero landing sudah diputuskan, lihat §14.9.)
+- Garis bawah coretan pada frasa kunci di "Untuk besok" butuh AI menandai frasanya, yang berarti mengubah skema output AI (PRD). Sampai diputuskan, "Untuk besok" tanpa coretan.
+- §6 "Isi buku" menyuntikkan warna mode malam ke buku, sedangkan prinsip 4 meminta isi buku tidak diubah. User perlu memilih salah satu.
+- Mode malam versi 5 (lubang binder, selotip, cap, tab pembatas) dan tampilan laptop belum digambar.
+- Layar yang belum digambar di wireframe: lupa dan reset password, form tambah materi, isi dari screenshot, tambah pemasukan, atur budget, halaman privasi dan syarat, serta keadaan kosong, memuat, dan gagal. Saat dibuat, ikuti §14.6.
+
+### 14.9 Landing (keputusan user 2026-11-17)
+
+User meminta landing "sesuai dengan wireframe". Untuk landing, **artboard Landing di wireframe yang berlaku**, menggantikan susunan §10 (stempel raksasa, dial bertombol, bidang warna cara kerja, kartu indeks tanya jawab, dan animasi masuk). Termasuk tiga hal yang di bagian lain §14 dibatasi:
+- contoh hasil di hero berada di lembaran binder, dengan cap tinta "+4%" dan satu baris Lora di garis buku;
+- judul hero "Jadi 1% lebih baik tiap hari" memakai garis bawah coretan di "1% lebih baik" (pengecualian prinsip 3, hanya di judul hero ini);
+- "Satu persen itu kecil" memakai cap tinta ("37,8×", "setelah 365 hari") dengan satu penggeser hari. Cap ini miring **ke kanan 6°** (permintaan user 2026-11-17), pengecualian dari -8° di §14.7; cap hasil analisa tetap -8°.
+
+Urutan: header (logo, sakelar mode, tombol sekunder "Masuk"), hero, Satu persen itu kecil, Cara kerja (kepala bagian, tiga baris dengan turus), Yang ikut dicatat (baris dengan sakelar sungguhan yang memperlihatkan penjelasannya), Curhat lewat WhatsApp (kartu polos berisi contoh chat), Privasi (centang coretan), Harga (Gratis di kartu polos, Premium berupa deret catatan tempel §14.3), Tanya jawab (baris yang terbuka di tempat), pita penutup `primary`, lalu wordmark besar dan tautan Masuk, Privasi, Syarat layanan. Teks yang di wireframe masih tanda kurung siku diisi dari landing sebelumnya; angka paket dari `src/config/plans.ts`.
+
+**Lebar layar (user 2026-11-17: "plek ketiplek wireframe di HP jadi paksa di web padahal kamu sesuaikan aja").** Wireframe hanya menggambar HP. Di bawah 768 px landing mengikuti wireframe apa adanya. Dari 768 px potongan yang sama ditata untuk layar lebar dalam bingkai 1080 px: header dengan tautan bagian; hero dua kolom (judul sampai 60 px di kiri, contoh lembaran di kanan); cap "37,8×" 240 px di kiri dengan kalimat, penggeser, dan catatan di kanan; Cara kerja dan Privasi tiga kolom; Yang ikut dicatat dua kolom; WhatsApp teks dan contoh chat berdampingan; Harga: Gratis dan Premium berdampingan dari 1024 px, di baris yang sama (CSS subgrid) sehingga judul keduanya sejajar dan kartu Gratis setinggi grid catatan, berisi "Rp 0", daftar isi paket bercentang coretan (angka dari `plans.ts`), dan tombol di bawah (user 2026-11-17: kartu kecil "kaya aneh"); di bawah 1024 px kartu Gratis tetap seperti wireframe; tanya jawab selebar 760 px; pita penutup dan footer satu baris. Pilihan paket premium (di landing dan Akun > Paket) dari 768 px berupa grid 2 × 2 yang dipilih dengan mengetuk catatannya (catatan terpilih diberi cincin `primary`), karena di layar lebar tidak ada catatan "di tengah"; di HP tetap digeser. Setiap catatan berisi radio sungguhan.

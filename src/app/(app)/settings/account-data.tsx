@@ -2,39 +2,49 @@
 
 import { Download } from "lucide-react";
 import { useState } from "react";
+import { SectionHead } from "@/components/notebook";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { deleteAccount } from "./actions";
 
 /**
- * Export and deletion (PRD.md §7, DESIGN.md §2): "Export data" is a plain link,
- * and "Hapus akun" is the smallest thing on the page, at the very bottom, in the
- * one colour reserved for deleting data (DESIGN.md §3, §12). Deleting asks for a
- * typed word, because it cannot be undone.
+ * "Datamu" on Akun (PRD.md §7, DESIGN.md §2, §14.3): export is a plain link,
+ * signing out sits in its own row, and "Hapus akun" is the smallest thing on
+ * the page, at the very bottom, in the one colour reserved for deleting data
+ * (DESIGN.md §3, §12). Deleting asks for a typed word, because it cannot be
+ * undone. `signOut` is the form that signs out, passed in by the page.
  */
-export function AccountData() {
+export function AccountData({ signOut }: { signOut: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex flex-col items-start gap-1">
-      <a
-        href="/api/account/export"
-        download
-        className={buttonVariants({ variant: "link", className: "gap-2" })}
-      >
-        <Download aria-hidden="true" size={20} strokeWidth={1.5} />
-        Unduh semua datamu (JSON)
-      </a>
+    <section aria-labelledby="data-title">
+      <SectionHead id="data-title" title="Datamu" />
+      <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 border-b border-rule py-1.5">
+        <span className="text-base text-text">Unduh semua datamu</span>
+        <a
+          href="/api/account/export"
+          download
+          className={buttonVariants({ variant: "link", className: "gap-2 text-sm font-semibold text-primary" })}
+        >
+          <Download aria-hidden="true" size={16} strokeWidth={1.8} />
+          Export data (JSON)
+        </a>
+      </div>
+      <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 border-b border-rule py-1.5">
+        <span className="text-base text-text">Keluar dari perangkat ini</span>
+        {signOut}
+      </div>
 
-      <Button variant="link" onClick={() => setOpen(true)} className="text-sm text-danger">
+      <Button variant="link" onClick={() => setOpen(true)} className="mt-3 text-sm text-danger">
         Hapus akun
       </Button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Hapus akun">
         <DeleteForm />
       </Sheet>
-    </div>
+    </section>
   );
 }
 
@@ -62,7 +72,7 @@ function DeleteForm() {
         dihapus, dan tidak bisa dikembalikan. Kalau ingin menyimpannya, unduh datamu dulu.
       </p>
 
-      <label className="block text-sm text-text-muted">
+      <label className="block text-sm font-semibold text-text">
         Ketik HAPUS untuk memastikan
         <Input
           data-autofocus
@@ -70,7 +80,7 @@ function DeleteForm() {
           onChange={(event) => setConfirmation(event.target.value)}
           autoComplete="off"
           autoCapitalize="characters"
-          className="mt-1"
+          className="mt-1.5 font-normal"
         />
       </label>
 

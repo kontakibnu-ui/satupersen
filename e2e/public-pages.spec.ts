@@ -64,17 +64,26 @@ test("landing: judul, ajakan mulai ke /login, contoh berlabel, dan tanpa pernyat
   await expect(page.getByText(/18 tahun/)).toHaveCount(0);
 });
 
-test("landing: harga dari src/config/plans.ts, dan pemilih paket mengganti harganya", async ({ page }) => {
+test("landing: harga dari src/config/plans.ts, dan tombol mengikuti catatan paket yang tampil", async ({ page }) => {
   await page.goto("/");
 
   const pricing = page.locator("#harga");
   await pricing.scrollIntoViewIfNeeded();
-  await expect(pricing.getByText("Rp 0", { exact: true })).toBeVisible();
-  await expect(pricing.locator("[aria-live]")).toContainText("Rp 199.000");
+  // The free card has a phone and a laptop layout; only one of them is shown at a time.
+  await expect(pricing.getByText("Rp 0", { exact: true }).filter({ visible: true })).toBeVisible();
 
-  await pricing.getByText("3 bulan", { exact: true }).click();
-  await expect(pricing.locator("[aria-live]")).toContainText("Rp 74.000");
-  await expect(pricing).toContainText("Sama dengan Rp 24.666 sebulan");
+  // DESIGN §14.3: sticky notes, longest first, prices and savings from plans.ts.
+  const notes = pricing.getByRole("radiogroup", { name: "Lama paket premium" });
+  await expect(notes.getByRole("radio", { name: "12 bulan" })).toBeChecked();
+  await expect(notes).toContainText("Rp 199.000");
+  await expect(notes.getByText("Rp 24.666 sebulan, hemat 15%")).toBeVisible();
+  await expect(pricing.getByRole("link", { name: "Pilih 12 bulan" })).toHaveAttribute("href", "/login");
+
+  // Tapped again until the page has hydrated and follows the choice.
+  await expect(async () => {
+    await notes.getByText("3 bulan", { exact: true }).click();
+    await expect(pricing.getByRole("link", { name: "Pilih 3 bulan" })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
 });
 
 test("landing: dial 1% per hari bisa digeser dan diberi label ilustrasi", async ({ page }) => {
@@ -83,11 +92,17 @@ test("landing: dial 1% per hari bisa digeser dan diberi label ilustrasi", async 
   const output = page.locator("output");
   await expect(output).toContainText("37,8 kali");
 
-  await page.getByRole("button", { name: "30 hari" }).click();
-  await expect(output).toContainText("1,35 kali");
+  // One slider, as in the wireframe; the stamp and the sentence follow it.
+  const slider = page.getByLabel(/Jumlah hari/);
+  // Moved again until the page has hydrated and the stamp follows the slider.
+  await expect(async () => {
+    await slider.fill("29");
+    await slider.fill("30");
+    await expect(output).toContainText("1,35 kali", { timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
   await expect(output).toContainText("0,74 kali");
 
-  await page.getByLabel("Geser jumlah hari").fill("90");
+  await slider.fill("90");
   await expect(output).toContainText("selama 90 hari");
   await expect(page.getByText("bukan janji hasil", { exact: false })).toBeVisible();
 });

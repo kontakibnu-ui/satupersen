@@ -1,10 +1,11 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { toggleHabit } from "@/app/(app)/habits/actions";
+import { ScribbleTick, Tally } from "@/components/notebook";
 import type { HabitView } from "@/lib/habits";
 import { streakLength } from "@/lib/streak";
+import { cn } from "@/lib/utils";
 
 /** `habits` with `habitId` checked or unchecked for `date`. */
 function withDone(list: HabitView[], habitId: string, date: string, done: boolean): HabitView[] {
@@ -21,10 +22,11 @@ function withDone(list: HabitView[], habitId: string, date: string, done: boolea
 }
 
 /**
- * The checklist of DESIGN.md §6 "Baris kebiasaan", shared by Hari Ini and
- * Kebiasaan: rows ruled like a notebook, a 28 px ink circle inside a 56 px row,
- * the name, the identity under it, and the streak at the right as quiet text
- * ("5 hari").
+ * The checklist of DESIGN.md §14.3 "Baris kebiasaan", shared by Hari Ini and
+ * Kebiasaan: 56 px rows on pale rules, a 26 px box that a pen tick runs out of
+ * when checked (the box itself stays empty), the name, on Kebiasaan the
+ * identity under it, and at the right tally marks and the streak ("5 hari").
+ * The whole row is the target.
  *
  * The list lives in the parent, which passes its setter, so the parent can also
  * read which habits are checked (Hari Ini needs that to notice a change after
@@ -38,10 +40,16 @@ export function HabitChecklist({
   date,
   habits,
   setHabits,
+  showIdentity = true,
+  lastRule = true,
 }: {
   date: string;
   habits: HabitView[];
   setHabits: Dispatch<SetStateAction<HabitView[]>>;
+  /** Kebiasaan shows who the habit makes you; Hari Ini keeps to the name. */
+  showIdentity?: boolean;
+  /** Inside a binder sheet the last row needs no rule under it. */
+  lastRule?: boolean;
 }) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState<string | undefined>(undefined);
@@ -67,39 +75,41 @@ export function HabitChecklist({
 
   return (
     <div>
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className={cn("flex flex-col", !lastRule && "[&>li:last-child]:border-b-0")}>
         {habits.map((habit) => {
           const done = habit.doneDates.includes(date);
           const streak = streakLength(habit.doneDates, date);
 
           return (
-            <li key={habit.id}>
-              <label className="flex min-h-14 cursor-pointer items-center gap-3 py-2">
-                <span className="relative inline-flex size-7 shrink-0 items-center justify-center">
+            <li key={habit.id} className="border-b border-rule">
+              <label className="flex min-h-14 cursor-pointer items-center gap-3.5 py-2">
+                <span className="relative inline-flex size-[26px] shrink-0">
                   <input
                     type="checkbox"
                     checked={done}
                     disabled={busy.has(habit.id)}
                     onChange={(event) => void change(habit.id, event.target.checked)}
-                    className="peer absolute inset-0 size-7 cursor-pointer appearance-none rounded-full border-2 border-control bg-surface transition-colors duration-200 ease-out checked:border-primary checked:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait"
+                    className="peer absolute inset-0 size-[26px] cursor-pointer appearance-none rounded-md border-[1.5px] border-control bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-wait"
                   />
-                  <Check
-                    aria-hidden="true"
-                    strokeWidth={3}
-                    className="pointer-events-none relative size-4 text-primary-foreground opacity-0 peer-checked:opacity-100"
+                  <ScribbleTick
+                    strokeWidth={2.6}
+                    className="absolute -top-[9px] left-0 h-[30px] w-8 opacity-0 transition-opacity duration-150 peer-checked:opacity-100"
                   />
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-medium text-text">{habit.name}</span>
-                  {habit.identity ? (
-                    <span className="block text-sm text-text-muted">{habit.identity}</span>
+                  <span className="block text-base text-text">{habit.name}</span>
+                  {showIdentity && habit.identity ? (
+                    <span className="block font-serif text-sm text-text-muted italic">{habit.identity}</span>
                   ) : null}
                 </span>
 
                 {streak > 0 ? (
-                  <span className="shrink-0 text-sm text-text-muted tabular-nums">
-                    {streak} hari<span className="sr-only"> beruntun</span>
+                  <span className="inline-flex shrink-0 items-center gap-2 text-sm text-text-muted tabular-nums">
+                    <Tally count={streak} />
+                    <span>
+                      {streak} hari<span className="sr-only"> beruntun</span>
+                    </span>
                   </span>
                 ) : null}
               </label>

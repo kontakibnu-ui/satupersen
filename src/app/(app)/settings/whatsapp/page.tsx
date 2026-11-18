@@ -1,7 +1,7 @@
+import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isWhatsAppConfigured } from "@/lib/whatsapp/client";
 import { WhatsAppPanel } from "./whatsapp-panel";
@@ -40,22 +40,24 @@ export default async function WhatsAppSettingsPage() {
   return (
     <main className="py-6 md:py-10">
       <PageHeader
+        eyebrow={
+          <Link href="/settings" className="-ml-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
+            <ChevronLeft aria-hidden="true" size={18} strokeWidth={1.8} />
+            Akun
+          </Link>
+        }
         title="WhatsApp"
         description="Ceritakan harimu lewat chat, seperti ngobrol. Setiap pesan masuk ke diary hari itu dan dibalas singkat."
       />
 
       {linked === null && !isWhatsAppConfigured() ? (
-        <p className="mt-6 rounded-3xl border border-border bg-surface p-6 text-base text-text">
+        <p className="mt-6 rounded-[14px] border border-border bg-surface p-[18px] text-base text-text md:p-6">
           WhatsApp belum dikonfigurasi di server ini, jadi nomor belum bisa dihubungkan. Hubungi
           pengelola aplikasi.
         </p>
       ) : (
         <WhatsAppPanel linked={linked} />
       )}
-
-      <Link href="/settings" className={buttonVariants({ variant: "link", className: "mt-8" })}>
-        Kembali ke Akun
-      </Link>
     </main>
   );
 }
