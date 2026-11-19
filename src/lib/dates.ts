@@ -171,6 +171,27 @@ export function isValidTimeZone(timeZone: string): boolean {
   }
 }
 
+/** Indonesia's zones and the names people use for them, west to east. */
+const INDONESIAN_ZONE_NAMES: Readonly<Record<string, string>> = {
+  "Asia/Jakarta": "WIB",
+  "Asia/Pontianak": "WIB",
+  "Asia/Makassar": "WITA",
+  "Asia/Jayapura": "WIT",
+};
+
+/** The zones of Indonesia, west to east, listed first when the user picks one (AUTH-3). */
+export const INDONESIAN_TIME_ZONES: readonly string[] = Object.keys(INDONESIAN_ZONE_NAMES);
+
+/** "WIB", "WITA", or "WIT" for a zone in Indonesia; null for any other zone. */
+export function indonesianZoneName(timeZone: string): string | null {
+  return INDONESIAN_ZONE_NAMES[timeZone] ?? null;
+}
+
+/** "14.32": the time of day in a zone, on the 24 hour clock with a dot, as written in Indonesia. */
+export function formatClock(timeZone: string, now: Date = new Date()): string {
+  return formatInTimeZone(now, timeZone, "HH.mm");
+}
+
 /**
  * The weeks of the month that contains `key`, Monday first, for the history
  * calendar (DESIGN.md §6). Days that belong to the neighbouring months are

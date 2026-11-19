@@ -1,7 +1,9 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, IconBadge } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isWhatsAppConfigured } from "@/lib/whatsapp/client";
 import { WhatsAppPanel } from "./whatsapp-panel";
@@ -51,10 +53,19 @@ export default async function WhatsAppSettingsPage() {
       />
 
       {linked === null && !isWhatsAppConfigured() ? (
-        <p className="mt-6 rounded-[14px] border border-border bg-surface p-[18px] text-base text-text md:p-6">
-          WhatsApp belum dikonfigurasi di server ini, jadi nomor belum bisa dihubungkan. Hubungi
-          pengelola aplikasi.
-        </p>
+        // Not set up on this server yet: said the way Paket says payments are
+        // coming, with the one thing the user can do instead, and no button
+        // that cannot work (DESIGN.md §14.3 "Akun, Paket, WhatsApp").
+        <Card className="mt-6 flex flex-col items-center py-10 text-center">
+          <IconBadge icon={MessageCircle} size="lg" />
+          <h2 className="mt-4 font-heading text-base font-bold text-text">Segera dibuka</h2>
+          <p className="mt-1 max-w-sm text-base text-text-muted">
+            Curhat lewat WhatsApp sedang disiapkan. Sementara itu, ceritakan harimu di Hari Ini.
+          </p>
+          <Link href="/today" className={buttonVariants({ variant: "soft", className: "mt-5" })}>
+            Tulis di Hari Ini
+          </Link>
+        </Card>
       ) : (
         <WhatsAppPanel linked={linked} />
       )}

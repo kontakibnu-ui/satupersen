@@ -85,6 +85,7 @@ src/lib/study/             Belajar: jadwal review dan kuota (fungsi murni, dites
 src/lib/rate-limit.ts      rate limit per user lewat tabel rate_limits (PRD RATE-1)
 src/lib/dates.ts
 src/lib/entries.ts         aturan entri yang dipakai klien dan server (mis. batas karakter)
+src/lib/zod.ts             zod untuk kode yang jalan di browser (jitless, supaya CSP tanpa eval tidak mencatat pelanggaran); modul browser mengimpor z dari sini
 src/lib/receipt.ts         Isi dari screenshot (EXP-7): penyamaran angka panjang dan pengaman hasil bacaan AI
 scripts/copy-ocr-assets.mjs  menyalin mesin OCR dan data bahasa dari node_modules ke public/ocr (tidak di-commit) sebelum dev dan build
 src/lib/books/             Ruang baca: aturan file dan kuota (fungsi murni, dites), cache salinan di browser

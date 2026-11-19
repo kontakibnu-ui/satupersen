@@ -4,10 +4,13 @@ import {
   daysBetween,
   endOfMonthKey,
   endOfWeekKey,
+  formatClock,
   formatDayLabel,
   formatDayParts,
   formatMonthLabel,
   formatWeekdayShort,
+  INDONESIAN_TIME_ZONES,
+  indonesianZoneName,
   isDateKey,
   isValidTimeZone,
   lastNDays,
@@ -233,6 +236,41 @@ describe("isValidTimeZone", () => {
 
   it.each(["", "   ", "Foo/Bar", "Asia/Bandung", "GMT+99"])("rejects %s", (zone) => {
     expect(isValidTimeZone(zone)).toBe(false);
+  });
+});
+
+describe("indonesianZoneName", () => {
+  it.each([
+    ["Asia/Jakarta", "WIB"],
+    ["Asia/Pontianak", "WIB"],
+    ["Asia/Makassar", "WITA"],
+    ["Asia/Jayapura", "WIT"],
+  ])("names %s as %s", (zone, name) => {
+    expect(indonesianZoneName(zone)).toBe(name);
+  });
+
+  it.each(["Asia/Singapore", "UTC", "", "asia/jakarta"])("has no Indonesian name for %s", (zone) => {
+    expect(indonesianZoneName(zone)).toBeNull();
+  });
+
+  it("lists only zones the runtime knows, west to east", () => {
+    expect(INDONESIAN_TIME_ZONES).toEqual(["Asia/Jakarta", "Asia/Pontianak", "Asia/Makassar", "Asia/Jayapura"]);
+    expect(INDONESIAN_TIME_ZONES.every(isValidTimeZone)).toBe(true);
+  });
+});
+
+describe("formatClock", () => {
+  const instant = new Date("2026-11-19T07:32:00Z");
+
+  it("writes the time in the zone, 24 hour with a dot", () => {
+    expect(formatClock("Asia/Jakarta", instant)).toBe("14.32");
+    expect(formatClock("Asia/Makassar", instant)).toBe("15.32");
+    expect(formatClock("Asia/Jayapura", instant)).toBe("16.32");
+  });
+
+  it("pads the hour and crosses midnight in the zone, not on the machine", () => {
+    expect(formatClock("Asia/Jakarta", new Date("2026-11-19T17:05:00Z"))).toBe("00.05");
+    expect(formatClock("UTC", new Date("2026-11-19T09:07:00Z"))).toBe("09.07");
   });
 });
 

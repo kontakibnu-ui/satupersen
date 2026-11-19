@@ -1,8 +1,11 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BinderSheet, BLEED, Kop, ScribbleRing, ScribbleUnderline, SectionHead, StickyNote } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { ProgressTabs } from "@/components/progress-tabs";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, IconBadge } from "@/components/ui/card";
 import { formatPercent } from "@/lib/format";
 import { reportContentSchema, type ReportContent } from "@/lib/reports/content";
 import { formatPeriodLabel, type ReportType } from "@/lib/reports/period";
@@ -66,10 +69,18 @@ export default async function ReportsPage() {
 
       <div className="max-w-[640px]">
         {reports.length === 0 ? (
-          <p className="mt-6 rounded-[14px] border border-border bg-surface p-[18px] text-base text-text-muted md:p-6">
-            Belum ada laporan. Laporan mingguan muncul tiap Senin pagi, kalau minggu sebelumnya punya
-            minimal 3 hari yang sudah dianalisa.
-          </p>
+          // The same empty state as the Grafik tab: a seal, what will appear and
+          // when, and the one step that gets there.
+          <Card className="mt-6 flex flex-col items-center py-10 text-center">
+            <IconBadge icon={FileText} size="lg" />
+            <p className="mt-4 max-w-sm text-base text-text-muted">
+              Belum ada laporan. Laporan mingguan muncul tiap Senin pagi, kalau minggu sebelumnya punya
+              minimal 3 hari yang sudah dianalisa.
+            </p>
+            <Link href="/today" className={buttonVariants({ variant: "soft", className: "mt-5" })}>
+              Mulai menulis
+            </Link>
+          </Card>
         ) : (
           <ReportList reports={reports} />
         )}

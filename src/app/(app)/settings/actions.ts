@@ -30,7 +30,7 @@ export async function updateProfile(formData: FormData): Promise<ProfileActionRe
   });
 
   if (!parsed.success) {
-    return { ok: false, message: "Nama tidak boleh kosong dan timezone harus dipilih." };
+    return { ok: false, message: "Nama tidak boleh kosong dan zona waktu harus dipilih." };
   }
 
   const supabase = await createSupabaseActionClient();
@@ -47,7 +47,9 @@ export async function updateProfile(formData: FormData): Promise<ProfileActionRe
     return { ok: false, message: "Perubahan belum tersimpan. Coba lagi sebentar lagi." };
   }
 
-  revalidatePath("/settings");
+  // The name is in the header on every screen and the zone decides every "today",
+  // so the whole app is refreshed, not only Akun and Profil.
+  revalidatePath("/", "layout");
 
   return { ok: true, message: "Tersimpan." };
 }

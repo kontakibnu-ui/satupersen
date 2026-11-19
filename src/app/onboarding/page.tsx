@@ -5,13 +5,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
 export const metadata: Metadata = {
-  title: "Sebelum mulai · Satu Persen",
+  title: "Selamat datang · Satu Persen",
 };
 
 /**
- * AUTH-4: one screen, the disclaimer, and two checkboxes that cannot be
- * skipped. Nothing else is asked here, because the user is one step away from
- * writing their first entry.
+ * AUTH-4: one screen with one button; pressing it records the privacy consent
+ * (the sentence under it links the policy). Nothing else is asked here,
+ * because the user is one step away from writing their first entry.
  */
 export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
@@ -37,7 +37,7 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <AuthShell title="Sebelum mulai">
+    <AuthShell title="Selamat datang" description="Satu kalimat sehari sudah cukup untuk mulai.">
       <OnboardingForm />
     </AuthShell>
   );

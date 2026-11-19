@@ -12,6 +12,7 @@ import {
   deleteTestUser,
   jakartaToday,
   localStackIsRunning,
+  readRows,
   seedBudget,
   seedEntry,
   seedExpense,
@@ -174,6 +175,8 @@ const scenarios: Scenario[] = [
   { name: "dashboard-1-tahun-premium", path: "/dashboard?periode=365", user: () => progressPremium },
   { name: "dashboard-kosong", path: "/dashboard", user: () => writer },
   { name: "settings", path: "/settings", user: () => writer },
+  { name: "settings-whatsapp-terhubung", path: "/settings", user: () => chatter },
+  { name: "profil", path: "/settings/profile", user: () => writer },
   { name: "whatsapp-terhubung", path: "/settings/whatsapp", user: () => chatter },
   { name: "whatsapp-belum-dikonfigurasi", path: "/settings/whatsapp", user: () => writer },
   { name: "history", path: "/history", user: () => summarised },
@@ -564,23 +567,101 @@ test("WhatsApp belum dikonfigurasi: user diberi tahu dengan jelas, tanpa tombol 
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
   await open(page, scenarioNamed("whatsapp-belum-dikonfigurasi"));
-  await expect(page.getByText("WhatsApp belum dikonfigurasi di server ini")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Segera dibuka" })).toBeVisible();
+  await expect(page.getByText("Curhat lewat WhatsApp sedang disiapkan")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Tulis di Hari Ini" })).toHaveAttribute("href", "/today");
   await expect(page.getByRole("button", { name: "Buat kode" })).toHaveCount(0);
 });
 
-test("Akun menautkan ke pengaturan WhatsApp", async ({ page }) => {
+test("Akun berupa menu: kartu profil, grup Langganan, Pengaturan, Data dan privasi, lalu Keluar (DESIGN §14.3)", async ({
+  page,
+}) => {
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
   await open(page, scenarioNamed("settings"));
-  await expect(page.getByRole("link", { name: "WhatsApp" })).toHaveAttribute("href", "/settings/whatsapp");
+  const main = page.getByRole("main");
+
+  await expect(main.getByRole("link", { name: /^Profil:/ })).toHaveAttribute("href", "/settings/profile");
+  await expect(main.getByRole("heading", { name: "Langganan" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Pengaturan" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Data dan privasi" })).toBeVisible();
+
+  const plan = main.getByRole("link", { name: /^Paket/ });
+  await expect(plan).toHaveAttribute("href", "/settings/plan");
+  await expect(plan).toContainText("Gratis");
+  await expect(plan).toContainText("Kuota AI 0% terpakai bulan ini");
+  await expect(plan.getByRole("meter", { name: "Kuota AI bulan ini" })).toHaveAttribute("aria-valuenow", "0");
+
+  const zone = main.getByRole("link", { name: /^Zona waktu/ });
+  await expect(zone).toHaveAttribute("href", "/settings/profile");
+  await expect(zone).toContainText("WIB");
+
+  const whatsapp = main.getByRole("link", { name: /^WhatsApp/ });
+  await expect(whatsapp).toHaveAttribute("href", "/settings/whatsapp");
+  // The local stack has no WhatsApp keys (see "WhatsApp belum dikonfigurasi" above).
+  await expect(whatsapp).toContainText("Segera dibuka");
+
+  await expect(main.getByRole("link", { name: /^Unduh semua datamu/ })).toHaveAttribute("href", "/api/account/export");
+  await expect(main.getByRole("link", { name: "Kebijakan privasi" })).toHaveAttribute("href", "/privacy");
+  await expect(main.getByRole("link", { name: "Syarat layanan" })).toHaveAttribute("href", "/terms");
+  await expect(main.getByRole("button", { name: "Keluar" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "Hapus akun" })).toBeVisible();
+  // Akun has no primary action (DESIGN.md §2): Keluar is secondary, Hapus akun a link.
+  await expect(main.locator("button.bg-primary, a.bg-primary")).toHaveCount(0);
 });
 
-test("Akun: pilihan timezone menampilkan zona yang tersimpan, bukan zona pertama di daftar (AUTH-3)", async ({ page }) => {
+test("Akun: WhatsApp yang sudah terhubung tertulis Terhubung", async ({ page }) => {
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
-  await open(page, scenarioNamed("settings"));
+  await open(page, scenarioNamed("settings-whatsapp-terhubung"));
+  await expect(page.getByRole("main").getByRole("link", { name: /^WhatsApp/ })).toContainText("Terhubung");
+});
+
+test("Profil: pilihan zona waktu menampilkan zona yang tersimpan, zona Indonesia di atas (AUTH-3)", async ({ page }) => {
+  test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
+
+  await open(page, scenarioNamed("profil"));
+  await expect(page.getByRole("main").getByRole("link", { name: "Akun" })).toHaveAttribute("href", "/settings");
   // The full list arrives after hydration; the saved zone must still be the one selected.
-  await expect(page.getByLabel("Timezone")).toHaveValue("Asia/Jakarta");
-  await expect(page.locator("#timezone option")).not.toHaveCount(1);
-  await expect(page.getByLabel("Timezone")).toHaveValue("Asia/Jakarta");
+  const select = page.getByLabel("Zona waktu");
+  await expect(select).toHaveValue("Asia/Jakarta");
+  await expect(page.locator('#timezone optgroup[label="Indonesia"] option')).toHaveText([
+    "Asia/Jakarta (WIB)",
+    "Asia/Pontianak (WIB)",
+    "Asia/Makassar (WITA)",
+    "Asia/Jayapura (WIT)",
+  ]);
+  await expect(page.locator('#timezone optgroup[label="Zona lain"] option')).not.toHaveCount(0);
+  await expect(select).toHaveValue("Asia/Jakarta");
+  await expect(page.getByText(/^Sekarang pukul \d{2}\.\d{2} di zona ini\. Hari baru dimulai pukul 00\.00\.$/)).toBeVisible();
+});
+
+test("Profil: nama dan zona waktu tersimpan, lalu terbaca di menu Akun (AUTH-3)", async ({ page }) => {
+  test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
+
+  // A user of its own, because the zone it saves would shift "today" for the shared users.
+  const mover = await createTestUser("profil-simpan", true);
+
+  try {
+    await signIn(page.context(), mover);
+    await page.goto("/settings");
+    await page.getByRole("main").getByRole("link", { name: /^Profil:/ }).click();
+    await expect(page).toHaveURL(/\/settings\/profile$/);
+
+    await page.getByLabel("Nama").fill("Rani Uji");
+    await page.getByLabel("Zona waktu").selectOption("Asia/Makassar");
+    await page.getByRole("button", { name: "Simpan" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Tersimpan." })).toBeVisible();
+
+    expect(await readRows("profiles", `id=eq.${mover.id}&select=name,timezone`)).toEqual([
+      { name: "Rani Uji", timezone: "Asia/Makassar" },
+    ]);
+
+    await page.getByRole("link", { name: "Akun" }).first().click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page.getByRole("main").getByRole("link", { name: /^Profil:/ })).toContainText("Rani Uji");
+    await expect(page.getByRole("main").getByRole("link", { name: /^Zona waktu/ })).toContainText("WITA");
+  } finally {
+    await deleteTestUser(mover);
+  }
 });

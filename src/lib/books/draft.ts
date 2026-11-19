@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { MAX_SOURCE_LENGTH, MAX_TITLE_LENGTH } from "@/lib/study/rules";
 
 /**

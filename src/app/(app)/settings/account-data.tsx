@@ -1,53 +1,52 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useState } from "react";
-import { SectionHead } from "@/components/notebook";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { forgetAllBooks } from "@/lib/books/cache";
 import { callAction } from "@/lib/call-action";
 import { forgetAllEntryDrafts } from "@/lib/entry-draft";
-import { deleteAccount } from "./actions";
+import { deleteAccount, signOut } from "./actions";
 
 /**
- * "Datamu" on Akun (PRD.md §7, DESIGN.md §2, §14.3): export is a plain link,
- * signing out sits in its own row, and "Hapus akun" is the smallest thing on
- * the page, at the very bottom, in the one colour reserved for deleting data
- * (DESIGN.md §3, §12). Deleting asks for a typed word, because it cannot be
- * undone. `signOut` is the form that signs out, passed in by the page.
+ * The end of Akun (PRD.md §7, DESIGN.md §2, §14.3): signing out is a full
+ * secondary button with its icon so it is easy to find, and "Hapus akun" is
+ * the smallest thing on the page, set apart at the very bottom in the one
+ * colour reserved for deleting data (DESIGN.md §3, §12). Deleting asks for a
+ * typed word, because it cannot be undone.
  */
-export function AccountData({ signOut }: { signOut: React.ReactNode }) {
+export function AccountData() {
   const [open, setOpen] = useState(false);
 
   return (
-    <section aria-labelledby="data-title">
-      <SectionHead id="data-title" title="Datamu" />
-      <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 border-b border-rule py-1.5">
-        <span className="text-base text-text">Unduh semua datamu</span>
-        <a
-          href="/api/account/export"
-          download
-          className={buttonVariants({ variant: "link", className: "gap-2 text-sm font-semibold text-primary" })}
+    <>
+      <div className="mt-8 flex flex-col items-stretch gap-4">
+        {/* Book copies kept for Ruang baca (READ-9) and diary drafts not sent
+            yet (lib/entry-draft.ts) go before the session does. */}
+        <form
+          action={async () => {
+            await forgetAllBooks();
+            forgetAllEntryDrafts();
+            await signOut();
+          }}
         >
-          <Download aria-hidden="true" size={16} strokeWidth={1.8} />
-          Export data (JSON)
-        </a>
-      </div>
-      <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-4 border-b border-rule py-1.5">
-        <span className="text-base text-text">Keluar dari perangkat ini</span>
-        {signOut}
-      </div>
+          <Button type="submit" variant="secondary" className="w-full">
+            <LogOut aria-hidden="true" size={18} strokeWidth={1.8} />
+            Keluar
+          </Button>
+        </form>
 
-      <Button variant="link" onClick={() => setOpen(true)} className="mt-3 text-sm text-danger">
-        Hapus akun
-      </Button>
+        <Button variant="link" onClick={() => setOpen(true)} className="self-center px-2 text-sm text-danger">
+          Hapus akun
+        </Button>
+      </div>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Hapus akun">
         <DeleteForm />
       </Sheet>
-    </section>
+    </>
   );
 }
 

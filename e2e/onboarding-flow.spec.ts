@@ -43,9 +43,12 @@ async function runFlow(page: Page, email: string): Promise<void> {
   await page.getByLabel("Password").fill("RahasiaUji123!");
   await page.getByRole("button", { name: "Daftar", exact: true }).click();
 
-  // AUTH-4: a brand new account cannot skip the consent screen.
+  // AUTH-4: a brand new account cannot skip the consent screen. Since
+  // 2026-11-19 pressing Mulai is the consent, under a sentence that links the
+  // policy; the screen no longer names the model provider or has a checkbox.
   await expect(page).toHaveURL(/\/onboarding/);
-  await page.getByRole("checkbox", { name: /kebijakan privasi/i }).check();
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Kebijakan Privasi" })).toHaveAttribute("href", "/privacy");
   await page.getByRole("button", { name: "Mulai" }).click();
 
   // DIARY-1 plus 1.6d: the diary is the home screen, with the navigation around it.

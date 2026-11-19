@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Stamp } from "lucide-react";
+import { Plus, RefreshCw, Stamp } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { HabitChecklist } from "@/components/habit-checklist";
@@ -289,8 +289,9 @@ export function TodayClient({
         <p className="text-sm text-text-muted">Belum ada kebiasaan. Mulai dari satu yang kecil.</p>
         <Link
           href="/habits"
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline"
         >
+          <Plus aria-hidden="true" size={16} strokeWidth={2} />
           Tambah kebiasaan
         </Link>
       </section>

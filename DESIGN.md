@@ -47,7 +47,8 @@ Aturan paling penting di file ini. Penekanan itu terbatas; kalau semua ditonjolk
 | Materi, review | Daftar pertanyaan jatuh tempo | Lihat jawaban, lalu Simpan review (bergantian, satu per saat) | Umpan balik penjelasan, bahan, hapus |
 | Materi, menunggu review | Umpan balik penjelasan | Tidak ada ("Jelaskan ulang" berupa tombol sekunder) | Daftar pertanyaan dan tanggal review, bahan, hapus |
 | Pembaca (Ruang baca) | Halaman buku | "Jadikan materi", hanya saat ada teks yang diblok | Bar atas, panel Aa, posisi baca, hapus buku |
-| Akun | Tidak ada | Tidak ada | Semuanya; "Hapus akun" berupa tautan kecil paling bawah |
+| Akun (menu) | Tidak ada (kartu profil di atas sebagai jangkar, bukan fokus) | Tidak ada | Semuanya; grup menu dalam kartu polos; "Keluar" tombol sekunder penuh berikon; "Hapus akun" berupa tautan kecil paling bawah |
+| Profil | Form nama dan zona waktu | Tidak ada ("Simpan" tombol sekunder) | Email dan cara masuk |
 | Mode krisis | Teks respons | Tombol telepon layanan | "Lanjut menulis" sebagai tautan |
 | Landing | Judul hero | Mulai gratis (boleh diulang sekali di akhir halaman) | Semua bagian lain |
 
@@ -55,7 +56,7 @@ Aturan paling penting di file ini. Penekanan itu terbatas; kalau semua ditonjolk
 
 Definisikan sebagai CSS variables di `globals.css` (siang dan malam, lewat `light-dark()`). **Dilarang menulis hex di komponen**, pakai token. Pengecualian yang dicatat: meta `theme-color` dan manifest PWA, yang hanya menerima warna harfiah (`THEME_COLOR` di `src/lib/theme.ts`).
 
-**Mode siang dan malam.** Siang adalah bawaan untuk semua orang, **apa pun pilihan sistem**. Malam dipilih lewat sakelar di header (dan di Akun), disimpan di satu cookie `satupersen-theme` yang hanya berisi `light` atau `dark`, lalu server memasang kelas `dark` di `<html>` sejak byte pertama. Tidak ada kolom database untuk ini, karena ini preferensi tampilan, bukan data user.
+**Mode siang dan malam.** Siang adalah bawaan untuk semua orang, **apa pun pilihan sistem**. Malam dipilih lewat sakelar di header (tidak lagi diulang di Akun, keputusan user 2026-11-19), disimpan di satu cookie `satupersen-theme` yang hanya berisi `light` atau `dark`, lalu server memasang kelas `dark` di `<html>` sejak byte pertama. Tidak ada kolom database untuk ini, karena ini preferensi tampilan, bukan data user.
 
 **Versi 4: satu tinta.** Semua highlight memakai `primary` (tinta biru pulpen) atau `primary-soft`. Nama token lama `accent`, `plum`, `sage`, dan `mood-1..5` (beserta `-soft` dan `on-mood`) tetap ada di `globals.css` supaya layar lama tetap jalan, tetapi nilainya menunjuk ke `primary`, `primary-soft`, dan `primary-foreground`. Komponen baru memakai nama `primary` langsung.
 
@@ -112,7 +113,8 @@ Lebar maksimum konten: 640 px untuk Hari Ini, Kebiasaan, Belajar, Uang, dan Akun
 | Belajar | `/learn` | Materi, "Jelaskan dengan kata sendiri", review berjarak (PRD LEARN) |
 | Uang | `/expenses` | Pengeluaran dan budget |
 | Progres | `/dashboard`, `/history`, `/reports` | Tiga tab: Grafik, Riwayat (kalender dan tulisan lampau), Laporan |
-| (lingkaran profil) | `/settings` | Profil, timezone, mode malam, WhatsApp, langganan, export, hapus akun |
+| (lingkaran profil) | `/settings` | Menu Akun: kartu profil, paket, zona waktu, WhatsApp, export, kebijakan privasi, syarat layanan, keluar, hapus akun |
+| (dari Akun) | `/settings/profile` | Profil: nama dan zona waktu |
 | (dari Belajar) | `/read/[id]` | Pembaca Ruang baca (PRD READ), layar penuh tanpa header dan navigasi; dibuka sebagai dokumen baru, bukan navigasi di sisi klien, supaya CSP-nya sendiri berlaku |
 
 Item Progres aktif di ketiga rutenya. Item Belajar mendapat **titik penanda** 8 px `primary` di pojok ikon (bar bawah) atau di samping kata (header) saat ada pertanyaan yang jatuh tempo hari ini, dengan teks tersembunyi ", ada review hari ini" untuk pembaca layar (LEARN-9). Titik ini penanda state kecil (§2), bukan angka dan bukan lencana.
@@ -147,7 +149,7 @@ Item aktif: teks `text` tebal **dan** `aria-current`, plus garis emas pendek (di
 - **Tombol.** Semua berbentuk pill dan minimal 48 px, **tanpa bayangan**. Primary: latar `primary`, teks `primary-foreground`. Sekunder: transparan dengan tepi `control`. Soft: `primary-soft` dengan teks `primary`, untuk aksi kedua yang tenang. Tautan: teks, garis bawah saat hover dan fokus. Ikon di dalam tombol boleh bila membantu (Plus, Stamp, Phone). Tanpa panah "→" di ujung teks tombol.
 - **Header layar.** Judul 34 px Fraunces 400, satu kalimat penjelas opsional, satu baris kecil di atasnya bila perlu (tanggal). Tanpa label kapital.
 - **Halaman kalender Hari Ini.** Pengganti header layar di Hari Ini: angka tanggal 84 px Fraunces 300 `primary`, nama hari miring 24 px, bulan dan tahun 14 px `text-muted`, chip streak di kanan, ditutup garis rambut. Di bawahnya sapaan ("Selamat sore, Ibnu.") lalu judul "Gimana harimu?". Ini satu-satunya animasi masuk di aplikasi.
-- **Sakelar mode siang/malam.** Tombol `role="switch"` berlabel "Mode malam", area sentuh 44 px. Jalur 60 × 32 px `surface-muted` dengan matahari di kiri dan bulan di kanan; kenop 24 px `surface` dengan ikon emas bergeser ke pilihan aktif. Ada di header aplikasi, header landing, login, onboarding, halaman hukum, dan di Akun.
+- **Sakelar mode siang/malam.** Tombol `role="switch"` berlabel "Mode malam", area sentuh 44 px. Jalur 60 × 32 px `surface-muted` dengan matahari di kiri dan bulan di kanan; kenop 24 px `surface` dengan ikon emas bergeser ke pilihan aktif. Ada di header aplikasi, header landing, login, onboarding, dan halaman hukum. Tidak diulang di Akun (keputusan user 2026-11-19).
 - **Lingkaran profil.** 36 px, latar `primary`, inisial nama (atau email) dalam Fraunces, di pojok kanan atas header. Nama aksesnya "Akun".
 - **Judul hasil.** Di atas stempel, tengah: ikon Stamp emas 15 px dan "Analisa hari ini" 14 px `text-muted`, supaya jelas bahwa isinya dibuat AI.
 - **Skor (stempel).** Diameter 160 px (HP) atau 184 px (desktop). Cincin luar 1 px emas, busur skor 7 px `accent` di atas track `surface-muted` **berapa pun skornya**, cincin dalam bertitik `control`. Di tengah: perubahan dibanding hari berskor terakhir, Fraunces 300 ("+2%" 48 px; empat karakter atau lebih 36 px), dengan "dari kemarin" miring di bawahnya. **Angka skor 0 sampai 100 tidak pernah tampil di stempel** (keputusan user 2026-11-01); busurnya saja yang mengikuti skor. Analisa pertama: ikon tunas dan "analisa pertama". Stempel kecil (di bawah 150 px) tanpa keterangan "dari ...". Stempel bersifat dekoratif (`aria-hidden`); kalimat di bawahnya yang dibaca pembaca layar. Animasi isi sekali, 600 ms.
@@ -456,7 +458,7 @@ Pakai "kamu". Hangat, singkat, tidak menggurui. Tombol berupa kata kerja ("Anali
 - Semua kontrol punya label yang terbaca screen reader. Fokus keyboard terlihat jelas (ring 2 px `primary`).
 - Informasi tidak boleh hanya lewat warna: delta selalu punya teks dan ikon, kontrol terpilih punya perubahan isi.
 - Transisi UI maksimal 200 ms ease-out, tanpa pantulan. Cincin skor 600 ms. Semua animasi mati saat `prefers-reduced-motion`.
-- Mode siang adalah bawaan, apa pun pilihan sistem. Mode malam lewat sakelar di header dan di Akun (§3), diingat di cookie.
+- Mode siang adalah bawaan, apa pun pilihan sistem. Mode malam lewat sakelar di header (§3), diingat di cookie.
 
 **Verifikasi tugas UI (wajib, lihat juga `AGENTS.md` §2)**
 1. `npm run test:ui` (Playwright + axe) di halaman yang disentuh, ukuran 360 × 640, 768 × 1024, dan 1280 × 800, mode terang dan gelap:
@@ -483,8 +485,8 @@ Tetap dari versi 4: palet satu tinta (§3), Plus Jakarta Sans untuk antarmuka, L
 | Wadah | Dipakai untuk | Tidak dipakai untuk |
 | --- | --- | --- |
 | Lembaran binder | Tulisan Hari Ini (termasuk mode fokus), hasil analisa, "Centang hari ini" di Kebiasaan, buku kas dan daftar catatan Uang, "Review hari ini" di Belajar, menjelaskan dan review materi, tulisan lampau di Riwayat, laporan terbaru | Grafik, Akun, Paket, WhatsApp, isi buku, sheet bawah, mode krisis |
-| Kartu polos (`surface`, garis rambut, radius 14, tanpa lubang dan garis buku) | Grup status atau alat yang bukan catatan: kalender Riwayat, Perkembangan uang, kuota AI, nomor WhatsApp, bahan tertutup, paket Gratis di landing | Tulisan user |
-| Langsung di halaman, dengan kepala bagian (§14.3) | Mood dan energi, kebiasaan di Hari Ini, Materimu, Ruang baca, Kelola kebiasaan, profil dan pengaturan Akun, isi Premium, laporan sebelumnya, grafik | |
+| Kartu polos (`surface`, garis rambut, radius 14, tanpa lubang dan garis buku) | Grup status atau alat yang bukan catatan: kalender Riwayat, Perkembangan uang, kuota AI, nomor WhatsApp, bahan tertutup, paket Gratis di landing, kartu profil dan grup menu Akun | Tulisan user |
+| Langsung di halaman, dengan kepala bagian (§14.3) | Mood dan energi, kebiasaan di Hari Ini, Materimu, Ruang baca, Kelola kebiasaan, form Profil, isi Premium, laporan sebelumnya, grafik | |
 | Catatan tempel | Pemantik, "Untuk besok", "Menurut bahan", "Fokus minggu ini" atau "Fokus bulan ini", pilihan paket premium | Tombol, peringatan, error |
 | Cap tinta | Selisih di hasil analisa Hari Ini dan contohnya di landing | Angka lain |
 
@@ -515,7 +517,19 @@ Butir-butir ini menggantikan butir §6 dengan nama yang sama.
 - **Grafik.** Tidak pernah di atas kertas. Angka fokus 44/700 `primary`, kalimat perbandingan 14 `text-muted` dengan garis bawah coretan di angkanya ("5% di atas"). Garis 2,5 px `primary`, area di bawah garis `primary` 7% rata (tanpa gradasi), kisi putus-putus `border`, sumbu bawah `control`, titik hari ini 4 px dengan lingkaran coretan dan label "hari ini" Lora miring 14 `primary`. Batang dimensi: track `surface-muted`, isi `primary`, angka 14 `text-muted` di kanan. Grafik batang uang: Masuk `primary`, Keluar `rule-strong`; karena kontras batang Keluar rendah, legenda teks dan tabel tersembunyi tetap wajib (§6 Perkembangan uang).
 - **Uang.** Buku kas di lembaran binder: bulan dengan panah 44 px, "Sisa uang bulan ini" 14 `text-muted`, angka rupiah 36/700 `primary` dengan garis bawah coretan, baris Masuk dan Keluar di bawah garis ganda, sisa budget dengan track, tautan "Atur budget". Lalu tombol primary "Tambah pengeluaran", sekunder "Tambah pemasukan", dan tautan "Isi dari screenshot bank". Perkembangan di kartu polos. Daftar catatan bulan ini di lembaran binder, satu kepala bagian per hari (total hari di kanan), ikon kategori dalam lingkaran `primary-soft` 36 px.
 - **Pilihan paket premium (Akun > Paket dan landing).** Deret catatan tempel 262 px yang digeser ke samping (scroll-snap ke tengah); catatan berikutnya mengintip di tepi. Urutan 12, 6, 3, lalu 1 bulan. Isi catatan: lama paket Lora miring 20 `primary`, harga 34/700 `primary`, "Rp 16.583 sebulan, hemat 43%" 14 `text-muted` dengan coretan di "hemat 43%", lalu kalimat `note` paket. Harga, harga per bulan, dan persen hemat diambil dari `src/config/plans.ts` (`PREMIUM_PACKAGES`, `packageValue`), tidak ditulis tangan. Di bawahnya titik penanda 8 px (aktif `primary`, lainnya `rule-strong`) dan **satu** tombol primary yang labelnya mengikuti catatan yang tampil ("Pilih 12 bulan"), lalu "Pembayaran premium segera dibuka." Judul "Premium" polos. Di Paket, isi Premium berupa daftar centang coretan langsung di halaman di bawah tombol; di landing, paket Gratis berupa kartu polos dengan tombol sekunder "Mulai gratis".
-- **Akun, Paket, WhatsApp.** Tanpa lembaran binder dan tanpa garis buku. Profil berupa form langsung di halaman dengan input biasa (Plus Jakarta Sans, bukan Lora), tombol sekunder "Simpan". Kuota AI dan nomor WhatsApp di kartu polos. "Hapus akun" tetap tautan kecil `danger` paling bawah.
+- **Akun, Profil, Paket, WhatsApp.** Tanpa lembaran binder dan tanpa garis buku. Profil berupa form di layar Profil dengan input biasa (Plus Jakarta Sans, bukan Lora), tombol sekunder "Simpan". Kuota AI dan nomor WhatsApp di kartu polos. "Hapus akun" tetap tautan kecil `danger` paling bawah.
+- **Akun sebagai menu (varian C, dipilih user 2026-11-19 dari mockup: "layout menu akun pada umumnya", menggantikan susunan blok identitas dan kepala bagian sebelumnya).** Judul "Akun" tanpa kalimat penjelas. Urutan:
+  1. **Kartu profil**: kartu polos yang seluruhnya tautan ke Profil: lingkaran profil 56 px `primary` berisi inisial (sama dengan header), nama 16/700, email 14 `text-muted` (tanpa nama: email saja), chevron di kanan.
+  2. **Grup menu**: judul grup 14/600 `text-muted` (bukan kapital), lalu kartu polos berisi baris. Baris minimal 60 px, dipisah garis `rule`: ikon garis dalam lingkaran `primary-soft` 36 px (pola ikon kategori Uang), judul 16/600, keterangan 14 `text-muted` bila perlu, nilai 14 `text-muted` di kanan, chevron bila membuka layar lain. Hover berlatar `surface-muted`; cincin fokus di dalam baris karena kartu memotong yang keluar.
+     - **Langganan**: Paket, dengan keterangan "Kuota AI 26% terpakai bulan ini" ("sudah habis" bila lewat batas, "belum bisa dibaca" bila gagal dibaca), batang kuota 6 px (track `surface-muted`, isi `primary`), dan chip "Gratis" `surface-muted` atau "Premium" `primary-soft` di kanan.
+     - **Pengaturan**: Zona waktu (nilai "WIB", "WITA", "WIT", atau nama zona; membuka Profil) dan WhatsApp (nilai "Terhubung", "Belum terhubung", atau "Segera dibuka" selama belum dikonfigurasi di server).
+     - **Data dan privasi**: Unduh semua datamu (nilai "JSON", tanpa chevron), Kebijakan privasi, Syarat layanan.
+  3. Tombol sekunder **"Keluar"** berikon `LogOut`, selebar kolom, lalu tautan kecil `danger` "Hapus akun" di tengah, paling bawah.
+
+  Bagian "Tampilan" dengan sakelar mode malam tidak ada di Akun karena sakelarnya sudah di header.
+- **Profil (`/settings/profile`).** Tautan kembali "Akun" seperti Paket dan WhatsApp, judul "Profil", kalimat "Nama dan zona waktumu." Lalu lingkaran profil 56 px dengan email 16 dan "Masuk dengan Google" (atau "email dan password") 14 `text-muted`. Form: "Nama", "Zona waktu" (zona Indonesia di atas dalam grup "Indonesia" dengan nama WIB, WITA, WIT; zona lain di bawahnya), keterangan 14 `text-muted` "Sekarang pukul 14.32 di zona ini. Hari baru dimulai pukul 00.00." yang mengikuti zona terpilih, tombol sekunder "Simpan" selebar kolom, dan baris status di bawahnya.
+- **WhatsApp belum dikonfigurasi (2026-11-19).** Keadaan kosong seperti Grafik: kartu polos di tengah dengan ikon `MessageCircle` dalam lingkaran `primary-soft` 56 px, judul "Segera dibuka" 16/700, satu kalimat 16 `text-muted` ("Curhat lewat WhatsApp sedang disiapkan. Sementara itu, ceritakan harimu di Hari Ini."), dan tombol soft "Tulis di Hari Ini". Tanpa kalimat teknis ("server", "pengelola aplikasi") dan tanpa tombol yang tidak bisa jalan.
+- **Keadaan kosong (2026-11-19).** Satu pola untuk Grafik, Laporan, Kebiasaan, dan WhatsApp: kartu polos rata tengah, ikon garis dalam lingkaran `primary-soft` 56 px, kalimat 16 `text-muted` yang menyebut apa yang akan muncul dan kapan, lalu satu aksi (tombol soft, atau primary bila layarnya mengizinkan, §2). Laporan kosong memakai ikon `FileText` dan tombol soft "Mulai menulis". Tautan aksi kecil seperti "Tambah kebiasaan" di Hari Ini memakai ikon di depannya, sama seperti "Unggah buku".
 - **Pembaca.** Area buku memakai warna, huruf, dan tata letak file, tanpa kertas, garis buku, Lora, atau warna tinta; seleksi teks memakai sorotan bawaan perangkat. Bar atas, panel Aa, dan bar bawah memakai gaya versi 5. Panel Aa tetap `surface-muted`.
 - **Sheet bawah.** `surface`, radius atas 28, pegangan 40 × 4 px, latar meredup. Label terlihat 14/600, input radius 12 minimal 52 px tinggi, satu tombol primary, tautan "Batal" bila perlu.
 - **Mode krisis.** Seperti §9: `surface-muted`, tanpa lembaran binder, catatan tempel, cap, coretan, atau turus.

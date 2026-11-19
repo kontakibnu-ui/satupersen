@@ -26,6 +26,7 @@ const APP_PATHS = [
   "/reports",
   "/history",
   "/settings",
+  "/settings/profile",
   "/settings/whatsapp",
 ];
 

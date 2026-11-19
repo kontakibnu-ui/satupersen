@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { callAction } from "@/lib/call-action";
@@ -23,37 +24,39 @@ async function submit(
   return callAction(() => completeOnboarding(formData));
 }
 
+/**
+ * AUTH-4 (user decision 2026-11-19): no checkbox. One quiet sentence under the
+ * button says that pressing it accepts the privacy policy, with a link to the
+ * policy, which still explains what is sent to the model provider.
+ */
 export function OnboardingForm() {
   const [state, formAction, pending] = useActionState(submit, null);
   const timezone = useSyncExternalStore(subscribeNever, readTimezone, readTimezoneOnServer);
 
   return (
-    <form action={formAction} className="mt-8 flex flex-col gap-5">
+    <form action={formAction} className="mt-8 flex flex-col gap-4">
       <input type="hidden" name="timezone" value={timezone} />
 
-      {/* The label is the touch target and is at least 44 px tall; the visible
-          box stays 24 px, the same pattern DESIGN.md §6 uses for habit rows. */}
-      <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface-muted/60 p-4 text-base text-text transition-colors duration-200 has-checked:border-primary has-checked:bg-primary-soft">
-        <input
-          type="checkbox"
-          name="privacy"
-          value="set"
-          className="mt-0.5 h-6 w-6 shrink-0 rounded-sm border border-control accent-primary"
-        />
-        <span>Saya setuju dengan kebijakan privasi, termasuk bahwa isi catatan saya diproses oleh penyedia model AI untuk membuat ringkasan.</span>
-      </label>
+      <Button type="submit" disabled={pending} className="w-full">
+        {pending ? "Menyiapkan…" : "Mulai"}
+      </Button>
 
-      <div className="flex items-center gap-4">
-        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-          {pending ? "Menyimpan…" : "Mulai"}
-        </Button>
+      <p className="text-sm text-text-muted">
+        Dengan menekan Mulai, kamu setuju dengan{" "}
+        <Link
+          href="/privacy"
+          className="text-text underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          Kebijakan Privasi
+        </Link>
+        .
+      </p>
 
-        {state?.message ? (
-          <p role="status" className="text-sm text-text-muted">
-            {state.message}
-          </p>
-        ) : null}
-      </div>
+      {state?.message ? (
+        <p role="status" className="text-sm text-text-muted">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }
