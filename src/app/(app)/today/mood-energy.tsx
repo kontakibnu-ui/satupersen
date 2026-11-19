@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { ScribbleCircle } from "@/components/notebook";
+import { callAction } from "@/lib/call-action";
 import { cn } from "@/lib/utils";
 import { saveMoodEnergy } from "./actions";
 
@@ -72,7 +73,7 @@ export function MoodEnergy({
     set(value);
     setMessage(undefined);
 
-    const result = await saveMoodEnergy({ date, field, value });
+    const result = await callAction(() => saveMoodEnergy({ date, field, value }));
 
     if (!result.ok) {
       set(previous);

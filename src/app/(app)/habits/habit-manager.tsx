@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, IconBadge } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
+import { callAction } from "@/lib/call-action";
 import { FREE_HABIT_LIMIT, type HabitView } from "@/lib/habits";
 import { archiveHabit, createHabit, updateHabit } from "./actions";
 
@@ -56,7 +57,7 @@ export function HabitManager({
   async function archive(id: string) {
     setPending(true);
     setNotice(undefined);
-    const result = await archiveHabit(id);
+    const result = await callAction(() => archiveHabit(id));
     setPending(false);
     setConfirmingId(null);
 
@@ -182,9 +183,9 @@ function HabitForm({ editing, onDone }: { editing: Editing; onDone: () => void }
     setPending(true);
     setMessage(undefined);
 
-    const result = habit
-      ? await updateHabit({ id: habit.id, name, identity })
-      : await createHabit({ name, identity });
+    const result = await callAction(() =>
+      habit ? updateHabit({ id: habit.id, name, identity }) : createHabit({ name, identity }),
+    );
 
     setPending(false);
 

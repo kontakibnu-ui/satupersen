@@ -4,7 +4,9 @@ import { Check, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BLEED, StickyNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { MAX_CONTENT_LENGTH } from "@/lib/entries";
+import { clearEntryDraft, readEntryDraft, writeEntryDraft } from "@/lib/entry-draft";
 import { cueForDay } from "@/lib/writing-cues";
 import { saveEntry } from "./actions";
 
@@ -24,22 +26,47 @@ import { saveEntry } from "./actions";
  *   bottom navigation hides and a slim bar at the top shows the save status and
  *   "Selesai", because the in-page status sits under the keyboard by then.
  * - Status is written where the action happens, never as a toast (DESIGN.md §6).
+ * - Every change is also kept in this browser until the server has it
+ *   (`lib/entry-draft.ts`). A dropped connection keeps retrying, and retries at
+ *   once when the browser is back online; leaving the editor sends what the
+ *   server has not got yet.
  */
 const AUTOSAVE_DELAY_MS = 2000;
 const RETRY_DELAY_MS = 5000;
 const COUNTER_VISIBLE_FROM = 4000;
+const KEPT_HERE = "Belum terkirim, aman di perangkat ini";
+const NOT_KEPT = "Koneksi terputus, mencoba lagi";
+
+/**
+ * Sends text the editor is leaving behind. Nothing on screen can show the
+ * outcome any more, so a failure only leaves the draft where it is.
+ */
+function sendLeftover(userId: string, date: string, content: string) {
+  void callAction(() => saveEntry({ date, content })).then((result) => {
+    if (result.ok && readEntryDraft(userId, date)?.content === content) {
+      clearEntryDraft(userId, date);
+    }
+  });
+}
 
 /** "blocked" is an error that saving again cannot fix, so no retry is scheduled. */
 type SaveState = "idle" | "saving" | "saved" | "error" | "blocked";
 
 export function EntryEditor({
+  userId,
   date,
   initialContent,
+  savedContent = initialContent,
   onContentChange,
   onSaved,
 }: {
+  /** Keys the draft kept in this browser, so accounts sharing it never mix. */
+  userId: string;
   date: string;
+  /** What the editor opens with: the server text, or a draft put back from this browser. */
   initialContent: string;
+  /** What the server has, when it differs from `initialContent`; the difference is saved straight away. */
+  savedContent?: string;
   /** Lets the page know whether the text changed after it was summarised. */
   onContentChange?: (value: string) => void;
   onSaved?: (value: string) => void;
@@ -51,7 +78,10 @@ export function EntryEditor({
   const [cueStep, setCueStep] = useState(0);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const savedContentRef = useRef(initialContent);
+  const savedContentRef = useRef(savedContent);
+  const contentRef = useRef(initialContent);
+  // Whether the text the server has not got yet is safe in this browser.
+  const keptHereRef = useRef(initialContent !== savedContent);
   const tooLong = content.length > MAX_CONTENT_LENGTH;
 
   const grow = useCallback(() => {
@@ -77,24 +107,46 @@ export function EntryEditor({
     };
   }, [writing]);
 
+  /** Keeps `value` in this browser until the server has it, and says whether that worked. */
+  const keep = useCallback(
+    (value: string) => {
+      if (value === savedContentRef.current) {
+        clearEntryDraft(userId, date);
+        keptHereRef.current = false;
+        return;
+      }
+
+      keptHereRef.current = writeEntryDraft(userId, date, { content: value, base: savedContentRef.current });
+    },
+    [date, userId],
+  );
+
   const persist = useCallback(
     async (value: string) => {
       setState("saving");
 
-      const result = await saveEntry({ date, content: value });
+      const result = await callAction(() => saveEntry({ date, content: value }));
 
       if (result.ok) {
         savedContentRef.current = value;
+        // Typing may have gone on while this save was on its way.
+        keep(contentRef.current);
         setState("saved");
         setMessage(undefined);
         onSaved?.(value);
         return;
       }
 
+      if ("connectionLost" in result) {
+        setState("error");
+        setMessage(keptHereRef.current ? KEPT_HERE : NOT_KEPT);
+        return;
+      }
+
       setState(result.retryable === false ? "blocked" : "error");
       setMessage(result.message);
     },
-    [date, onSaved],
+    [date, keep, onSaved],
   );
 
   useEffect(() => {
@@ -110,18 +162,35 @@ export function EntryEditor({
   }, [content, persist, tooLong]);
 
   // A failed save is not the end of the story: it keeps trying while the tab is
-  // open, and says so, instead of pretending the text is safe.
+  // open, at once when the browser says it is online again, and says so,
+  // instead of pretending the text is safe.
   useEffect(() => {
     if (state !== "error" || tooLong) {
       return;
     }
 
-    const timer = setTimeout(() => {
-      void persist(content);
-    }, RETRY_DELAY_MS);
+    const retry = () => void persist(content);
+    const timer = setTimeout(retry, RETRY_DELAY_MS);
+    window.addEventListener("online", retry);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("online", retry);
+    };
   }, [state, content, persist, tooLong]);
+
+  // Leaving within the two seconds before auto-save (another tab, or the
+  // analysis taking the editor's place) would otherwise drop the last words.
+  useEffect(() => {
+    const saved = savedContentRef;
+    const latest = contentRef;
+
+    return () => {
+      if (latest.current !== saved.current && latest.current.length <= MAX_CONTENT_LENGTH) {
+        sendLeftover(userId, date, latest.current);
+      }
+    };
+  }, [date, userId]);
 
   // DIARY-3: too long is derived from the text itself, so it is shown the moment
   // the limit is crossed instead of being written from inside an effect.
@@ -197,8 +266,12 @@ export function EntryEditor({
           value={content}
           aria-describedby="entry-cue"
           onChange={(event) => {
-            setContent(event.target.value);
-            onContentChange?.(event.target.value);
+            const value = event.target.value;
+
+            setContent(value);
+            contentRef.current = value;
+            keep(value);
+            onContentChange?.(value);
           }}
           onFocus={() => setWriting(true)}
           onBlur={() => setWriting(false)}

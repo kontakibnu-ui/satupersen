@@ -21,6 +21,7 @@ import {
   type BookFormat,
 } from "@/lib/books/rules";
 import { uploadBookFile } from "@/lib/books/upload";
+import { callAction } from "@/lib/call-action";
 
 export type ShelfBook = {
   id: string;
@@ -112,7 +113,7 @@ export function BookShelf({
 
     setState({ kind: "uploading", title, percent: 0 });
 
-    const started = await startBookUpload({ fileName: file.name, format, size: file.size });
+    const started = await callAction(() => startBookUpload({ fileName: file.name, format, size: file.size }));
 
     if (!started.ok) {
       setState({ kind: "failed", message: started.message });
@@ -134,7 +135,7 @@ export function BookShelf({
 
     setState({ kind: "checking", title });
 
-    const finished = await finishBookUpload({ bookId: started.bookId });
+    const finished = await callAction(() => finishBookUpload({ bookId: started.bookId }));
 
     if (!finished.ok) {
       setState({ kind: "failed", message: finished.message });

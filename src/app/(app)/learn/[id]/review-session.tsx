@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BinderSheet, SectionHead, StickyNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { MAX_ANSWER_LENGTH, RATING_LABELS, RATINGS, type Rating } from "@/lib/study/rules";
 import { checkReview, saveReview } from "../actions";
 import type { AiStatus } from "../learn-data";
@@ -65,14 +66,16 @@ export function ReviewSession({
     setPhase("saving");
     setMessage(undefined);
 
-    const saved = await saveReview({
-      id: materialId,
-      items: questions.map((question) => ({
-        questionId: question.id,
-        answer: answers[question.id] ?? "",
-        rating: ratings[question.id],
-      })),
-    });
+    const saved = await callAction(() =>
+      saveReview({
+        id: materialId,
+        items: questions.map((question) => ({
+          questionId: question.id,
+          answer: answers[question.id] ?? "",
+          rating: ratings[question.id],
+        })),
+      }),
+    );
 
     if (!saved.ok) {
       setPhase("revealed");
@@ -84,7 +87,7 @@ export function ReviewSession({
     // left, the page shows the stored results and says so.
     if (saved.ai.available) {
       setPhase("checking");
-      await checkReview(materialId);
+      await callAction(() => checkReview(materialId));
     }
 
     router.refresh();

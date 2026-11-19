@@ -137,11 +137,14 @@ test("privasi dan syarat: berlabel draf, menyebut penyedia model AI, dan celah y
   await expect(page.getByRole("heading", { level: 1, name: "Kebijakan privasi" })).toBeVisible();
   await expect(page.getByRole("note")).toContainText("draf");
   await expect(page.getByText("OpenRouter dan penyedia model AI di baliknya")).toBeVisible();
-  await expect(page.getByText("[Nama pengelola, alamat, dan email untuk pertanyaan soal data")).toBeVisible();
+  // The contact email is decided (user, 2026-11-18); the operator's name and address are not yet.
+  await expect(page.getByText("kirim email ke satupersendev@gmail.com")).toBeVisible();
+  await expect(page.getByText("[Nama pengelola dan alamat")).toBeVisible();
 
   await page.goto("/terms");
   await expect(page.getByRole("heading", { level: 1, name: "Syarat layanan" })).toBeVisible();
   await expect(page.getByRole("note")).toContainText("draf");
+  await expect(page.getByText("Laporan pelanggaran hak cipta bisa dikirim ke satupersendev@gmail.com.")).toBeVisible();
 });
 
 test("manifest: bisa dipasang di layar utama, tanpa login, dengan ikon yang benar-benar ada (DESIGN §5)", async ({

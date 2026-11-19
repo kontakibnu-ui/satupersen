@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { checkReview } from "../actions";
 
 /**
@@ -18,7 +19,7 @@ export function CheckReviewButton({ materialId }: { materialId: string }) {
     setPending(true);
     setMessage(undefined);
 
-    const result = await checkReview(materialId);
+    const result = await callAction(() => checkReview(materialId));
 
     setPending(false);
 

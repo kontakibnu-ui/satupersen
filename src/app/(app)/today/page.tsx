@@ -153,6 +153,7 @@ export default async function TodayPage({
       </header>
 
       <TodayClient
+        userId={userId}
         date={date}
         weekday={parts.weekday}
         fullDate={`${parts.day} ${parts.monthYear}`}

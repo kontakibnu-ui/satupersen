@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BinderSheet } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { MAX_EXPLANATION_LENGTH } from "@/lib/study/rules";
 import { checkMaterialExplanation } from "../actions";
 import type { AiStatus } from "../learn-data";
@@ -57,7 +58,7 @@ export function ExplainPanel({
     setPhase("checking");
     setMessage(undefined);
 
-    const result = await checkMaterialExplanation({ id: materialId, explanation });
+    const result = await callAction(() => checkMaterialExplanation({ id: materialId, explanation }));
 
     if (!result.ok) {
       setPhase("idle");

@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { summarizeUserDay } from "@/lib/ai/summarize-day";
+import { sweepOrphanBookFiles } from "@/lib/books/sweep";
 import { meteredReport } from "@/lib/ai/usage";
 import { runReports } from "@/lib/reports/run";
 import { expireEndedPremiums } from "@/lib/subscription";
@@ -53,6 +54,9 @@ export async function POST(request: Request) {
 
     const reports = await runReports({ admin, now, generate: meteredReport });
 
+    // Book files left behind by an account deleted outside the app (lib/books/sweep.ts).
+    const orphanBookFiles = await sweepOrphanBookFiles(admin);
+
     // The 22:00 summary is only for people who linked WhatsApp, so without WhatsApp set up there is no one to run it for.
     const autoSummaries = isWhatsAppConfigured()
       ? await runAutoSummaries({
@@ -71,7 +75,7 @@ export async function POST(request: Request) {
         })
       : null;
 
-    return NextResponse.json({ ok: true, expiredPremiums, reports, autoSummaries });
+    return NextResponse.json({ ok: true, expiredPremiums, reports, orphanBookFiles, autoSummaries });
   } catch (error) {
     console.error("tick failed", { kind: (error as Error).name });
 

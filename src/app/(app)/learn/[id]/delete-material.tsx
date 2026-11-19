@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { deleteMaterial } from "../actions";
 
 /**
@@ -20,7 +21,7 @@ export function DeleteMaterial({ materialId, title, isFree }: { materialId: stri
     setPending(true);
     setMessage(undefined);
 
-    const result = await deleteMaterial(materialId);
+    const result = await callAction(() => deleteMaterial(materialId));
 
     if (!result.ok) {
       setPending(false);

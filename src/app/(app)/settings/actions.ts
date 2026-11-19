@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { removeBookFiles } from "@/lib/books/sweep";
 import { isValidTimeZone } from "@/lib/dates";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseActionClient } from "@/lib/supabase/server";
@@ -96,36 +97,6 @@ export type DeleteAccountResult = { ok: false; message: string };
 
 /** The word the user types to confirm; anything else leaves the account alone. */
 const DELETE_CONFIRMATION = "HAPUS";
-
-/** Page size of a Storage folder listing. */
-const STORAGE_PAGE = 1000;
-
-/**
- * Deletes every file in the user's folder of the books bucket, including files
- * whose row is already gone. Returns false when Storage refuses, so the caller
- * keeps the account rather than leave files without an owner.
- */
-async function removeBookFiles(admin: ReturnType<typeof createSupabaseAdminClient>, userId: string): Promise<boolean> {
-  for (;;) {
-    const { data: files, error: listError } = await admin.storage.from("books").list(userId, { limit: STORAGE_PAGE });
-
-    if (listError) {
-      console.error("listing book files before deleting an account failed", { userId, kind: listError.name });
-      return false;
-    }
-
-    if (!files || files.length === 0) {
-      return true;
-    }
-
-    const { error: removeError } = await admin.storage.from("books").remove(files.map((file) => `${userId}/${file.name}`));
-
-    if (removeError) {
-      console.error("deleting book files before deleting an account failed", { userId, kind: removeError.name });
-      return false;
-    }
-  }
-}
 
 /**
  * Deletes the account and everything stored for it (PRD.md §7: for every plan,

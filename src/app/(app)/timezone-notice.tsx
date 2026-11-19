@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { callAction } from "@/lib/call-action";
 import { updateTimezone } from "./settings/actions";
 
 const subscribeNever = () => () => {};
@@ -28,7 +29,7 @@ export function TimezoneNotice({ savedZone }: { savedZone: string }) {
 
   const change = () => {
     startTransition(async () => {
-      const result = await updateTimezone({ timezone: deviceZone });
+      const result = await callAction(() => updateTimezone({ timezone: deviceZone }));
 
       setMessage(result.ok ? null : result.message);
     });

@@ -32,7 +32,8 @@ const SECTIONS: LegalSection[] = [
     title: "Buku yang kamu unggah",
     paragraphs: [
       "Ruang baca untuk membaca file yang berhak kamu simpan, seperti buku yang kamu beli tanpa kunci DRM, modul, atau tulisanmu sendiri. Jangan mengunggah file yang melanggar hak cipta orang lain. File hanya bisa dibuka olehmu dan tidak dibagikan ke siapa pun.",
-      "[Alamat untuk laporan pelanggaran hak cipta dan cara kami menindaklanjutinya: menunggu keputusan pengelola dan tinjauan hukum.]",
+      "Laporan pelanggaran hak cipta bisa dikirim ke satupersendev@gmail.com.",
+      "[Cara kami menindaklanjuti laporan hak cipta: menunggu keputusan pengelola dan tinjauan hukum.]",
     ],
   },
   {

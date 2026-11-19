@@ -8,6 +8,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input, inputClassName } from "@/components/ui/input";
 import { forgetAllBooks } from "@/lib/books/cache";
+import { callAction } from "@/lib/call-action";
+import { forgetAllEntryDrafts } from "@/lib/entry-draft";
 import { cn } from "@/lib/utils";
 import { AccountData } from "./account-data";
 import { signOut, updateProfile, type ProfileActionResult } from "./actions";
@@ -37,7 +39,7 @@ async function submitProfile(
   _previous: ProfileActionResult | null,
   formData: FormData,
 ): Promise<ProfileActionResult> {
-  return updateProfile(formData);
+  return callAction(() => updateProfile(formData));
 }
 
 export function SettingsForm({
@@ -152,10 +154,12 @@ export function SettingsForm({
 
       <AccountData
         signOut={
-          // Book copies kept for Ruang baca go before the session does (READ-9).
+          // Book copies kept for Ruang baca (READ-9) and diary drafts not sent
+          // yet (lib/entry-draft.ts) go before the session does.
           <form
             action={async () => {
               await forgetAllBooks();
+              forgetAllEntryDrafts();
               await signOut();
             }}
           >

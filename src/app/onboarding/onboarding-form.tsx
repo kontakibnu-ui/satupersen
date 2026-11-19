@@ -2,6 +2,7 @@
 
 import { useActionState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { completeOnboarding, type OnboardingResult } from "./actions";
 
 /**
@@ -19,7 +20,7 @@ async function submit(
   _previous: OnboardingResult | null,
   formData: FormData,
 ): Promise<OnboardingResult> {
-  return completeOnboarding(formData);
+  return callAction(() => completeOnboarding(formData));
 }
 
 export function OnboardingForm() {

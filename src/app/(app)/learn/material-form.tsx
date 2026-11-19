@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { callAction } from "@/lib/call-action";
 import { MAX_SOURCE_LENGTH, MAX_TITLE_LENGTH } from "@/lib/study/rules";
 import { createMaterial, updateMaterial } from "./actions";
 import { LinedTextarea } from "./lined-textarea";
@@ -57,9 +58,9 @@ export function MaterialForm({
     setPending(true);
     setMessage(undefined);
 
-    const result = material
-      ? await updateMaterial({ id: material.id, title, source })
-      : await createMaterial({ title, source });
+    const result = await callAction(() =>
+      material ? updateMaterial({ id: material.id, title, source }) : createMaterial({ title, source }),
+    );
 
     if (!result.ok) {
       setPending(false);

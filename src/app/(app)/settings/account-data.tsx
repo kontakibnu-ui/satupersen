@@ -6,6 +6,9 @@ import { SectionHead } from "@/components/notebook";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
+import { forgetAllBooks } from "@/lib/books/cache";
+import { callAction } from "@/lib/call-action";
+import { forgetAllEntryDrafts } from "@/lib/entry-draft";
 import { deleteAccount } from "./actions";
 
 /**
@@ -58,8 +61,15 @@ function DeleteForm() {
     setPending(true);
     setMessage(undefined);
 
+    // What this browser keeps for the account goes with it, as on sign out.
+    // Same rule as the server's check, so a mistyped word keeps everything.
+    if (confirmation.trim().toUpperCase() === "HAPUS") {
+      await forgetAllBooks();
+      forgetAllEntryDrafts();
+    }
+
     // On success the server closes the session and redirects, so only a refusal comes back.
-    const result = await deleteAccount({ confirmation });
+    const result = await callAction(() => deleteAccount({ confirmation }));
 
     setPending(false);
     setMessage(result.message);

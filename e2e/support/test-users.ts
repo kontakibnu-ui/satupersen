@@ -127,6 +127,20 @@ export async function seedEntry(user: TestUser, date: string, content: string): 
   await rest("entries", "POST", { user_id: user.id, date, content });
 }
 
+/** The stored text of one day, read with the service role; null when that day has no row. */
+export async function readEntryContent(user: TestUser, date: string): Promise<string | null> {
+  const response = await fetch(`${url}/rest/v1/entries?select=content&user_id=eq.${user.id}&date=eq.${date}`, {
+    headers: serviceHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Reading the entry failed with ${response.status}`);
+  }
+
+  const rows = (await response.json()) as { content: string }[];
+  return rows[0]?.content ?? null;
+}
+
 /** A finished summary row, written the way the server writes it (service role). */
 export async function seedSummary(
   user: TestUser,

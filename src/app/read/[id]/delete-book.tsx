@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { deleteBook } from "@/lib/books/actions";
 import { forgetBook } from "@/lib/books/cache";
+import { callAction } from "@/lib/call-action";
 
 /**
  * Deleting a book and its file (READ-10; DESIGN.md §6 "Pembaca", like "Hapus
@@ -31,7 +32,7 @@ export function DeleteBook({
     setPending(true);
     setMessage(undefined);
 
-    const result = await deleteBook({ bookId });
+    const result = await callAction(() => deleteBook({ bookId }));
 
     if (!result.ok) {
       setPending(false);

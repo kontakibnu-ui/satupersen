@@ -30,6 +30,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, IconBadge } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
+import { callAction } from "@/lib/call-action";
 import { formatDayLabel } from "@/lib/dates";
 import {
   categoriesFor,
@@ -744,9 +745,11 @@ function ExpenseForm({
     setPending(true);
     setMessage(undefined);
 
-    const result = item
-      ? await updateExpense({ id: item.id, type, amount, category, note })
-      : await addExpense({ type, amount, category, note, date });
+    const result = await callAction(() =>
+      item
+        ? updateExpense({ id: item.id, type, amount, category, note })
+        : addExpense({ type, amount, category, note, date }),
+    );
 
     setPending(false);
 
@@ -768,7 +771,7 @@ function ExpenseForm({
     }
 
     setPending(true);
-    const result = await deleteExpense(item.id);
+    const result = await callAction(() => deleteExpense(item.id));
     setPending(false);
 
     if (result.ok) {
@@ -918,7 +921,7 @@ function BudgetForm({ current, onDone }: { current: number | null; onDone: () =>
 
     setPending(true);
     setMessage(undefined);
-    const result = await setBudget({ amount });
+    const result = await callAction(() => setBudget({ amount }));
     setPending(false);
 
     if (result.ok) {
@@ -931,7 +934,7 @@ function BudgetForm({ current, onDone }: { current: number | null; onDone: () =>
 
   async function clear() {
     setPending(true);
-    const result = await clearBudget();
+    const result = await callAction(() => clearBudget());
     setPending(false);
 
     if (result.ok) {

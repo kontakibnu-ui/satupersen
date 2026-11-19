@@ -2,11 +2,19 @@
 
 import { RefreshCw, Stamp } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { HabitChecklist } from "@/components/habit-checklist";
 import { Button } from "@/components/ui/button";
 import { BinderSheet, Kop, SectionHead } from "@/components/notebook";
 import { Card } from "@/components/ui/card";
+import {
+  clearEntryDraft,
+  forgetOtherEntryDrafts,
+  readEntryDraft,
+  resolveEntryDraft,
+  writeEntryDraft,
+  type DraftResolution,
+} from "@/lib/entry-draft";
 import type { HabitView } from "@/lib/habits";
 import { EntryEditor } from "./entry-editor";
 import { MoodEnergy } from "./mood-energy";
@@ -35,7 +43,12 @@ type Phase = "idle" | "summarizing" | "failed";
 /** Statuses where pressing "Coba lagi" cannot change the answer. */
 const FINAL_STATUSES = new Set([400, 409, 429]);
 
+const subscribeNever = () => () => {};
+const inBrowser = () => true;
+const onServer = () => false;
+
 export function TodayClient({
+  userId,
   date,
   weekday,
   fullDate,
@@ -47,6 +60,8 @@ export function TodayClient({
   initialHabits,
   regenLeft: initialRegenLeft,
 }: {
+  /** Keys the diary draft kept in this browser (`lib/entry-draft.ts`). */
+  userId: string;
   date: string;
   /** "Minggu", for the notebook heading. */
   weekday: string;
@@ -60,7 +75,16 @@ export function TodayClient({
   initialHabits: HabitView[];
   regenLeft: number;
 }) {
+  // False for the server render and hydration, which must match the server HTML.
+  const hydrated = useSyncExternalStore(subscribeNever, inBrowser, onServer);
   const [content, setContent] = useState(initialContent);
+  // What the server has; differs from `content` until a restored draft is saved.
+  const [savedText, setSavedText] = useState(initialContent);
+  const [draftChecked, setDraftChecked] = useState(false);
+  const [draftKind, setDraftKind] = useState<DraftResolution["kind"]>("none");
+  const [conflict, setConflict] = useState<string | null>(null);
+  // Bumped to open the editor again with a draft's text.
+  const [editorKey, setEditorKey] = useState(0);
   const [mood, setMood] = useState(initialMood);
   const [energy, setEnergy] = useState(initialEnergy);
   const [habits, setHabits] = useState(initialHabits);
@@ -86,6 +110,27 @@ export function TodayClient({
   const [message, setMessage] = useState<string | undefined>(undefined);
   const [retryable, setRetryable] = useState(true);
   const [blankHint, setBlankHint] = useState(false);
+
+  // The server render cannot see the draft kept in this browser, so it is read
+  // once, in the first render after hydration (React's "adjust state while
+  // rendering" pattern, so no effect writes state and nothing else remounts).
+  // Only a restored draft reopens the editor, with its text; with no draft the
+  // screen stays as it was, including anything already typed into it.
+  if (hydrated && !draftChecked) {
+    const found = resolveEntryDraft(initialContent, readEntryDraft(userId, date));
+
+    setDraftChecked(true);
+    setDraftKind(found.kind);
+
+    if (found.kind === "restore") {
+      setContent(found.content);
+      // Not on the server yet, so the editor stays open to save it.
+      setEditing(true);
+      setEditorKey((key) => key + 1);
+    } else if (found.kind === "conflict") {
+      setConflict(found.content);
+    }
+  }
 
   const isBlank = content.trim() === "";
   const textChanged = result !== null && summarisedText !== null && content !== summarisedText;
@@ -156,6 +201,66 @@ export function TodayClient({
     }
   }, [content, date, inputsKey, result]);
 
+  // Drafts of other days can never be sent (the server only takes today), and
+  // another account's have no business on this screen.
+  useEffect(() => {
+    if (!draftChecked) {
+      return;
+    }
+
+    forgetOtherEntryDrafts(userId, date);
+
+    if (draftKind === "discard") {
+      clearEntryDraft(userId, date);
+    }
+  }, [draftChecked, draftKind, userId, date]);
+
+  function takeDraft() {
+    if (conflict === null) {
+      return;
+    }
+
+    // Chosen over the server text, so a reload before it is saved puts it back without asking again.
+    writeEntryDraft(userId, date, { content: conflict, base: savedText });
+    setContent(conflict);
+    setConflict(null);
+    setEditing(true);
+    setEditorKey((key) => key + 1);
+  }
+
+  function dropDraft() {
+    clearEntryDraft(userId, date);
+    setConflict(null);
+  }
+
+  // Text kept on this device while today's entry was changed somewhere else:
+  // neither is thrown away without the user choosing.
+  const conflictBlock =
+    conflict !== null ? (
+      <Card aria-labelledby="draft-conflict-title">
+        <h2 id="draft-conflict-title" className="font-heading text-base font-bold text-text">
+          Ada tulisan yang belum terkirim
+        </h2>
+        <p className="mt-1 text-sm text-text-muted">
+          Tulisan ini tersimpan di perangkat ini, sementara tulisan hari ini sudah diubah di tempat lain. Mau pakai
+          yang mana?
+        </p>
+        {conflict.trim() !== "" ? (
+          <p className="mt-3 line-clamp-6 whitespace-pre-line font-serif text-base text-text">{conflict}</p>
+        ) : (
+          <p className="mt-3 text-sm text-text-muted">Tulisan di perangkat ini kosong.</p>
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Button variant="secondary" onClick={takeDraft}>
+            Pakai tulisan ini
+          </Button>
+          <Button variant="link" onClick={dropDraft} className="text-sm font-semibold">
+            Tetap pakai yang tersimpan
+          </Button>
+        </div>
+      </Card>
+    ) : null;
+
   const moodBlock = (
     <MoodEnergy date={date} mood={mood} energy={energy} setMood={setMood} setEnergy={setEnergy} />
   );
@@ -201,8 +306,12 @@ export function TodayClient({
         ]}
       />
       <EntryEditor
+        key={editorKey}
+        userId={userId}
         date={date}
         initialContent={content}
+        savedContent={savedText}
+        onSaved={setSavedText}
         onContentChange={(value) => {
           setContent(value);
 
@@ -229,6 +338,8 @@ export function TodayClient({
   return (
     <div className="mt-6 flex flex-col gap-6">
       {result ? <SummaryResultView result={result} week={week} /> : null}
+
+      {conflictBlock}
 
       {writingBlock}
 

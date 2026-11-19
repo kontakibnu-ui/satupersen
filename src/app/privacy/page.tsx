@@ -7,21 +7,25 @@ export const metadata: Metadata = {
 
 /**
  * Draft privacy policy (LAUNCH, PRD.md §7). It states what the product does, as
- * PRD.md §7 and §9 define it. It names no company, address, contact, or storage
- * period, because those are decisions that are not made yet; each is a bracketed
- * gap for the operator. A human must review it before launch.
+ * PRD.md §7 and §9 define it. The contact email was chosen by the user
+ * (2026-11-18); it names no company, address, or storage period, because those
+ * are decisions that are not made yet, and each is a bracketed gap for the
+ * operator. A human must review it before launch.
  */
 const SECTIONS: LegalSection[] = [
   {
     title: "Siapa yang mengelola Satu Persen",
-    paragraphs: ["[Nama pengelola, alamat, dan email untuk pertanyaan soal data: menunggu keputusan pengelola.]"],
+    paragraphs: [
+      "Untuk pertanyaan soal datamu, atau permintaan melihat, membetulkan, dan menghapusnya, kirim email ke satupersendev@gmail.com.",
+      "[Nama pengelola dan alamat: menunggu keputusan pengelola.]",
+    ],
   },
   {
     title: "Data yang kami simpan",
     paragraphs: ["Hanya yang kamu berikan atau hasilkan saat memakai Satu Persen:"],
     items: [
       "Akun: email, nama, timezone, dan persetujuanmu saat mendaftar.",
-      "Tulisan harianmu, serta mood dan energi yang kamu pilih.",
+      "Tulisan harianmu, serta mood dan energi yang kamu pilih. Selama tulisan belum terkirim ke server (misalnya saat koneksi putus), salinannya disimpan sementara di browser perangkatmu supaya tidak hilang. Salinan itu dihapus setelah tulisan tersimpan di server, saat hari berganti, saat akun lain membuka Hari Ini di browser yang sama, dan saat kamu keluar dari akun atau menghapus akun.",
       "Kebiasaan yang kamu buat dan hari-hari kamu mencentangnya.",
       "Pengeluaran yang kamu catat, dan budget bulanan jika kamu mengaturnya. Screenshot bank yang kamu pakai untuk mengisi catatan tidak disimpan; yang tersimpan hanya catatan yang kamu simpan sendiri.",
       "Ringkasan, skor, dan laporan yang dibuat dari data di atas.",

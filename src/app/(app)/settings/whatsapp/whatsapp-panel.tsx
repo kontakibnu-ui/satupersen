@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { callAction } from "@/lib/call-action";
 import { createLinkCode, setAutoReplies, type LinkCodeResult } from "./actions";
 
 type Linked = { lastDigits: string; optedIn: boolean };
@@ -24,7 +25,7 @@ function LinkView() {
 
   async function make() {
     setPending(true);
-    setResult(await createLinkCode({ consent }));
+    setResult(await callAction(() => createLinkCode({ consent })));
     setPending(false);
   }
 
@@ -93,7 +94,7 @@ function LinkedView({ linked }: { linked: Linked }) {
     setOptedIn(next);
     setMessage(undefined);
 
-    const result = await setAutoReplies(next);
+    const result = await callAction(() => setAutoReplies(next));
 
     if (!result.ok) {
       setOptedIn(!next);

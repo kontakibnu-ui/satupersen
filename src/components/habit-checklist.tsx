@@ -3,6 +3,7 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { toggleHabit } from "@/app/(app)/habits/actions";
 import { ScribbleTick, Tally } from "@/components/notebook";
+import { callAction } from "@/lib/call-action";
 import type { HabitView } from "@/lib/habits";
 import { streakLength } from "@/lib/streak";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ export function HabitChecklist({
     setBusy((current) => new Set(current).add(habitId));
     setMessage(undefined);
 
-    const result = await toggleHabit({ habitId, date, done });
+    const result = await callAction(() => toggleHabit({ habitId, date, done }));
 
     setBusy((current) => {
       const next = new Set(current);
