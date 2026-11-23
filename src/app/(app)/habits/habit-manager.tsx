@@ -1,26 +1,28 @@
 "use client";
 
-import { Plus, Sprout } from "lucide-react";
+import { Archive, Plus, Sprout } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { HabitChecklist } from "@/components/habit-checklist";
-import { BinderSheet, SectionHead } from "@/components/notebook";
+import { BinderSheet, SectionHead, StickyNote } from "@/components/notebook";
 import { Button } from "@/components/ui/button";
 import { Card, IconBadge } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { callAction } from "@/lib/call-action";
 import { FREE_HABIT_LIMIT, type HabitView } from "@/lib/habits";
+import { streakAtRisk } from "@/lib/streak";
 import { archiveHabit, createHabit, updateHabit } from "./actions";
 
 type Editing = { kind: "create" } | { kind: "edit"; habit: HabitView };
 
 /**
- * The Kebiasaan screen (DESIGN.md §2, §14.2, §14.3): today's checklist on a
- * binder sheet is the one focus. Under it, laid straight on the page, "Kelola"
- * lists the active habits with "Ubah" and "Arsipkan", and "Tambah kebiasaan"
- * is a quiet link. Only while the list is empty is it the primary button. A
- * habit is archived, never deleted (HABIT-1).
+ * The Kebiasaan screen (DESIGN.md §2, §14.2, §14.3, §15.7): today's checklist on
+ * a binder sheet is the one focus, each row with the last seven days under it
+ * and a button that opens its settings sheet, where it is renamed or archived.
+ * A sticky note speaks up when a streak hangs on today. "Tambah kebiasaan" is
+ * a quiet link; only while the list is empty is it the primary button. A habit
+ * is archived, never deleted (HABIT-1).
  *
  * The free limit is only announced here when the user tries to go past it; the
  * server and the database are what actually refuse (HABIT-3).
@@ -37,14 +39,9 @@ export function HabitManager({
 }) {
   const [habits, setHabits] = useState(initialHabits);
   const [editing, setEditing] = useState<Editing | null>(null);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | undefined>(undefined);
   const [limitHit, setLimitHit] = useState(false);
-  const [pending, setPending] = useState(false);
 
   const openCreate = () => {
-    setNotice(undefined);
-
     if (atFreeLimit) {
       setLimitHit(true);
       return;
@@ -54,19 +51,8 @@ export function HabitManager({
     setEditing({ kind: "create" });
   };
 
-  async function archive(id: string) {
-    setPending(true);
-    setNotice(undefined);
-    const result = await callAction(() => archiveHabit(id));
-    setPending(false);
-    setConfirmingId(null);
-
-    if (!result.ok) {
-      setNotice(result.message);
-    }
-  }
-
   const doneToday = habits.filter((habit) => habit.doneDates.includes(date)).length;
+  const atRisk = habits.filter((habit) => streakAtRisk(habit.doneDates, date)).map((habit) => habit.name);
 
   return (
     <>
@@ -95,47 +81,23 @@ export function HabitManager({
                 </>
               }
             />
-            <HabitChecklist date={date} habits={habits} setHabits={setHabits} lastRule={false} />
+            {atRisk.length > 0 ? (
+              <StickyNote role="note" className="mt-6 mb-3">
+                <p className="text-sm font-bold text-primary">Kemarin terlewat, tidak apa-apa</p>
+                <p className="mt-1 font-serif text-lg leading-snug text-text italic">
+                  Centang {joinNames(atRisk)} hari ini, streak-nya tetap jalan.
+                </p>
+              </StickyNote>
+            ) : null}
+            <HabitChecklist
+              date={date}
+              habits={habits}
+              setHabits={setHabits}
+              lastRule={false}
+              showWeek
+              onEdit={(habit) => setEditing({ kind: "edit", habit })}
+            />
           </BinderSheet>
-
-          <section aria-labelledby="manage-heading">
-            <SectionHead id="manage-heading" title="Kelola" aside={`${habits.length} aktif`} />
-            <ul>
-              {habits.map((habit) => (
-                <li key={habit.id} className="flex min-h-14 flex-wrap items-center gap-x-4 border-b border-rule py-1.5">
-                  {confirmingId === habit.id ? (
-                    <>
-                      <span className="min-w-0 flex-1 text-base text-text">Arsipkan “{habit.name}”?</span>
-                      <Button variant="secondary" disabled={pending} onClick={() => void archive(habit.id)}>
-                        Ya, arsipkan
-                      </Button>
-                      <Button variant="link" className="min-w-11" onClick={() => setConfirmingId(null)}>
-                        Batal
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="min-w-0 flex-1 text-base text-text">{habit.name}</span>
-                      <Button
-                        variant="link"
-                        className="min-w-11 text-sm font-semibold text-primary"
-                        onClick={() => setEditing({ kind: "edit", habit })}
-                      >
-                        Ubah
-                      </Button>
-                      <Button
-                        variant="link"
-                        className="min-w-11 text-sm font-semibold text-primary"
-                        onClick={() => setConfirmingId(habit.id)}
-                      >
-                        Arsipkan
-                      </Button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
 
           <div>
             <Button variant="link" onClick={openCreate} className="gap-2 text-sm font-semibold text-primary">
@@ -155,10 +117,6 @@ export function HabitManager({
           </div>
         </div>
       )}
-
-      <p role="status" className="mt-2 text-sm text-text-muted">
-        {notice}
-      </p>
 
       <Sheet
         open={editing !== null}
@@ -237,6 +195,72 @@ function HabitForm({ editing, onDone }: { editing: Editing; onDone: () => void }
       <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Menyimpan…" : "Simpan"}
       </Button>
+
+      {habit ? <ArchiveHabit habit={habit} onArchived={onDone} /> : null}
     </form>
   );
+}
+
+/**
+ * Archiving lives in the settings sheet, away from the box that checks the
+ * habit (DESIGN.md §15.7), and asks once in place. Archived, never deleted
+ * (HABIT-1): the checked days stay.
+ */
+function ArchiveHabit({ habit, onArchived }: { habit: HabitView; onArchived: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | undefined>(undefined);
+
+  async function archive() {
+    setPending(true);
+    setMessage(undefined);
+    const result = await callAction(() => archiveHabit(habit.id));
+    setPending(false);
+
+    if (result.ok) {
+      onArchived();
+      return;
+    }
+
+    setConfirming(false);
+    setMessage(result.message);
+  }
+
+  return (
+    <div className="border-t border-rule pt-3">
+      {confirming ? (
+        <>
+          <p className="text-base text-text">Arsipkan “{habit.name}”? Kebiasaan ini hilang dari daftar, tapi riwayat centangnya tetap tersimpan.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Button type="button" variant="secondary" disabled={pending} onClick={() => void archive()}>
+              Ya, arsipkan
+            </Button>
+            <Button type="button" variant="link" className="min-w-11" onClick={() => setConfirming(false)}>
+              Batal
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <Button type="button" variant="link" onClick={() => setConfirming(true)} className="gap-2 text-sm font-semibold text-primary">
+            <Archive aria-hidden="true" size={16} strokeWidth={1.8} />
+            Arsipkan kebiasaan
+          </Button>
+          <p className="text-sm text-text-muted">Hilang dari daftar, riwayat centangnya tetap tersimpan.</p>
+        </>
+      )}
+      <p role="status" className="mt-1 text-sm text-text-muted">
+        {message}
+      </p>
+    </div>
+  );
+}
+
+/** "a", "a dan b", "a, b, dan c" for the sticky note. */
+function joinNames(names: string[]): string {
+  if (names.length <= 1) {
+    return names[0] ?? "";
+  }
+
+  return `${names.slice(0, -1).join(", ")}${names.length > 2 ? "," : ""} dan ${names[names.length - 1]}`;
 }

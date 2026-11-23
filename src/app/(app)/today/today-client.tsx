@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { HabitChecklist } from "@/components/habit-checklist";
 import { Button } from "@/components/ui/button";
-import { BinderSheet, Kop, SectionHead } from "@/components/notebook";
+import { BinderSheet, Kop, ScribbleTick, SectionHead } from "@/components/notebook";
 import { Card } from "@/components/ui/card";
 import {
   clearEntryDraft,
@@ -17,7 +17,7 @@ import {
 } from "@/lib/entry-draft";
 import type { HabitView } from "@/lib/habits";
 import { EntryEditor } from "./entry-editor";
-import { MoodEnergy } from "./mood-energy";
+import { feelingWord, MoodEnergy } from "./mood-energy";
 import { SummaryResultView, type SummaryResult, type WeekDay } from "./summary-result";
 
 /**
@@ -271,7 +271,7 @@ export function TodayClient({
   // only a quiet invitation, because Hari Ini is not where habits are made.
   const habitBlock =
     habits.length > 0 ? (
-      <section aria-labelledby="habit-heading">
+      <section aria-labelledby="habit-heading" className="scroll-mt-24">
         <SectionHead
           id="habit-heading"
           title="Kebiasaan"
@@ -336,82 +336,165 @@ export function TodayClient({
     </section>
   );
 
+  // DESIGN.md §15.2: before the analysis, phones and tablets get one short list
+  // of what goes into it, so nothing is forgotten on the way down to the
+  // button. Only one sentence of writing is required (§7); the rest is a quiet
+  // reminder with a jump to its place. Laptops show everything side by side.
+  const words = content.trim() === "" ? 0 : content.trim().split(/\s+/).length;
+  const moodWord = feelingWord("mood", mood);
+  const energyWord = feelingWord("energy", energy);
+  const closingItems: ClosingItem[] = [
+    { key: "writing", label: "Tulisan", done: words > 0, value: `${words} kata`, href: "#entry", action: "Tulis" },
+    { key: "mood", label: "Perasaan", done: moodWord !== null, value: moodWord, href: "#mood", action: "Isi", serif: true },
+    { key: "energy", label: "Energi", done: energyWord !== null, value: energyWord, href: "#energy", action: "Isi", serif: true },
+    ...(habits.length > 0
+      ? [{ key: "habits", label: "Kebiasaan", done: doneToday > 0, value: `${doneToday} dari ${habits.length}` }]
+      : []),
+  ];
+
+  const closingBlock = result === null ? <ClosingList items={closingItems} /> : null;
+
+  // DESIGN.md §15.1: from 1024 px the writing (and the analysis) take the left
+  // column and the short inputs with the one primary button the right one. The
+  // order in the document is the phone order, so nothing moves below 1024 px.
   return (
-    <div className="mt-6 flex flex-col gap-6">
-      {result ? <SummaryResultView result={result} week={week} /> : null}
+    <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-10">
+      <div className="flex min-w-0 flex-col gap-6">
+        {result ? <SummaryResultView result={result} week={week} /> : null}
 
-      {conflictBlock}
+        {conflictBlock}
 
-      {writingBlock}
+        {writingBlock}
+      </div>
 
-      {moodBlock}
+      <div className="flex min-w-0 flex-col gap-6">
+        {moodBlock}
 
-      {habitBlock}
+        {habitBlock}
 
-      <div className="flex flex-col gap-3">
-        {result === null ? (
-          <>
-            <Button onClick={summarise} disabled={phase === "summarizing"} className="w-full text-[17px]">
-              <Stamp aria-hidden="true" size={18} strokeWidth={1.7} />
-              {phase === "summarizing" ? "Menganalisa…" : "Analisa hari ini"}
-            </Button>
-            {phase === "idle" && !blankHint ? (
-              <p className="text-center text-sm text-text-muted">
-                AI membaca tulisan, mood, dan kebiasaanmu, lalu menulis analisanya.
-              </p>
-            ) : null}
-          </>
-        ) : null}
+        {closingBlock}
 
-        {blankHint && isBlank ? (
-          <p aria-live="polite" className="text-center text-sm font-medium text-text">
-            Tulis minimal satu kalimat dulu
-          </p>
-        ) : null}
-
-        {phase === "summarizing" ? (
-          <Card as="div">
-            <p aria-live="polite" className="flex items-center gap-2 text-sm font-medium text-text-muted">
-              <Stamp aria-hidden="true" size={16} strokeWidth={1.7} className="text-primary" />
-              Sedang membaca harimu…
-            </p>
-            <div aria-hidden="true" className="mt-4 flex flex-col gap-2.5">
-              <div className="h-4 w-3/4 rounded-full bg-surface-muted" />
-              <div className="h-4 w-full rounded-full bg-surface-muted" />
-              <div className="h-4 w-2/3 rounded-full bg-surface-muted" />
-            </div>
-          </Card>
-        ) : null}
-
-        {phase === "failed" ? (
-          <Card as="div" aria-live="polite">
-            <p className="text-base text-text">{message}</p>
-            {retryable ? (
-              <Button variant="secondary" onClick={summarise} className="mt-3">
-                Coba lagi
+        <div className="flex flex-col gap-3">
+          {result === null ? (
+            <>
+              <Button onClick={summarise} disabled={phase === "summarizing"} className="w-full text-[17px]">
+                <Stamp aria-hidden="true" size={18} strokeWidth={1.7} />
+                {phase === "summarizing" ? "Menganalisa…" : "Analisa hari ini"}
               </Button>
-            ) : null}
-          </Card>
-        ) : null}
+              {phase === "idle" && !blankHint ? (
+                <p className="text-center text-sm text-text-muted">
+                  AI membaca tulisan, mood, dan kebiasaanmu, lalu menulis analisanya.
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
-        {phase === "idle" && changed ? (
-          <div className="flex items-start gap-3 rounded-[14px] border border-dashed border-control p-4">
-            <RefreshCw aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0 text-text-muted" />
-            <p className="text-sm text-text-muted">
-              {textChanged
-                ? "Tulisanmu berubah sejak dianalisa."
-                : "Mood, energi, atau kebiasaanmu berubah sejak dianalisa."}{" "}
-              {regenLeft > 0 ? (
-                <Button variant="link" size="inline" onClick={summarise} className="font-semibold text-primary">
-                  Analisa ulang (sisa {regenLeft})
-                </Button>
-              ) : (
-                <span>Analisa ulang hari ini sudah terpakai.</span>
-              )}
+          {blankHint && isBlank ? (
+            <p aria-live="polite" className="text-center text-sm font-medium text-text">
+              Tulis minimal satu kalimat dulu
             </p>
-          </div>
-        ) : null}
+          ) : null}
+
+          {phase === "summarizing" ? (
+            <Card as="div">
+              <p aria-live="polite" className="flex items-center gap-2 text-sm font-medium text-text-muted">
+                <Stamp aria-hidden="true" size={16} strokeWidth={1.7} className="text-primary" />
+                Sedang membaca harimu…
+              </p>
+              <div aria-hidden="true" className="mt-4 flex flex-col gap-2.5">
+                <div className="h-4 w-3/4 rounded-full bg-surface-muted" />
+                <div className="h-4 w-full rounded-full bg-surface-muted" />
+                <div className="h-4 w-2/3 rounded-full bg-surface-muted" />
+              </div>
+            </Card>
+          ) : null}
+
+          {phase === "failed" ? (
+            <Card as="div" aria-live="polite">
+              <p className="text-base text-text">{message}</p>
+              {retryable ? (
+                <Button variant="secondary" onClick={summarise} className="mt-3">
+                  Coba lagi
+                </Button>
+              ) : null}
+            </Card>
+          ) : null}
+
+          {phase === "idle" && changed ? (
+            <div className="flex items-start gap-3 rounded-[14px] border border-dashed border-control p-4">
+              <RefreshCw aria-hidden="true" size={18} strokeWidth={2} className="mt-0.5 shrink-0 text-text-muted" />
+              <p className="text-sm text-text-muted">
+                {textChanged
+                  ? "Tulisanmu berubah sejak dianalisa."
+                  : "Mood, energi, atau kebiasaanmu berubah sejak dianalisa."}{" "}
+                {regenLeft > 0 ? (
+                  <Button variant="link" size="inline" onClick={summarise} className="font-semibold text-primary">
+                    Analisa ulang (sisa {regenLeft})
+                  </Button>
+                ) : (
+                  <span>Analisa ulang hari ini sudah terpakai.</span>
+                )}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
+  );
+}
+
+type ClosingItem = {
+  key: string;
+  label: string;
+  done: boolean;
+  value: string | null;
+  /** Where a missing item is filled in; items without one (habits) only inform. */
+  href?: string;
+  action?: string;
+  serif?: boolean;
+};
+
+/** "Yang ikut dianalisa" (DESIGN.md §15.2), phones and tablets only. */
+function ClosingList({ items }: { items: ClosingItem[] }) {
+  const filled = items.filter((item) => item.done).length;
+
+  return (
+    <section aria-labelledby="closing-heading" className="lg:hidden">
+      <SectionHead id="closing-heading" title="Yang ikut dianalisa" aside={`${filled} dari ${items.length} terisi`} />
+      <ul className="flex flex-col">
+        {items.map((item) => {
+          const missing = !item.done && item.href !== undefined;
+
+          return (
+            <li key={item.key} className="flex min-h-12 items-center gap-3 border-b border-rule last:border-b-0">
+              {item.done ? (
+                <ScribbleTick strokeWidth={3} className="h-[18px] w-5 shrink-0" />
+              ) : (
+                <span aria-hidden="true" className="w-5 shrink-0 text-center text-text-muted">
+                  –
+                </span>
+              )}
+              <span className="min-w-0 flex-1 text-base text-text">
+                {item.label}
+                {missing ? <span className="text-text-muted"> belum diisi</span> : null}
+              </span>
+              {missing ? (
+                <a
+                  href={item.href}
+                  aria-label={`${item.action} ${item.label.toLowerCase()}`}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-end text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline"
+                >
+                  {item.action}
+                </a>
+              ) : (
+                <span className={item.serif ? "font-serif text-base text-primary italic" : "text-sm text-text-muted tabular-nums"}>
+                  {item.value}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

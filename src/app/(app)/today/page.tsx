@@ -132,7 +132,7 @@ export default async function TodayPage({
   const week = await loadWeek(supabase, userId, date);
 
   return (
-    <main className="py-6 md:py-10">
+    <main data-split="" className="py-6 md:py-10">
       {/* DESIGN.md §6 (version 4): no calendar page any more; the day itself is
           written in the notebook heading inside the writing sheet. */}
       <header>

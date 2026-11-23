@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { isValidTimeZone, todayKey } from "@/lib/dates";
 import { toFeedbackView } from "@/lib/study/feedback";
-import { RATING_LABELS, type Rating } from "@/lib/study/rules";
+import { RATING_LABELS, RATINGS, type Rating } from "@/lib/study/rules";
 import { isDue, materialState, reviewDayLabel, type MaterialState } from "@/lib/study/schedule";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { FeedbackSheet } from "../feedback-sheet";
@@ -15,6 +15,7 @@ import { loadAiStatus } from "../learn-data";
 import { CheckReviewButton } from "./check-review-button";
 import { DeleteMaterial } from "./delete-material";
 import { ExplainPanel } from "./explain-panel";
+import { LearnSteps } from "./learn-steps";
 import { ReviewSession } from "./review-session";
 
 export const metadata: Metadata = {
@@ -148,10 +149,17 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   const reviewedQuestions = questions.filter((question) =>
     reviewsToday.some((review) => review.question_id === question.id),
   );
+  const reviewedToday = state.kind !== "draft" && state.kind !== "due" && reviewedQuestions.length > 0;
+
+  // DESIGN.md §15.8: after a review, the next material still waiting today is
+  // one tap away. Only read when it can be shown; a failed read just leaves the
+  // way back to Belajar.
+  const nextMaterial = reviewedToday ? await loadNextDueMaterial(supabase, userId, material.id as string, today) : null;
 
   return (
     <main className="py-6 md:py-10">
       <PageHeader eyebrow={backLink} title={material.title as string} description={statusLine(state, today)} />
+      <LearnSteps state={state.kind} />
 
       {state.kind === "draft" ? (
         <ExplainPanel
@@ -171,10 +179,11 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
         />
       ) : null}
 
-      {state.kind !== "draft" && state.kind !== "due" && reviewedQuestions.length > 0 ? (
+      {reviewedToday ? (
         <BinderSheet aria-labelledby="reviewed-title" className="mt-6">
-          <SectionHead id="reviewed-title" title="Review hari ini selesai" />
-          <ol className="mt-[18px] flex flex-col gap-6">
+          <SectionHead id="reviewed-title" title="Review hari ini selesai" aside={`${reviewedQuestions.length} pertanyaan`} />
+          <ReviewSummary reviews={reviewsToday} questions={reviewedQuestions} today={today} />
+          <ol className="mt-6 flex flex-col gap-6 border-t-[3px] border-double border-rule-strong pt-[18px] binder-bleed">
             {reviewedQuestions.map((question, index) => {
               const review = reviewsToday.find((row) => row.question_id === question.id)!;
 
@@ -214,6 +223,22 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
         </BinderSheet>
       ) : null}
 
+      {reviewedToday ? (
+        nextMaterial ? (
+          <section aria-labelledby="next-title" className="mt-6">
+            <SectionHead id="next-title" title="Masih menunggu hari ini" aside="1 materi" />
+            <Link href={`/learn/${nextMaterial.id}#review`} className={buttonVariants({ className: "mt-4 w-full" })}>
+              Lanjut ke {nextMaterial.title}
+            </Link>
+            <p className="mt-2 text-center text-sm text-text-muted">{nextMaterial.count} pertanyaan menunggu</p>
+          </section>
+        ) : (
+          <Link href="/learn" className={buttonVariants({ variant: "link", className: "mt-3 text-sm font-semibold text-primary" })}>
+            Kembali ke Belajar
+          </Link>
+        )
+      ) : null}
+
       {state.kind === "finished" ? (
         <Card as="div" className="mt-6">
           <p className="text-base text-text">Semua pertanyaan materi ini sudah nempel.</p>
@@ -237,7 +262,8 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
         />
       ) : null}
 
-      {state.kind !== "draft" ? (
+      {/* Hidden while a review is open: the session shows one question at a time (DESIGN.md §15.8). */}
+      {state.kind !== "draft" && state.kind !== "due" ? (
         <section aria-labelledby="questions-title" className="mt-6">
           <SectionHead id="questions-title" title="Pertanyaan review" aside={`${questions.length} pertanyaan`} />
           <ol className="flex flex-col">
@@ -279,4 +305,122 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
       <DeleteMaterial materialId={material.id as string} title={material.title as string} isFree={plan === "free"} />
     </main>
   );
+}
+
+/**
+ * The top of "Review hari ini selesai" (DESIGN.md §15.8): how many were
+ * remembered, unsure, or forgotten, then when the questions come back, grouped
+ * by day. The per-question results follow under it.
+ */
+function ReviewSummary({
+  reviews,
+  questions,
+  today,
+}: {
+  reviews: ReviewRow[];
+  questions: QuestionRow[];
+  today: string;
+}) {
+  const counts = RATINGS.map((rating) => ({
+    rating,
+    count: reviews.filter((review) => review.rating === rating).length,
+  })).reverse();
+
+  const byDay = new Map<string, number>();
+  let finished = 0;
+
+  for (const question of questions) {
+    if (question.due_date === null) {
+      finished += 1;
+    } else {
+      byDay.set(question.due_date, (byDay.get(question.due_date) ?? 0) + 1);
+    }
+  }
+
+  const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <div className="mt-2">
+      <ul>
+        {counts.map(({ rating, count }) => (
+          <li key={rating} className="flex min-h-12 items-center justify-between gap-3 border-b border-rule last:border-b-0">
+            <span className="text-base text-text">{RATING_LABELS[rating]}</span>
+            <span className="text-base font-bold text-text tabular-nums">{count}</span>
+          </li>
+        ))}
+      </ul>
+      <h3 className="mt-4 text-sm font-bold text-text">Muncul lagi</h3>
+      <ul className="mt-1">
+        {days.map(([day, count]) => (
+          <li key={day} className="flex min-h-12 items-center justify-between gap-3 border-b border-rule last:border-b-0">
+            <span className="text-base text-text">{capitalise(reviewDayLabel(day, today))}</span>
+            <span className="text-sm text-text-muted tabular-nums">{count} pertanyaan</span>
+          </li>
+        ))}
+        {finished > 0 ? (
+          <li className="flex min-h-12 items-center justify-between gap-3 border-b border-rule last:border-b-0">
+            <span className="text-base text-text">Sudah nempel</span>
+            <span className="text-sm text-text-muted tabular-nums">{finished} pertanyaan</span>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
+/** "besok" becomes "Besok" at the start of a row. */
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Another material of this user with questions due today, with how many, or
+ * null. RLS keeps the reads to the user's own rows; the user id is matched too.
+ */
+async function loadNextDueMaterial(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  currentId: string,
+  today: string,
+): Promise<{ id: string; title: string; count: number } | null> {
+  const { data: due, error } = await supabase
+    .from("study_questions")
+    .select("material_id")
+    .eq("user_id", userId)
+    .neq("material_id", currentId)
+    .lte("due_date", today);
+
+  if (error) {
+    console.error("reading the next due material failed", { userId });
+    return null;
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const row of due ?? []) {
+    const key = row.material_id as string;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const [first] = counts.keys();
+
+  if (!first) {
+    return null;
+  }
+
+  const { data: next, error: titleError } = await supabase
+    .from("study_materials")
+    .select("id, title")
+    .eq("id", first)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (titleError || !next) {
+    if (titleError) {
+      console.error("reading the next due material's title failed", { userId });
+    }
+    return null;
+  }
+
+  return { id: next.id as string, title: next.title as string, count: counts.get(first) ?? 0 };
 }

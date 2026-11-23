@@ -10,6 +10,7 @@ import {
 } from "@/lib/dates";
 import { compareMonths, monthsEndingAt, monthTotals } from "@/lib/expenses";
 import { loadEffectiveBudget, loadMonthExpenses, loadMoneyRows } from "@/lib/money";
+import { categoryShares, topCategoryFact } from "@/lib/money-analysis";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ExpenseBoard, type DayGroup } from "./expense-board";
 import type { MonthBar } from "./money-chart";
@@ -119,9 +120,18 @@ export default async function ExpensesPage({
   }
 
   const nextMonth = addDays(endOfMonthKey(monthStart), 1).slice(0, 7);
+  // EXP-10: the row to the Analisa screen, with one fact counted here.
+  const fact = topCategoryFact(categoryShares(expenses, month, previousMonth, 31));
+  const analysis = fact
+    ? {
+        title: `Analisa ${formatMonthLabel(monthStart).split(" ")[0]}`,
+        fact,
+        href: month === currentMonth ? "/expenses/analysis" : `/expenses/analysis?bulan=${month}`,
+      }
+    : null;
 
   return (
-    <main className="py-6 md:py-10">
+    <main data-split="" className="py-6 md:py-10">
       <ExpenseBoard
         monthLabel={formatMonthLabel(monthStart)}
         previousMonth={previousMonth}
@@ -135,6 +145,7 @@ export default async function ExpensesPage({
         isPremium={isPremium}
         groups={[...byDay.values()]}
         today={today}
+        analysis={analysis}
       />
     </main>
   );

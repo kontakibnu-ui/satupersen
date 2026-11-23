@@ -18,6 +18,7 @@ import {
   seedExpense,
   seedHabit,
   seedHabitLog,
+  seedMoneyAnalysis,
   seedMood,
   seedReport,
   seedScoreHistory,
@@ -48,6 +49,7 @@ let progressPremium: TestUser | undefined;
 let spender: TestUser | undefined;
 let reporter: TestUser | undefined;
 let chatter: TestUser | undefined;
+let analyst: TestUser | undefined;
 // Each worker seeds its own number: a phone number is unique across all users.
 const chatterPhone = `628${String(Math.floor(Math.random() * 1e5)).padStart(5, "0")}117890`;
 let stackUp = false;
@@ -152,10 +154,23 @@ test.beforeAll(async () => {
 
   chatter = await createTestUser("chatter", true);
   await seedWhatsAppLink(chatter, chatterPhone);
+
+  // Analisa uang (EXP-10) with a stored reading, seen on the free plan (SUB-3).
+  analyst = await createTestUser("analyst", true);
+  await seedExpense(analyst, today, 85000, "makan", "makan siang");
+  await seedExpense(analyst, yesterday, 40000, "transport");
+  await seedMoneyAnalysis(analyst, today.slice(0, 7), today, [
+    "Makan paling besar bulan ini, Rp 85.000, dan transport menyusul di Rp 40.000.",
+    "Pengeluaranmu sejauh ini masih sedikit, jadi polanya belum banyak terlihat.",
+  ]);
 });
 
 test.afterAll(async () => {
-  await Promise.all([writer, summarised, crisis, newcomer, tracker, progress, progressPremium, spender, reporter, chatter].map(deleteTestUser));
+  await Promise.all(
+    [writer, summarised, crisis, newcomer, tracker, progress, progressPremium, spender, reporter, chatter, analyst].map(
+      deleteTestUser,
+    ),
+  );
 });
 
 const scenarios: Scenario[] = [
@@ -167,6 +182,9 @@ const scenarios: Scenario[] = [
   { name: "habits-empty", path: "/habits", user: () => writer },
   { name: "expenses", path: "/expenses", user: () => spender },
   { name: "expenses-empty", path: "/expenses", user: () => writer },
+  { name: "expenses-analysis", path: "/expenses/analysis", user: () => spender },
+  { name: "expenses-analysis-stored", path: "/expenses/analysis", user: () => analyst },
+  { name: "expenses-analysis-empty", path: "/expenses/analysis", user: () => writer },
   { name: "reports", path: "/reports", user: () => reporter },
   { name: "reports-empty", path: "/reports", user: () => writer },
   { name: "dashboard-7", path: "/dashboard", user: () => progress },
@@ -207,7 +225,7 @@ async function open(page: Page, scenario: Scenario): Promise<void> {
 
   // A layout check on the error screen would pass for the wrong page, so the
   // real screen must be the one that rendered.
-  await expect(page.getByRole("heading", { name: "Halaman ini belum bisa ditampilkan" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Halaman ini belum bisa dibuka" })).toHaveCount(0);
   await expect(page.getByRole("main")).toBeVisible();
   // The loading skeleton is a <main> too, and the real screen streams in after
   // it; checks run on the screen itself, not on the skeleton.
@@ -464,11 +482,12 @@ test("Progres: 1 tahun terkunci untuk paket gratis dan tidak membaca datanya, te
   await expect(page.getByRole("table", { name: /Grafik skor 1 tahun/ })).toBeAttached();
 });
 
-test("Progres kosong: pesan yang mengajak menulis, tanpa angka palsu (DASH-3)", async ({ page }) => {
+test("Progres kosong: hitungan menuju grafik dan ajakan menulis, tanpa angka palsu (DASH-3, DESIGN.md §15.5)", async ({ page }) => {
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
   await open(page, scenarioNamed("dashboard-kosong"));
-  await expect(page.getByText("Belum ada skor di 7 hari terakhir.")).toBeVisible();
+  await expect(page.getByText("Grafikmu mulai terbentuk")).toBeVisible();
+  await expect(page.getByText("0 dari 3 hari")).toBeVisible();
   await expect(page.getByRole("link", { name: "Mulai menulis" })).toHaveAttribute("href", "/today");
   await expect(page.locator(".recharts-surface")).toHaveCount(0);
 });

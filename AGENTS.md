@@ -87,6 +87,9 @@ src/lib/dates.ts
 src/lib/entries.ts         aturan entri yang dipakai klien dan server (mis. batas karakter)
 src/lib/zod.ts             zod untuk kode yang jalan di browser (jitless, supaya CSP tanpa eval tidak mencatat pelanggaran); modul browser mengimpor z dari sini
 src/lib/receipt.ts         Isi dari screenshot (EXP-7): penyamaran angka panjang dan pengaman hasil bacaan AI
+src/lib/statement.ts       Dari e-statement (EXP-9): baris dari PDF, penyamaran, pemotongan per bagian, pemeriksaan transaksi (fungsi murni, dites)
+src/lib/money-analysis.ts  Analisa uang (EXP-10): angka grafik laju dan kategori, masukan AI (fungsi murni, dites)
+vendor/sheetjs/            salinan SheetJS 0.20.3 dari CDN resmi SheetJS untuk membaca Excel di browser (lihat README; npm 12 menolak paket dari URL); bukan paket npm
 scripts/copy-ocr-assets.mjs  menyalin mesin OCR dan data bahasa dari node_modules ke public/ocr (tidak di-commit) sebelum dev dan build
 src/lib/books/             Ruang baca: aturan file dan kuota (fungsi murni, dites), cache salinan di browser
 vendor/foliate-js/         salinan foliate-js dari repo pembuatnya, dikunci di satu commit (lihat README di folder itu); bukan paket npm

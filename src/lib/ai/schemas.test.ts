@@ -5,7 +5,9 @@ import {
   parseExplanationCheck,
   parseFullReport,
   parseReceiptReading,
+  parseMoneyAnalysis,
   parseReviewFeedback,
+  parseStatementReading,
   parseTokenUsage,
 } from "@/lib/ai/schemas";
 
@@ -240,5 +242,51 @@ describe("Uang: bacaan screenshot (EXP-7)", () => {
     expect(() => parseReceiptReading(JSON.stringify({ ...reading, type: "transfer" }))).toThrow(/receipt reading/);
     expect(() => parseReceiptReading(JSON.stringify({ ...reading, found: undefined }))).toThrow(/receipt reading/);
     expect(() => parseReceiptReading("tidak ada JSON")).toThrow(/JSON object/);
+  });
+});
+
+describe("parseStatementReading (EXP-9)", () => {
+  const reading = {
+    transactions: [
+      { date: "2026-11-15", type: "expense", amount: 52500, category: "makan", note: "Transfer ke Budi" },
+      { date: "11-16", type: "income", amount: null, category: null, note: null },
+    ],
+  };
+
+  it("accepts a list, with null fields where the statement shows nothing", () => {
+    expect(parseStatementReading(`Hasilnya:\n\`\`\`json\n${JSON.stringify(reading)}\n\`\`\``)).toEqual(reading);
+    expect(parseStatementReading('{"transactions": []}')).toEqual({ transactions: [] });
+  });
+
+  it("refuses a wrong shape so the part is retried", () => {
+    const [first] = reading.transactions;
+
+    expect(() => parseStatementReading(JSON.stringify({ transactions: [{ ...first, type: "transfer" }] }))).toThrow(
+      /statement reading/,
+    );
+    expect(() => parseStatementReading(JSON.stringify({ transactions: [{ ...first, amount: "52.500" }] }))).toThrow(
+      /statement reading/,
+    );
+    expect(() => parseStatementReading(JSON.stringify({ items: [] }))).toThrow(/statement reading/);
+  });
+});
+
+describe("parseMoneyAnalysis (EXP-10)", () => {
+  const analysis = { paragraphs: ["Makan paling besar bulan ini."], next_month: "Coba jatah makan mingguan." };
+
+  it("accepts one to three paragraphs and one suggestion", () => {
+    expect(parseMoneyAnalysis(JSON.stringify(analysis))).toEqual(analysis);
+    expect(parseMoneyAnalysis(JSON.stringify({ ...analysis, paragraphs: ["a", "b", "c"] })).paragraphs).toHaveLength(3);
+  });
+
+  it("refuses an empty, overlong, or wrongly shaped answer so it is retried", () => {
+    expect(() => parseMoneyAnalysis(JSON.stringify({ ...analysis, paragraphs: [] }))).toThrow(/money analysis/);
+    expect(() => parseMoneyAnalysis(JSON.stringify({ ...analysis, paragraphs: ["a", "b", "c", "d"] }))).toThrow(
+      /money analysis/,
+    );
+    expect(() => parseMoneyAnalysis(JSON.stringify({ ...analysis, paragraphs: ["x".repeat(321)] }))).toThrow(
+      /money analysis/,
+    );
+    expect(() => parseMoneyAnalysis(JSON.stringify({ ...analysis, next_month: "" }))).toThrow(/money analysis/);
   });
 });

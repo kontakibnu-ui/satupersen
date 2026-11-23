@@ -1,7 +1,7 @@
 import { ChartLine, Lock } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ScribbleUnderline, SectionHead } from "@/components/notebook";
+import { ScribbleUnderline, SectionHead, Tally } from "@/components/notebook";
 import { PageHeader } from "@/components/page-header";
 import { ProgressTabs } from "@/components/progress-tabs";
 import { buttonVariants } from "@/components/ui/button";
@@ -197,13 +197,31 @@ async function Overview({
   const delta = periodDeltaPct(current, previous);
 
   if (current.average === null) {
+    // DESIGN.md §15.5: in the first days the card counts toward the three
+    // analysed days the chart needs, with tally marks.
+    const scoredSoFar = totalResult.count ?? 0;
+    const firstDays = scoredSoFar < MIN_SCORED_DAYS_FOR_DELTA;
+
     return (
       <Card aria-label="Ringkasan progres" className="mt-6 flex flex-col items-center py-10 text-center">
         <IconBadge icon={ChartLine} size="lg" />
-        <p className="mt-4 max-w-sm text-base text-text-muted">
-          Belum ada skor di {period.short === "1 tahun" ? "setahun ini" : `${period.short} terakhir`}.
-          Tulis satu entri, lalu tekan Analisa hari ini.
-        </p>
+        {firstDays ? (
+          <>
+            <p className="mt-4 font-heading text-base font-bold text-text">Grafikmu mulai terbentuk</p>
+            <p className="mt-2 max-w-sm text-base text-text-muted">
+              Garis dan persennya muncul setelah {MIN_SCORED_DAYS_FOR_DELTA} hari dianalisa.
+            </p>
+            <p className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-text tabular-nums">
+              <Tally count={scoredSoFar} className="text-text-muted" />
+              {scoredSoFar} dari {MIN_SCORED_DAYS_FOR_DELTA} hari
+            </p>
+          </>
+        ) : (
+          <p className="mt-4 max-w-sm text-base text-text-muted">
+            Belum ada skor di {period.short === "1 tahun" ? "setahun ini" : `${period.short} terakhir`}.
+            Tulis satu entri, lalu tekan Analisa hari ini.
+          </p>
+        )}
         <Link href="/today" className={buttonVariants({ variant: "soft", className: "mt-5" })}>
           Mulai menulis
         </Link>

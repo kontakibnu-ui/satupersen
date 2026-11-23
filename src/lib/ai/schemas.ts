@@ -272,6 +272,61 @@ export function parseReceiptReading(raw: string): ReceiptReading {
 }
 
 /**
+ * Uang: the transactions the model listed from one part of a statement
+ * (PRD.md EXP-9). Only the shape is strict here; whether each amount, category,
+ * and day is acceptable is decided by `checkStatementItems` (src/lib/statement.ts),
+ * so one wrong row is dropped instead of failing the whole part.
+ */
+export const statementReadingSchema = z.object({
+  transactions: z
+    .array(
+      z.object({
+        date: z.string().trim().max(20).nullable(),
+        type: z.enum(["expense", "income"]),
+        // zod 4 numbers already refuse Infinity and NaN.
+        amount: z.number().nullable(),
+        category: z.string().trim().max(40).nullable(),
+        note: z.string().trim().max(300).nullable(),
+      }),
+    )
+    .max(300),
+});
+
+export type StatementReading = z.infer<typeof statementReadingSchema>;
+
+export function parseStatementReading(raw: string): StatementReading {
+  const parsed = statementReadingSchema.safeParse(extractJsonObject(raw));
+
+  if (!parsed.success) {
+    throw new Error(describeIssues(parsed.error, "statement reading"));
+  }
+
+  return parsed.data;
+}
+
+/**
+ * Uang: the premium "Analisa uang" of one month (PRD.md EXP-10), as stored in
+ * `money_analyses`. Strict, because the text is shown as it is: an answer of
+ * the wrong shape or length is retried once and then reported as failed.
+ */
+export const moneyAnalysisSchema = z.object({
+  paragraphs: z.array(z.string().trim().min(1).max(320)).min(1).max(3),
+  next_month: z.string().trim().min(1).max(180),
+});
+
+export type MoneyAnalysis = z.infer<typeof moneyAnalysisSchema>;
+
+export function parseMoneyAnalysis(raw: string): MoneyAnalysis {
+  const parsed = moneyAnalysisSchema.safeParse(extractJsonObject(raw));
+
+  if (!parsed.success) {
+    throw new Error(describeIssues(parsed.error, "money analysis"));
+  }
+
+  return parsed.data;
+}
+
+/**
  * The token counts OpenRouter reports with every completion (PRD.md §8). Only
  * the fields the meter needs are read; `cost` is in USD and may be absent.
  */

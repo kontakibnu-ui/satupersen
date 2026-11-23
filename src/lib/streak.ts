@@ -59,3 +59,19 @@ export function streakLength(doneDays: Iterable<DateKey>, today: DateKey): numbe
 
   return count;
 }
+
+/**
+ * True when one more missed day would end the streak: yesterday was missed,
+ * today is not done yet, and the streak is still alive (DESIGN.md §15.7, the
+ * "Kemarin terlewat" note). It is never true once a streak has ended, so the
+ * screen never has anything to say about a broken one.
+ */
+export function streakAtRisk(doneDays: Iterable<DateKey>, today: DateKey): boolean {
+  const done = new Set(doneDays);
+
+  if (done.has(today) || done.has(addDays(today, -1))) {
+    return false;
+  }
+
+  return streakLength(done, today) > 0;
+}

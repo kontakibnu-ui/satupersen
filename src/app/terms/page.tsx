@@ -3,6 +3,7 @@ import { LegalPage, type LegalSection } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Syarat layanan · Satu Persen",
+  alternates: { canonical: "/terms" },
 };
 
 /**

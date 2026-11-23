@@ -3,3 +3,4 @@
 # and the test books, where a PDF's cross reference counts bytes.
 vendor/** -text
 e2e/fixtures/books/* -text
+e2e/fixtures/statements/* -text

@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: true },
   title: "Password baru · Satu Persen",
 };
 

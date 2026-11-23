@@ -21,6 +21,13 @@ const TABLES = [
   { key: "habit_logs", table: "habit_logs", columns: "habit_id, date", order: "date" },
   { key: "expenses", table: "expenses", columns: "date, type, amount, category, note, created_at", order: "date" },
   { key: "budgets", table: "budgets", columns: "month, amount", order: "month" },
+  // Analisa uang (EXP-10): the stored reading of each month.
+  {
+    key: "money_analyses",
+    table: "money_analyses",
+    columns: "month, paragraphs, next_month, through_date, generated_on, created_at, updated_at",
+    order: "month",
+  },
   {
     key: "daily_summaries",
     table: "daily_summaries",

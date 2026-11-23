@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
-import { streakLength } from "@/lib/streak";
+import { streakAtRisk, streakLength } from "@/lib/streak";
 
 const TODAY = "2026-10-29";
 
@@ -64,5 +64,27 @@ describe("streakLength: don't miss twice (PRD.md §5)", () => {
   it("handles a long run without recursion or large loops outside the done range", () => {
     const longRun = Array.from({ length: 400 }, (_, index) => addDays(TODAY, -index));
     expect(streakLength(longRun, TODAY)).toBe(400);
+  });
+});
+
+describe("streakAtRisk: the 'Kemarin terlewat' note (DESIGN.md §15.7)", () => {
+  it("is true when yesterday was missed, today is open, and the streak is alive", () => {
+    expect(streakAtRisk(done(2, 3, 4), TODAY)).toBe(true);
+  });
+
+  it("is false once today is checked", () => {
+    expect(streakAtRisk(done(0, 2, 3), TODAY)).toBe(false);
+  });
+
+  it("is false when yesterday was done", () => {
+    expect(streakAtRisk(done(1, 2), TODAY)).toBe(false);
+  });
+
+  it("is false after two missed days, when the streak has already ended", () => {
+    expect(streakAtRisk(done(3, 4, 5), TODAY)).toBe(false);
+  });
+
+  it("is false for a habit that was never checked", () => {
+    expect(streakAtRisk([], TODAY)).toBe(false);
   });
 });

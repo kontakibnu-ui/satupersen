@@ -50,7 +50,7 @@ export function MoneyChart({ months, description }: { months: MonthBar[]; descri
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={44}
+              width={52}
               tickFormatter={formatAxis}
               tick={{ fontSize: 12, fill: "var(--text-muted)" }}
             />

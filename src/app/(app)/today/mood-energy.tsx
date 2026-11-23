@@ -39,6 +39,15 @@ const ENERGY: readonly Option[] = [
 
 type Field = "mood" | "energy";
 
+/** The word for a chosen mood or energy (1 to 5), for "Yang ikut dianalisa" on Hari Ini. */
+export function feelingWord(field: Field, value: number | null): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  return (field === "mood" ? MOOD : ENERGY)[value - 1]?.word ?? null;
+}
+
 /**
  * Mood and energy (MOOD-1, DESIGN.md §14.3 version 5): one row each, five
  * icons with a word, laid straight on the page. All levels share the one ink;
@@ -112,7 +121,7 @@ function Row({
   onChoose: (field: Field, value: number) => Promise<void>;
 }) {
   return (
-    <div>
+    <div id={field} className="scroll-mt-24">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-heading text-base font-bold text-text">{question}</h2>
         <p

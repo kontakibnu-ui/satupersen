@@ -123,9 +123,19 @@ test("streak jangan bolos dua kali: satu hari terlewat tidak memutus, dua hari m
   await expect(bridgedRow).toContainText("2 hari");
   await expect(brokenRow).not.toContainText("hari");
 
+  // DESIGN.md §15.7: the streak that hangs on today is named in a sticky note
+  // and on its row; the one that already ended is never mentioned.
+  const note = page.getByRole("note");
+  await expect(note).toContainText("Kemarin terlewat, tidak apa-apa");
+  await expect(note).toContainText("Baca buku");
+  await expect(note).not.toContainText("Meditasi");
+  await expect(bridgedRow).toContainText("Kemarin terlewat");
+  await expect(page.getByRole("img", { name: /Tujuh hari terakhir/ })).toHaveCount(2);
+
   // Checking today bridges yesterday's gap: 3 and 2 days ago plus today.
   await page.getByRole("checkbox", { name: /Baca buku/ }).check();
   await expect(bridgedRow).toContainText("3 hari");
+  await expect(note).toHaveCount(0);
 });
 
 test("batas 3 kebiasaan untuk paket gratis, arsip membuka slot, premium tanpa batas (HABIT-1, HABIT-3)", async ({
@@ -142,8 +152,10 @@ test("batas 3 kebiasaan untuk paket gratis, arsip membuka slot, premium tanpa ba
   await expect(page.getByText("Paket gratis memuat 3 kebiasaan aktif")).toBeVisible();
   await expect(page.getByLabel("Nama kebiasaan")).toHaveCount(0);
 
-  // Archive one from "Kelola": the habit leaves the list and a new one fits.
-  await page.getByRole("button", { name: "Arsipkan" }).first().click();
+  // Archive one from its settings sheet (DESIGN.md §15.7): the habit leaves the
+  // list and a new one fits.
+  await page.getByRole("button", { name: "Atur Satu" }).click();
+  await page.getByRole("button", { name: "Arsipkan kebiasaan" }).click();
   await page.getByRole("button", { name: "Ya, arsipkan" }).click();
   await expect(page.getByRole("checkbox", { name: /Satu/ })).toHaveCount(0);
 

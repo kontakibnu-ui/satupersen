@@ -7,7 +7,9 @@ import {
   checkReviewAnswers,
   getModelFor,
   readReceipt,
+  readStatementPart,
   summarizeDay,
+  writeMoneyAnalysis,
 } from "@/lib/ai/openrouter";
 
 /**
@@ -322,6 +324,103 @@ describe("readReceipt (EXP-7)", () => {
     const fetchMock = stubFetch();
 
     await expect(readReceipt(input)).rejects.toThrow(AiConfigError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("readStatementPart (EXP-9)", () => {
+  const reading = {
+    transactions: [{ date: "11-15", type: "expense", amount: 52500, category: "makan", note: "Transfer ke Budi" }],
+  };
+  const input = { text: "15/11 | TRSF KE BUDI | 52,500.00 DB | 1,200,000.00", today: "2026-11-22", part: 1, parts: 2 };
+
+  it("sends the locked request shape with the daily model and the statement part", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch(completion(JSON.stringify(reading)));
+
+    const result = await readStatementPart(input);
+
+    expect(result).toEqual({ reading, model: "deepseek/test-model" });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+
+    expect(body.provider).toEqual({ data_collection: "deny" });
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.messages[1].content).toContain("TRSF KE BUDI");
+    expect(body.messages[1].content).toContain("This is part 1 of 2");
+  });
+
+  it("retries an unusable answer once, then gives up instead of guessing", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "deepseek/test-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const retried = stubFetch(completion('{"transactions": "banyak"}'), completion(JSON.stringify(reading)));
+
+    await expect(readStatementPart(input)).resolves.toMatchObject({ reading });
+    expect(retried).toHaveBeenCalledTimes(2);
+
+    stubFetch(completion("maaf"), completion('{"rows": []}'));
+
+    await expect(readStatementPart(input)).rejects.toThrow(AiOutputError);
+  });
+
+  it("does not pick a model when AI_MODEL_DAILY is empty", async () => {
+    vi.stubEnv("AI_MODEL_DAILY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch();
+
+    await expect(readStatementPart(input)).rejects.toThrow(AiConfigError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("writeMoneyAnalysis (EXP-10)", () => {
+  const analysis = { paragraphs: ["Makan paling besar bulan ini."], next_month: "Coba jatah makan mingguan." };
+  const input = {
+    monthLabel: "November 2026",
+    previousLabel: "Oktober 2026",
+    running: true,
+    throughLabel: "22 November",
+    income: 0,
+    expense: 25_000,
+    previousIncome: 0,
+    previousExpense: 0,
+    categories: [{ label: "Makan", amount: 25_000, percent: 100, previous: 0 }],
+    weeks: [],
+    weekdays: [],
+    budget: null,
+    estimate: null,
+    transactions: [{ date: "2026-11-22", type: "expense" as const, category: "Makan", amount: 25_000, note: "Kopi" }],
+  };
+
+  it("uses the report model with the locked request shape", async () => {
+    vi.stubEnv("AI_MODEL_REPORT", "deepseek/report-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch(completion(JSON.stringify(analysis)));
+
+    await expect(writeMoneyAnalysis(input)).resolves.toEqual({ analysis, model: "deepseek/report-model" });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+
+    expect(body.model).toBe("deepseek/report-model");
+    expect(body.provider).toEqual({ data_collection: "deny" });
+    expect(body.messages[1].content).toContain("Kopi");
+  });
+
+  it("retries an unusable answer once, then gives up", async () => {
+    vi.stubEnv("AI_MODEL_REPORT", "deepseek/report-model");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    stubFetch(completion('{"paragraphs": []}'), completion("bukan JSON"));
+
+    await expect(writeMoneyAnalysis(input)).rejects.toThrow(AiOutputError);
+  });
+
+  it("does not pick a model when AI_MODEL_REPORT is empty", async () => {
+    vi.stubEnv("AI_MODEL_REPORT", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "test-key");
+    const fetchMock = stubFetch();
+
+    await expect(writeMoneyAnalysis(input)).rejects.toThrow(AiConfigError);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

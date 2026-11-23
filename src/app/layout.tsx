@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Lora, Newsreader, Plus_Jakarta_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { ThemeProvider } from "@/components/theme-toggle";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 import { parseTheme, THEME_COLOR, THEME_COOKIE } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import "./globals.css";
@@ -30,9 +31,15 @@ const newsreader = Newsreader({
   variable: "--font-newsreader",
 });
 
+// SEO: every relative address in metadata (canonical, Open Graph) resolves
+// against the public address in src/lib/site.ts.
 export const metadata: Metadata = {
-  title: "Satu Persen",
+  metadataBase: siteUrl(),
+  title: SITE_NAME,
   description: "Tulis harimu, lihat analisa dan progresmu.",
+  applicationName: SITE_NAME,
+  openGraph: { type: "website", locale: "id_ID", siteName: SITE_NAME },
+  twitter: { card: "summary_large_image" },
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],

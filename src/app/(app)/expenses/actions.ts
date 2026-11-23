@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { tokenStanding } from "@/config/plans";
-import { AiConfigError, readReceipt, type TokenUsage } from "@/lib/ai/openrouter";
+import { AiConfigError, readReceipt, readStatementPart, type TokenUsage } from "@/lib/ai/openrouter";
+import type { StatementReading } from "@/lib/ai/schemas";
 import { recordUsage, tokensUsedThisMonth } from "@/lib/ai/usage";
 import { startOfMonthKey, todayKey } from "@/lib/dates";
 import { ENTRY_TYPES, isAllowedEntryDate, isCategoryOf, MAX_AMOUNT, MAX_NOTE_LENGTH } from "@/lib/expenses";
@@ -15,6 +16,16 @@ import {
   toReceiptDraft,
   type ReceiptDraft,
 } from "@/lib/receipt";
+import {
+  checkStatementItems,
+  hasStatementText,
+  markRecorded,
+  MAX_STATEMENT_ENTRIES,
+  MAX_STATEMENT_TEXT_LENGTH,
+  prepareStatementText,
+  splitStatementParts,
+  type StatementEntry,
+} from "@/lib/statement";
 import { getActionContext } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -323,4 +334,257 @@ export async function readReceiptText(input: { text: string }): Promise<ReceiptR
   }
 
   return draft ? { ok: true, draft } : { ok: false, message: RECEIPT_NOT_FOUND };
+}
+
+/** One row the screen offers to save, with whether the cash book already has it. */
+export type StatementRow = StatementEntry & { recorded: boolean };
+
+export type StatementReadResult =
+  | {
+      ok: true;
+      rows: StatementRow[];
+      /** Rows dated more than a year back or after today (EXP-8), left out. */
+      outOfRange: number;
+      /** True when some parts of the file could not be read, so rows may be missing. */
+      partial: boolean;
+      /** Rows left out because one save carries at most MAX_STATEMENT_ENTRIES. */
+      overLimit: number;
+    }
+  | { ok: false; message: string };
+
+const STATEMENT_PREMIUM = "Baca e-statement ada di Premium.";
+const STATEMENT_UNREADABLE = "Tulisan di file ini tidak terbaca. Coba file lain, atau isi manual.";
+const STATEMENT_TOO_LONG =
+  "E-statement ini terlalu panjang untuk dibaca sekaligus. Pilih periode yang lebih pendek, misalnya satu bulan.";
+const STATEMENT_NOT_FOUND =
+  "Transaksi tidak ketemu di file ini. Pastikan ini e-statement atau mutasi rekening, atau isi manual.";
+const STATEMENT_ALL_OLD = "Semua transaksi di file ini lebih dari setahun lalu, jadi tidak bisa dicatat.";
+const STATEMENT_FAILED = "File belum berhasil dibaca. Coba lagi sebentar lagi, atau isi manual.";
+const STATEMENT_NOT_CONFIGURED = "Baca e-statement belum dikonfigurasi. Isi manual dulu, ya.";
+const STATEMENT_TOKEN_CAP = "Kuota AI bulan ini sudah habis. Isi manual dulu, baca e-statement bisa lagi tanggal 1.";
+
+/** How many parts of one statement are read by the model at the same time. */
+const STATEMENT_PARALLEL_PARTS = 4;
+
+const statementInput = z.object({
+  // The browser already refuses longer text; the margin is for an edited
+  // browser, and the server checks the prepared length again below.
+  text: z.string().max(MAX_STATEMENT_TEXT_LENGTH * 2, STATEMENT_TOO_LONG),
+});
+
+/** Runs `work` over `items` with at most `limit` running at once, keeping the order of the results. */
+async function mapWithLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  work: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await work(items[index], index);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
+/**
+ * EXP-9: the text of a bank statement, read on the phone, turned into rows the
+ * user ticks before saving. Premium only (SUB-1). In order: the text is
+ * prepared again (long numbers, email addresses, and the profile name hidden),
+ * the rate limit counts the tap once (RATE-1), the monthly token cap is checked
+ * (PRD.md §8), the parts are read by the model a few at a time, and every row
+ * is checked and matched against the cash book. Neither the text nor the rows
+ * are logged or stored here; only the token counts are.
+ */
+export async function readStatementText(input: { text: string }): Promise<StatementReadResult> {
+  const parsed = statementInput.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? STATEMENT_UNREADABLE };
+  }
+
+  const context = await getActionContext();
+
+  if (!context) {
+    return { ok: false, message: SESSION_ENDED };
+  }
+
+  if (context.plan !== "premium") {
+    return { ok: false, message: STATEMENT_PREMIUM };
+  }
+
+  const { data: profile } = await context.supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", context.userId)
+    .maybeSingle();
+  const text = prepareStatementText(parsed.data.text, profile?.name ? [profile.name] : []);
+
+  // No model call, so not a tap the rate limit counts (RATE-2).
+  if (!hasStatementText(text)) {
+    return { ok: false, message: STATEMENT_UNREADABLE };
+  }
+
+  if (text.length > MAX_STATEMENT_TEXT_LENGTH) {
+    return { ok: false, message: STATEMENT_TOO_LONG };
+  }
+
+  const wait = await takeAiRateLimit(context.userId);
+
+  if (wait > 0) {
+    return { ok: false, message: rateLimitMessage(wait) };
+  }
+
+  // An unreadable total lets the reading through: the cap is soft (PRD.md §8).
+  const used = await tokensUsedThisMonth(context.supabase, context.userId, context.timeZone);
+
+  if (used !== null && tokenStanding(context.plan, used).overCap) {
+    return { ok: false, message: STATEMENT_TOKEN_CAP };
+  }
+
+  const today = todayKey(context.timeZone);
+  const parts = splitStatementParts(text);
+  const usages: TokenUsage[] = [];
+  let readings: (StatementReading | null)[];
+
+  try {
+    readings = await mapWithLimit(parts, STATEMENT_PARALLEL_PARTS, async (part, index) => {
+      try {
+        const { reading } = await readStatementPart(
+          { text: part, today, part: index + 1, parts: parts.length },
+          (usage) => usages.push(usage),
+        );
+        return reading;
+      } catch (error) {
+        if (error instanceof AiConfigError) {
+          throw error;
+        }
+
+        console.error("reading a statement part failed", {
+          userId: context.userId,
+          part: index + 1,
+          parts: parts.length,
+          kind: error instanceof Error ? error.name : "unknown",
+        });
+        return null;
+      }
+    });
+  } catch (error) {
+    if (error instanceof AiConfigError) {
+      return { ok: false, message: STATEMENT_NOT_CONFIGURED };
+    }
+
+    console.error("reading a statement failed", {
+      userId: context.userId,
+      kind: error instanceof Error ? error.name : "unknown",
+    });
+    return { ok: false, message: STATEMENT_FAILED };
+  } finally {
+    await recordUsage(context.userId, "statement", usages);
+  }
+
+  const read = readings.filter((reading): reading is StatementReading => reading !== null);
+
+  if (read.length === 0) {
+    return { ok: false, message: STATEMENT_FAILED };
+  }
+
+  const checked = checkStatementItems(
+    read.flatMap((reading) => reading.transactions),
+    today,
+  );
+
+  if (checked.entries.length === 0) {
+    return { ok: false, message: checked.outOfRange > 0 ? STATEMENT_ALL_OLD : STATEMENT_NOT_FOUND };
+  }
+
+  const entries = checked.entries.slice(0, MAX_STATEMENT_ENTRIES);
+  const { data: recorded, error } = await context.supabase
+    .from("expenses")
+    .select("date, type, amount")
+    .eq("user_id", context.userId)
+    .gte("date", entries[0].date)
+    .lte("date", entries[entries.length - 1].date);
+
+  // Without the cash book nothing can be marked; every row stays ticked and the user decides.
+  const marks = error || !recorded ? entries.map(() => false) : markRecorded(entries, recorded);
+
+  return {
+    ok: true,
+    rows: entries.map((entry, index) => ({ ...entry, recorded: marks[index] })),
+    outOfRange: checked.outOfRange,
+    partial: read.length < parts.length,
+    overLimit: checked.entries.length - entries.length,
+  };
+}
+
+export type StatementSaveResult = { ok: true; saved: number } | { ok: false; message: string };
+
+const statementRow = z
+  .object({
+    date: z.string(),
+    type: z.enum(ENTRY_TYPES),
+    amount: amountField,
+    category: z.string(),
+    note: z.string().trim().max(MAX_NOTE_LENGTH),
+  })
+  .refine((row) => isCategoryOf(row.type, row.category));
+
+const statementSave = z.object({
+  rows: z.array(statementRow).min(1, "Pilih transaksinya dulu.").max(MAX_STATEMENT_ENTRIES),
+});
+
+/**
+ * EXP-9: saves the rows the user ticked, all at once. Premium only (SUB-1), and
+ * every row is checked again here (amount, category of its type, and a day
+ * allowed by EXP-8), because the browser can be edited.
+ */
+export async function addStatementEntries(input: {
+  rows: { date: string; type: string; amount: number; category: string; note: string }[];
+}): Promise<StatementSaveResult> {
+  const parsed = statementSave.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? GENERIC_FAILURE };
+  }
+
+  const context = await getActionContext();
+
+  if (!context) {
+    return { ok: false, message: SESSION_ENDED };
+  }
+
+  if (context.plan !== "premium") {
+    return { ok: false, message: STATEMENT_PREMIUM };
+  }
+
+  const today = todayKey(context.timeZone);
+
+  if (parsed.data.rows.some((row) => !isAllowedEntryDate(row.date, today))) {
+    return { ok: false, message: DATE_NOT_ALLOWED };
+  }
+
+  const { error } = await context.supabase.from("expenses").insert(
+    parsed.data.rows.map((row) => ({
+      user_id: context.userId,
+      date: row.date,
+      type: row.type,
+      amount: row.amount,
+      category: row.category,
+      note: row.note === "" ? null : row.note,
+    })),
+  );
+
+  if (error) {
+    return { ok: false, message: GENERIC_FAILURE };
+  }
+
+  refresh();
+  return { ok: true, saved: parsed.data.rows.length };
 }

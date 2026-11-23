@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: true },
   title: "Selamat datang · Satu Persen",
 };
 

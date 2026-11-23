@@ -286,6 +286,36 @@ describe.skipIf(!stackIsUp)("isolasi RLS dengan dua user sungguhan", () => {
     expect(forged.status).toBeGreaterThanOrEqual(400);
   });
 
+  it("analisa uang hanya ditulis server dan hanya dibaca pemiliknya (EXP-10)", async () => {
+    const row = {
+      user_id: idA,
+      month: "2026-11-01",
+      paragraphs: ["Makan paling besar bulan ini."],
+      next_month: "Coba jatah makan mingguan.",
+      through_date: "2026-11-22",
+      generated_on: "2026-11-22",
+      model: "uji",
+    };
+
+    const forged = await post("money_analyses", anonKey as string, tokenA, row);
+    expect(forged.status).toBeGreaterThanOrEqual(400);
+
+    const written = await post("money_analyses", serviceKey as string, undefined, row);
+    expect(written.status).toBe(201);
+
+    const own = await get(`money_analyses?select=month&user_id=eq.${idA}`, anonKey as string, tokenA);
+    expect(own.body).toEqual([{ month: "2026-11-01" }]);
+
+    const other = await get(`money_analyses?select=month&user_id=eq.${idA}`, anonKey as string, tokenB);
+    expect(other.body).toEqual([]);
+
+    const edited = await patch(`money_analyses?user_id=eq.${idA}`, anonKey as string, tokenA, { next_month: "x" });
+    expect(edited.status).toBeGreaterThanOrEqual(400);
+
+    const twice = await post("money_analyses", serviceKey as string, undefined, row);
+    expect(twice.status).toBe(409);
+  });
+
   it("nomor WhatsApp hanya bisa diverifikasi server, user hanya mengatur pengingat (PRD §6)", async () => {
     const forged = await post("whatsapp_links", anonKey as string, tokenA, {
       user_id: idA,

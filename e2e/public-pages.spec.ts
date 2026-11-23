@@ -176,3 +176,53 @@ test("warna bilah browser mengikuti mode siang dan malam", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#14161B");
 });
+
+test("SEO dan GEO: robots, sitemap, llms.txt, dan gambar bagikan terbuka tanpa login", async ({ request }) => {
+  const robots = await request.get("/robots.txt");
+  expect(robots.status()).toBe(200);
+  const robotsText = await robots.text();
+  expect(robotsText).toContain("Disallow: /today");
+  expect(robotsText).toContain("Disallow: /api/");
+  expect(robotsText).toMatch(/Sitemap: .+\/sitemap\.xml/);
+
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  const sitemapText = await sitemap.text();
+  expect(sitemapText).toContain("/privacy</loc>");
+  expect(sitemapText).not.toContain("/today");
+
+  const llms = await request.get("/llms.txt");
+  expect(llms.status()).toBe(200);
+  expect(llms.headers()["content-type"]).toContain("text/plain");
+  const llmsText = await llms.text();
+  expect(llmsText.startsWith("# Satu Persen")).toBe(true);
+  expect(llmsText).toContain("## Tanya jawab");
+
+  const share = await request.get("/opengraph-image");
+  expect(share.status()).toBe(200);
+  expect(share.headers()["content-type"]).toContain("image/png");
+});
+
+test("SEO: landing punya canonical, Open Graph, dan JSON-LD yang sama dengan tanya jawab di layar", async ({ page }) => {
+  await page.goto("/");
+
+  // The home page itself, absolute (Next.js writes it without a trailing slash).
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /^https?:\/\/[^/]+\/?$/);
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /Satu Persen/);
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /opengraph-image/);
+
+  const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(blocks).toHaveLength(1);
+  const graph = (JSON.parse(blocks[0]) as { "@graph": { "@type": string; mainEntity?: { name: string }[] }[] })["@graph"];
+  expect(graph.map((node) => node["@type"])).toEqual(["WebSite", "WebApplication", "FAQPage"]);
+
+  const faq = graph.find((node) => node["@type"] === "FAQPage")!;
+  for (const question of faq.mainEntity!) {
+    await expect(page.getByText(question.name, { exact: true })).toBeAttached();
+  }
+});
+
+test("SEO: layar masuk tidak diindeks", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+});

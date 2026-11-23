@@ -3,6 +3,7 @@ import { LegalPage, type LegalSection } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Privasi · Satu Persen",
+  alternates: { canonical: "/privacy" },
 };
 
 /**
@@ -27,7 +28,8 @@ const SECTIONS: LegalSection[] = [
       "Akun: email, nama, timezone, dan persetujuanmu saat mendaftar.",
       "Tulisan harianmu, serta mood dan energi yang kamu pilih. Selama tulisan belum terkirim ke server (misalnya saat koneksi putus), salinannya disimpan sementara di browser perangkatmu supaya tidak hilang. Salinan itu dihapus setelah tulisan tersimpan di server, saat hari berganti, saat akun lain membuka Hari Ini di browser yang sama, dan saat kamu keluar dari akun atau menghapus akun.",
       "Kebiasaan yang kamu buat dan hari-hari kamu mencentangnya.",
-      "Pengeluaran yang kamu catat, dan budget bulanan jika kamu mengaturnya. Screenshot bank yang kamu pakai untuk mengisi catatan tidak disimpan; yang tersimpan hanya catatan yang kamu simpan sendiri.",
+      "Pengeluaran yang kamu catat, dan budget bulanan jika kamu mengaturnya. Screenshot bank dan file e-statement yang kamu pakai untuk mengisi catatan tidak disimpan, begitu juga password PDF-nya; yang tersimpan hanya catatan yang kamu simpan sendiri.",
+      "Analisa uang yang kamu minta, satu untuk setiap bulan, sampai akunmu dihapus.",
       "Ringkasan, skor, dan laporan yang dibuat dari data di atas.",
       "Jika kamu memakai Belajar: bahan yang kamu tempel, penjelasan dan jawaban reviewmu, pertanyaan dan umpan balik yang dibuat dari bahan itu, serta jadwal reviewnya.",
       "Jika kamu memakai Ruang baca: file e-book yang kamu unggah (PDF, EPUB, DOCX, atau TXT), judulnya, dan posisi terakhir kamu membacanya. File disimpan privat; hanya kamu yang bisa membukanya. Setelah sebuah buku dibuka, salinannya juga disimpan di browser perangkatmu supaya tidak perlu diunduh ulang, dan salinan itu dihapus saat kamu keluar dari akun atau menghapus bukunya.",
@@ -48,7 +50,7 @@ const SECTIONS: LegalSection[] = [
     items: [
       "Supabase: database, proses masuk, dan penyimpanan file e-book Ruang baca.",
       "Vercel: tempat aplikasi berjalan.",
-      "OpenRouter dan penyedia model AI di baliknya: isi tulisan, mood, kebiasaan, dan pengeluaranmu dikirim ke sini agar ringkasan, laporan, dan balasan chat bisa dibuat. Di Belajar, bahan, penjelasan, dan jawabanmu dikirim saat kamu memintanya diperiksa. Saat kamu memakai “Isi dari screenshot” di Uang, gambarnya dibaca di perangkatmu dan tidak diunggah; hanya tulisan di gambar itu, dengan deretan angka panjang seperti nomor rekening disamarkan lebih dulu, yang dikirim agar nominal, tanggal, dan kategorinya bisa diisi. Tulisan itu tidak disimpan. Isi buku di Ruang baca tidak pernah dikirim ke sini; hanya bagian yang kamu pilih sendiri lewat “Jadikan materi” lalu kamu simpan sebagai materi Belajar, dan hanya saat kamu memintanya diperiksa. Kami meminta hanya penyedia yang, menurut pernyataan mereka, tidak mengumpulkan datamu.",
+      "OpenRouter dan penyedia model AI di baliknya: isi tulisan, mood, kebiasaan, dan pengeluaranmu dikirim ke sini agar ringkasan, laporan, dan balasan chat bisa dibuat. Di Belajar, bahan, penjelasan, dan jawabanmu dikirim saat kamu memintanya diperiksa. Saat kamu memakai “Isi dari screenshot” di Uang, gambarnya dibaca di perangkatmu dan tidak diunggah; hanya tulisan di gambar itu, dengan deretan angka panjang seperti nomor rekening disamarkan lebih dulu, yang dikirim agar nominal, tanggal, dan kategorinya bisa diisi. Tulisan itu tidak disimpan. “Dari e-statement” bekerja dengan cara yang sama: file PDF, CSV, atau Excel dibaca di perangkatmu dan tidak diunggah, password PDF hanya dipakai di perangkatmu, dan tulisannya dikirim setelah deretan angka panjang, alamat email, dan namamu disamarkan. Nama lawan transaksi, toko, alamat, dan saldo yang tertulis di e-statement tetap ikut terkirim. Tulisan itu juga tidak disimpan. Saat kamu meminta “Analisa uang”, angka uangmu bulan itu dan daftar catatannya, termasuk catatan yang kamu tulis, dikirim agar analisanya bisa ditulis. Isi buku di Ruang baca tidak pernah dikirim ke sini; hanya bagian yang kamu pilih sendiri lewat “Jadikan materi” lalu kamu simpan sebagai materi Belajar, dan hanya saat kamu memintanya diperiksa. Kami meminta hanya penyedia yang, menurut pernyataan mereka, tidak mengumpulkan datamu.",
       "Meta (WhatsApp): jika kamu menghubungkan WhatsApp, pesanmu melewati server Meta. Jangan kirim data yang sangat sensitif seperti password atau nomor kartu.",
       "Google: jika kamu masuk dengan akun Google.",
     ],

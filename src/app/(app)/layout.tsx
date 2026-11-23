@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AppHeader, AppNav } from "@/components/app-nav";
 import { isValidTimeZone, todayKey } from "@/lib/dates";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { TimezoneNotice } from "./timezone-notice";
+
+/** Everything behind the login is personal, so search engines keep out of it. */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 /**
  * Shell for every signed in page (DESIGN.md §5, version 3).
@@ -67,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-dvh">
       <AppHeader initial={initial} learnDue={learnDue} />
 
-      <div className="mx-auto w-full max-w-[640px] px-4 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] has-[[data-wide]]:max-w-[960px] md:px-6 lg:pb-16">
+      <div className="mx-auto w-full max-w-[640px] px-4 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] has-[[data-wide]]:max-w-[960px] md:px-6 lg:has-[[data-split]]:max-w-[1040px] lg:pb-16">
         <TimezoneNotice savedZone={timeZone} />
         {children}
       </div>

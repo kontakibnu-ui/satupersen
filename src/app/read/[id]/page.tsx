@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Reader } from "./reader";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: true },
   title: "Ruang baca · Satu Persen",
 };
 

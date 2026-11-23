@@ -162,8 +162,21 @@ export function LoginForm({
     });
   }
 
+  // DESIGN.md §15.6: Google first, since one tap is quicker than typing an
+  // email and a password; then the email form with the one primary button.
   return (
     <div className="mt-8">
+      <Button variant="secondary" onClick={signInWithGoogle} disabled={busy} className="w-full">
+        <GoogleMark />
+        Masuk dengan Google
+      </Button>
+
+      <div className="my-5 flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-rule" />
+        <span className="text-sm text-text-muted">atau dengan email</span>
+        <span className="h-px flex-1 bg-rule" />
+      </div>
+
       <form onSubmit={submit}>
         <label htmlFor="email" className="block text-sm font-medium text-text-muted">
           Alamat email
@@ -220,16 +233,6 @@ export function LoginForm({
         </Link>
       </div>
 
-      <div className="my-4 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-sm text-text-muted">atau</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-
-      <Button variant="secondary" onClick={signInWithGoogle} disabled={busy} className="w-full">
-        <GoogleMark />
-        Masuk dengan Google
-      </Button>
     </div>
   );
 }

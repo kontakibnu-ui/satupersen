@@ -34,3 +34,17 @@ export const THEME_COLOR: Record<Theme, string> = {
   light: "#F6F4EE",
   dark: "#14161B",
 };
+
+/**
+ * The share image (app/opengraph-image.tsx) is drawn as a PNG, which also takes
+ * literal colours only: the day tokens `background`, `surface`, `primary`,
+ * `text`, `text-muted`, and `rule` of DESIGN.md §3.
+ */
+export const SHARE_IMAGE_COLOR = {
+  paper: "#F6F4EE",
+  sheet: "#FFFDF8",
+  ink: "#22355E",
+  text: "#1F2330",
+  muted: "#5E6372",
+  rule: "#D6DEEB",
+} as const;

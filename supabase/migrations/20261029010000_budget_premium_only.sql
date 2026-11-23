@@ -1,4 +1,4 @@
--- EXP-4 and SUB-1: a monthly budget is a premium feature, so a budget row is
+  -- EXP-4 and SUB-1: a monthly budget is a premium feature, so a budget row is
 -- written only by server code that has checked the plan (src/lib/supabase/admin.ts).
 --
 -- With the init grants a free user could insert a budget through PostgREST with

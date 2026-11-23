@@ -1,6 +1,7 @@
 # DESIGN.md — arah dan aturan desain Satu Persen
 
-> Versi 5 · 2026-11-17. Baca file ini sebelum mengerjakan tugas UI apa pun. Isinya keputusan terkunci.
+> Versi 5 · 2026-11-17, diperbarui 5.1 · 2026-11-22 (§15). Baca file ini sebelum mengerjakan tugas UI apa pun. Isinya keputusan terkunci.
+> Versi 5.1 (2026-11-22): user menyetujui dua belas usulan optimasi dari kanvas https://claude.ai/artifact/8Vka1v8KPBJhPuWqhkJ2gR (privat). **§15 menggantikan butir lama yang bertentangan dengannya.** Catatan user yang berlaku untuk semua layar: tidak ada kalimat kaku yang terdengar seperti hasil mesin, dan tidak ada baris petunjuk cara memakai antarmuka (contoh yang ditolak: "Ctrl + Enter dari mana saja di halaman ini"). Kalau sebuah layar butuh petunjuk seperti itu, perbaiki susunannya.
 > Versi 5 "Meja Tulis" dipilih user (2026-11-17) dari tiga arah mockup (A Halaman Buku, B Meja Tulis, C Tinta Pekat), lalu dijabarkan menjadi wireframe 21 layar dan dikoreksi user. Palet satu tinta, huruf, dan aturan versi 4 tetap; yang baru adalah karakter dari benda dan coretan tangan: lembaran binder, catatan tempel, cap tinta, coretan pulpen, dan navigasi tab pembatas. **§14 menggantikan butir lama yang bertentangan dengannya**, dan memuat panduan untuk fitur atau menu baru (§14.6).
 > Versi 4 "Buku tulis" dipilih user (2026-11-08) setelah audit UI dan perbandingan mockup (arah E2 di kanvas desain): user menilai versi 3 terasa generik, "terlalu warna warni", dan tidak suka angka tanggal besar Fraunces; yang dipertahankan atas permintaannya adalah menulis seperti di kertas bergaris dan ikon perasaan serta energi. Yang berubah: **satu tinta biru pulpen** untuk semua highlight (emas, sage, plum, dan lima warna mood dihapus; nama token lama tetap ada tetapi menunjuk ke tinta), kertas putih-gading dengan garis biru muda, huruf **Plus Jakarta Sans** (antarmuka dan judul) dan **Lora** (yang tertulis di kertas), kop "Hari / Tanggal" ala buku tulis sekolah menggantikan halaman kalender, mood dan energi tanpa kotak, kebiasaan bergaris tanpa chip api, dan hasil analisa satu lembar (angka selisih besar, strip 7 hari, analisa di garis buku). Keputusan user 2026-11-01 tetap: skor 0 sampai 100 tidak pernah tampil. Bagian di bawah yang menyebut emas, Fraunces, halaman kalender, atau warna per mood sudah diganti oleh catatan versi 4 di §3, §4, dan §6; layar selain Hari Ini menerima token dan huruf baru tetapi tata letaknya belum dirombak.
 > Versi 3.1 dibuat atas permintaan user (2026-10-31: pengalaman menulis harus lebih nyaman dan fokus; kata "rangkum" diganti "analisa"; layar lain lebih sesuai fungsinya). Palet, font, dan arah visual versi 3 tetap. Panduan yang dipakai: skill `ui-ux-pro-max` (kategori produk "Diary & Journal App": kertas hangat, tinta redup, aksen per mood; aturan UX label terlihat, fokus tidak tertutup, panjang baris 65 sampai 75 karakter, AI diberi label jelas) dan referensi aplikasi menulis (mode fokus iA Writer, pertanyaan pemantik Apple Journal dan Stoic). Yang berubah: lembaran tulisan pindah ke atas, pemantik yang bisa diganti, bar menulis di HP, label "Analisa hari ini" pada hasil, Kebiasaan satu lembaran, Uang satu lembaran buku kas, dan Riwayat langsung melompat ke tulisan.
@@ -54,7 +55,7 @@ Aturan paling penting di file ini. Penekanan itu terbatas; kalau semua ditonjolk
 
 ## 3. Token warna
 
-Definisikan sebagai CSS variables di `globals.css` (siang dan malam, lewat `light-dark()`). **Dilarang menulis hex di komponen**, pakai token. Pengecualian yang dicatat: meta `theme-color` dan manifest PWA, yang hanya menerima warna harfiah (`THEME_COLOR` di `src/lib/theme.ts`).
+Definisikan sebagai CSS variables di `globals.css` (siang dan malam, lewat `light-dark()`). **Dilarang menulis hex di komponen**, pakai token. Pengecualian yang dicatat: meta `theme-color` dan manifest PWA, yang hanya menerima warna harfiah (`THEME_COLOR` di `src/lib/theme.ts`), serta gambar bagikan Open Graph (`SHARE_IMAGE_COLOR` di file yang sama, 2026-11-22).
 
 **Mode siang dan malam.** Siang adalah bawaan untuk semua orang, **apa pun pilihan sistem**. Malam dipilih lewat sakelar di header (tidak lagi diulang di Akun, keputusan user 2026-11-19), disimpan di satu cookie `satupersen-theme` yang hanya berisi `light` atau `dark`, lalu server memasang kelas `dark` di `<html>` sejak byte pertama. Tidak ada kolom database untuk ini, karena ini preferensi tampilan, bukan data user.
 
@@ -565,10 +566,10 @@ Menambah dan melonggarkan §12:
 ### 14.8 Belum diputuskan
 
 Jangan dikerjakan atau ditebak sampai user memutuskan:
-- Layar Masuk dan Onboarding masih memakai lembaran binder di wireframe. Belum diputuskan apakah ikut prinsip 2 (kertas hanya untuk catatan). (Contoh hasil di hero landing sudah diputuskan, lihat §14.9.)
+- ~~Layar Masuk dan Onboarding masih memakai lembaran binder di wireframe.~~ Diputuskan 2026-11-22: kartu polos (§15.6).
 - Garis bawah coretan pada frasa kunci di "Untuk besok" butuh AI menandai frasanya, yang berarti mengubah skema output AI (PRD). Sampai diputuskan, "Untuk besok" tanpa coretan.
 - §6 "Isi buku" menyuntikkan warna mode malam ke buku, sedangkan prinsip 4 meminta isi buku tidak diubah. User perlu memilih salah satu.
-- Mode malam versi 5 (lubang binder, selotip, cap, tab pembatas) dan tampilan laptop belum digambar.
+- ~~Mode malam versi 5 dan tampilan laptop belum digambar.~~ Diputuskan 2026-11-22 (§15.1, §15.4).
 - Layar yang belum digambar di wireframe: lupa dan reset password, form tambah materi, isi dari screenshot, tambah pemasukan, atur budget, halaman privasi dan syarat, serta keadaan kosong, memuat, dan gagal. Saat dibuat, ikuti §14.6.
 
 ### 14.9 Landing (keputusan user 2026-11-17)
@@ -581,3 +582,74 @@ User meminta landing "sesuai dengan wireframe". Untuk landing, **artboard Landin
 Urutan: header (logo, sakelar mode, tombol sekunder "Masuk"), hero, Satu persen itu kecil, Cara kerja (kepala bagian, tiga baris dengan turus), Yang ikut dicatat (baris dengan sakelar sungguhan yang memperlihatkan penjelasannya), Curhat lewat WhatsApp (kartu polos berisi contoh chat), Privasi (centang coretan), Harga (Gratis di kartu polos, Premium berupa deret catatan tempel §14.3), Tanya jawab (baris yang terbuka di tempat), pita penutup `primary`, lalu wordmark besar dan tautan Masuk, Privasi, Syarat layanan. Teks yang di wireframe masih tanda kurung siku diisi dari landing sebelumnya; angka paket dari `src/config/plans.ts`.
 
 **Lebar layar (user 2026-11-17: "plek ketiplek wireframe di HP jadi paksa di web padahal kamu sesuaikan aja").** Wireframe hanya menggambar HP. Di bawah 768 px landing mengikuti wireframe apa adanya. Dari 768 px potongan yang sama ditata untuk layar lebar dalam bingkai 1080 px: header dengan tautan bagian; hero dua kolom (judul sampai 60 px di kiri, contoh lembaran di kanan); cap "37,8×" 240 px di kiri dengan kalimat, penggeser, dan catatan di kanan; Cara kerja dan Privasi tiga kolom; Yang ikut dicatat dua kolom; WhatsApp teks dan contoh chat berdampingan; Harga: Gratis dan Premium berdampingan dari 1024 px, di baris yang sama (CSS subgrid) sehingga judul keduanya sejajar dan kartu Gratis setinggi grid catatan, berisi "Rp 0", daftar isi paket bercentang coretan (angka dari `plans.ts`), dan tombol di bawah (user 2026-11-17: kartu kecil "kaya aneh"); di bawah 1024 px kartu Gratis tetap seperti wireframe; tanya jawab selebar 760 px; pita penutup dan footer satu baris. Pilihan paket premium (di landing dan Akun > Paket) dari 768 px berupa grid 2 × 2 yang dipilih dengan mengetuk catatannya (catatan terpilih diberi cincin `primary`), karena di layar lebar tidak ada catatan "di tengah"; di HP tetap digeser. Setiap catatan berisi radio sungguhan.
+
+## 15. Optimasi versi 5.1 (disetujui user 2026-11-22)
+
+Dua belas usulan dari kanvas optimasi. Tetap dalam token §3, huruf §4, dan komponen §14. Butir ini menggantikan butir lama yang bertentangan.
+
+### 15.1 Laptop dua kolom (usulan 1)
+
+Dari 1024 px, Hari Ini dan Uang memakai bingkai 1040 px dengan dua kolom: kiri selebar sisa ruang (lembaran binder, tetap fokus), kanan 300 px untuk isian pendek dan satu tombol primary. Di bawah 1024 px tetap satu kolom dengan urutan yang sama seperti sekarang.
+- **Hari Ini, kanan:** mood, energi, kebiasaan, lalu tombol "Analisa hari ini". Setelah dianalisa, kolom kanan tetap berisi mood, energi, dan kebiasaan.
+- **Uang, kanan:** tombol "Catat uang" (§15.3) lalu kartu Perkembangan. Kiri: buku kas dan catatan bulan ini.
+- Tanpa baris petunjuk pintasan keyboard.
+
+### 15.2 Hari Ini: yang ikut dianalisa (usulan 2)
+
+Di bawah 1024 px dan sebelum dianalisa, tepat di atas tombol "Analisa hari ini": kepala bagian "Yang ikut dianalisa" dengan info "3 dari 4 terisi" (tanpa kebiasaan: "dari 3"), lalu baris 48 px: Tulisan (jumlah kata), Perasaan (kata terpilih, Lora miring `primary`), Energi, dan Kebiasaan ("2 dari 3", hanya bila ada kebiasaan). Yang terisi diberi centang coretan; yang belum diberi garis pendek `text-muted`, kalimat "belum diisi", dan tautan "Isi" yang melompat ke bagiannya. Tidak ada yang wajib kecuali satu kalimat tulisan (§7). Di laptop bagian ini tidak tampil, karena semuanya sudah terlihat di kolom kanan.
+
+### 15.3 Uang: satu tombol catat (usulan 3)
+
+Menggantikan tombol primary "Tambah pengeluaran", tombol sekunder "Tambah pemasukan", dan tautan "Isi dari screenshot bank" di §2 dan §14.3. Di halaman hanya ada satu tombol primary "Catat uang" (ikon Plus). Sheet "Catat uang" diawali kontrol segmen "Uang keluar | Uang masuk" (bawaannya keluar, jadi pengeluaran tetap satu ketukan), lalu form biasa yang kategorinya mengikuti jenis. Tautan "Dari screenshot bank" (ikon ScanText) ada tepat di bawah kontrol segmen dan membuka alur §8 "Isi dari screenshot". Judul sheet pengeluaran dan pemasukan baru: "Catat uang".
+
+### 15.4 Mode malam versi 5 (usulan 4)
+
+Semua bentuk versi 5 di mode malam memakai token malam §3 tanpa warna baru. Butir §14.8 "Mode malam versi 5 belum digambar" ditutup.
+
+### 15.5 Memuat, gagal, dan kosong (usulan 5)
+
+- **Memuat:** Hari Ini, Uang, Kebiasaan, Belajar, dan Progres punya bentuk memuat masing-masing yang meniru susunan layarnya (kepala layar, lembaran, baris), supaya isi tidak melompat saat tampil. Bidang diam `surface-muted` tanpa denyut, dan "Memuat…" untuk pembaca layar.
+- **Gagal:** kartu polos rata tengah, ikon garis dalam lingkaran `primary-soft` 56 px, judul "Halaman ini belum bisa dibuka", kalimat "Yang sudah tersimpan tetap aman.", dan tombol sekunder "Coba lagi".
+- **Progres kosong:** selama hari berskor belum cukup untuk persen (3 hari), kartu kosong memakai turus dan "2 dari 3 hari" sebagai hitungan menuju grafik. Ini pengecualian dari §14.6 butir 5 (turus untuk hitungan beruntun).
+
+### 15.6 Masuk (usulan 6)
+
+Masuk, Lupa password, dan Buat password baru memakai kartu polos radius 14 (§14.4), bukan lembaran binder. Butir §14.8 tentang Masuk ditutup. Di Masuk, tombol sekunder "Masuk dengan Google" ada paling atas, lalu pemisah "atau dengan email", lalu form email dan password dengan satu tombol primary. Onboarding tetap seperti sekarang.
+
+### 15.7 Kebiasaan (usulan 7 sampai 9)
+
+- **Pekan ini:** hanya di halaman Kebiasaan. Di bawah tiap baris ada tujuh tanda untuk tujuh hari terakhir sampai hari ini, masing-masing dengan nama hari pendek 12 px: centang coretan `primary` untuk hari yang dicentang, garis pendek `control` untuk yang terlewat, lingkaran titik-titik untuk hari ini yang belum dicentang. Satu label untuk pembaca layar per baris.
+- **Kemarin terlewat:** bila sebuah kebiasaan kemarin terlewat, hari ini belum dicentang, dan streak-nya masih hidup, satu catatan tempel muncul di atas daftar "Centang hari ini": judul "Kemarin terlewat, tidak apa-apa", isi Lora miring "Centang {nama} hari ini, streak-nya tetap jalan." (beberapa kebiasaan disambung "dan"). Barisnya menulis "Kemarin terlewat" 14 `text-muted` di bawah nama, juga di Hari Ini. Tidak pernah muncul setelah streak putus.
+- **Satu daftar:** bagian "Kelola" dihapus. Tiap baris di "Centang hari ini" mendapat tombol ikon titik tiga 44 px ("Atur {nama}") di kanan, terpisah dari area centang, yang membuka sheet "Ubah kebiasaan". Di sheet, di bawah tombol Simpan dan garis `rule`: tautan "Arsipkan kebiasaan" dengan kalimat "Hilang dari daftar, riwayat centangnya tetap tersimpan.", lalu konfirmasi di tempat "Ya, arsipkan" (sekunder) dan "Batal".
+
+### 15.8 Belajar (usulan 10 sampai 12)
+
+- **Review satu kartu:** lembaran "Review hari ini" menampilkan satu pertanyaan sekali waktu, dengan "1 dari 3" dan titik penanda di kepala bagian. Urutannya: jawab dari ingatan, "Lihat jawaban", nilai (Lupa, Ragu, Ingat), lalu "Lanjut" ke pertanyaan berikutnya; di pertanyaan terakhir tombolnya "Simpan review" dan semua penilaian disimpan sekaligus. Tautan "Sebelumnya" untuk kembali ke kartu sebelumnya. Menggantikan sesi review di §6 dan §8.
+- **Penunjuk langkah:** di bawah judul tiap materi, tiga langkah "Tempel bahan", "Jelaskan", "Review" dengan lingkaran 32 px: selesai berisi centang coretan di `primary-soft`, langkah sekarang berisi angka di `primary` dan labelnya tebal, sisanya bertepi `control`. Diambil dari status materi.
+- **Ringkasan dan lanjut:** setelah review tersimpan, lembaran "Review hari ini selesai" diawali hitungan Ingat, Ragu, dan Lupa, lalu "Muncul lagi" per tanggal. Bila materi lain masih menunggu review hari ini, di bawah lembaran ada tombol primary "Lanjut ke {judul}" dengan "{n} pertanyaan menunggu"; bila tidak ada, tautan "Kembali ke Belajar".
+
+## 16. Uang: e-statement dan Analisa (disetujui user 2026-11-22)
+
+Untuk PRD EXP-9 dan EXP-10. Arah Analisa dipilih user dari tiga arah di kanvas https://claude.ai/artifact/1mGgjfW3Y1gox1rG23o5rj (privat): **C, layar Analisa sendiri**. Bila kanvas dan teks ini berbeda, teks ini yang berlaku. Tidak ada token, font, bentuk coretan, atau wadah baru (§14.6).
+
+### 16.1 Dari e-statement (EXP-9)
+
+- **Pintu masuk.** Di sheet "Catat uang", tepat di bawah kontrol segmen, dua tautan sejajar (turun ke baris berikutnya bila sempit): "Dari screenshot bank" (ScanText) dan "Dari e-statement" (FileText). Keduanya tautan, tidak bersaing dengan "Simpan". Pemilih file menerima PDF, CSV, XLSX, dan XLS.
+- **Akun gratis.** Mengetuk "Dari e-statement" tidak membuka pemilih file; sheet berganti judul "Dari e-statement" dan berisi satu kalimat 16 ("Baca e-statement ada di Premium. Mutasi dari PDF, CSV, atau Excel bankmu jadi daftar transaksi yang tinggal dicentang."), tombol soft "Lihat Premium" ke Paket, dan tautan "Isi manual".
+- **Membaca.** Judul "Dari e-statement", status 16 dengan progres sungguhan ("Membuka file…", "Membaca halaman 2 dari 5…", "Merapikan transaksinya…"), dua garis skeleton `surface-muted`, dan satu kalimat 14 `text-muted` bahwa file tidak diunggah dan hanya tulisannya yang dikirim dengan nomor rekening dan nama disamarkan.
+- **PDF berpassword.** Kalimat "PDF ini dikunci password.", input password berlabel "Password PDF" (16 px, `autocomplete="off"`), tombol primary "Buka", dan tautan "Pilih file lain". Password salah: "Password-nya belum cocok." di baris status. Password tidak disimpan di mana pun.
+- **Cek hasil.** Judul "Cek hasil e-statement". Kotak `surface-muted` radius 12 berisi "38 transaksi terbaca. Centang yang mau disimpan.", ditambah bila perlu "3 sepertinya sudah tercatat, tidak dicentang.", "2 lebih dari setahun lalu, dilewati.", atau "Sebagian isi file belum terbaca, jadi mungkin ada yang terlewat." Di bawahnya tautan kecil "Centang semua" atau "Kosongkan centang". Lalu daftar baris minimal 56 px bergaris `rule`: kotak centang 22 px radius 6 (tepi `control`; tercentang berisi `primary` dengan ikon Check `primary-foreground`, penanda state kecil §2), catatan 16 (atau nama kategori bila tanpa catatan) satu baris terpotong, di bawahnya 14 `text-muted` "Sab, 15 Nov · Makan" dan "· Sudah tercatat" bila sama dengan catatan yang ada, nominal di kanan (pemasukan diberi "+"). Satu tombol primary "Simpan 35 transaksi" menempel di bawah sheet selama daftar digulir; tanpa centang tombolnya nonaktif dengan label "Pilih transaksinya dulu". Gagal membaca: kalimat penyebab dan langkahnya, tombol sekunder "Pilih file lain", dan tautan "Isi manual".
+- **Setelah simpan.** Sheet tertutup; baris status di bawah buku kas menulis "35 transaksi tersimpan." dan, bila sebagian besar transaksinya di bulan lain, tautan "Lihat Oktober 2026".
+
+### 16.2 Analisa uang (EXP-10, arah C)
+
+- **Di Uang.** Satu kartu polos yang seluruhnya tautan, tepat di bawah tombol "Catat uang" (di laptop: kolom kanan, di antara tombol dan Perkembangan), mengikuti baris menu Akun (§14.3): ikon ChartLine dalam lingkaran `primary-soft` 36 px, judul 16/600 "Analisa November", keterangan 14 `text-muted` berupa satu fakta yang dihitung server ("Makan paling besar, 37%"), chevron. Tidak tampil bila bulan itu belum punya pengeluaran.
+- **Layar Analisa** (`/expenses/analysis`, lebar 640 px seperti Uang). Tautan kembali "Uang" seperti Paket, judul "Analisa uang", lalu berurutan:
+  1. **Analisa AI (Premium, sudah ada).** Lembaran binder: kop "Bulan / November 2026" dan "Dibaca / sampai 22 November" (§14.3 Kop), paragraf analisa Lora 18 di garis buku **tanpa garis bawah coretan** (teks di garis buku sudah bergaris, §14.1 aturan 3), lalu catatan tempel "Untuk bulan depan" di dalam lembaran.
+  2. **Analisa AI (Premium, belum ada).** Keadaan kosong §14.3: kartu polos rata tengah, ikon Stamp dalam lingkaran `primary-soft` 56 px, kalimat 16 `text-muted` "AI membaca angka dan catatan uangmu bulan ini, lalu menuliskan yang menonjol.", tombol primary "Analisa bulan ini" (satu-satunya primary di layar; saat berjalan "Menganalisa…").
+  3. **Akun gratis.** Kartu polos yang sama dengan kalimat "Analisa AI ada di Premium. Grafiknya tetap bisa kamu pakai." dan tombol soft "Lihat Premium". Analisa yang sudah tersimpan tetap tampil seperti butir 1, tanpa tombol perbarui.
+  4. **Laju pengeluaran.** Langsung di halaman dengan kepala bagian (info kanan "1–22 November"), kalimat 16 "**Rp 4.120.000** keluar sejauh ini." (bulan lampau: "keluar bulan itu."), kalimat 14 `text-muted` dengan garis bawah coretan pada selisihnya ("Rp 226.000 lebih banyak dari 1–22 Oktober"; "lebih sedikit"; "sama dengan"). Grafik garis §14.3: bulan ini garis `primary` 2,5 px dengan area 7%, bulan sebelumnya garis `rule-strong` 2 px, kisi putus-putus `border`, sumbu bawah `control`, titik hari ini dengan lingkaran coretan dan label "hari ini" Lora miring 14 `primary` (hanya bulan berjalan). Legenda teks dan tabel tersembunyi wajib karena garis bulan lalu berkontras rendah.
+  5. **Ke mana uangmu pergi.** Kepala bagian (info kanan total keluar), baris 56 px bergaris `rule`: nama kategori dan nominal, di bawahnya batang track `surface-muted` isi `primary` selebar persennya dari total, persen 14 `text-muted` di kanan. Satu tinta untuk semua kategori; tanpa warna per kategori.
+  6. **Perbarui.** Di bawah semuanya, untuk Premium yang sudah punya analisa: tombol sekunder "Perbarui analisa" (ikon RefreshCw) dan kalimat 14 `text-muted` "Dibaca AI dari catatanmu, 22 November 14.05". Bila sudah diperbarui hari ini, tombolnya nonaktif dengan label "Bisa diperbarui lagi besok".
+- **Kosong.** Bulan tanpa pengeluaran: keadaan kosong §14.3 dengan ikon ChartLine, "Belum ada pengeluaran di November 2026.", dan tautan "Kembali ke Uang".
+- **Memuat.** Bentuk memuat meniru susunan layar (§15.5): judul, lembaran, kepala bagian, dan baris.

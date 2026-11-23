@@ -1,19 +1,24 @@
 import {
   buildChatUserPrompt,
   buildDailySummaryUserPrompt,
+  buildMoneyAnalysisUserPrompt,
   buildReceiptUserPrompt,
   buildReportUserPrompt,
+  buildStatementUserPrompt,
   buildStudyExplanationUserPrompt,
   buildStudyReviewUserPrompt,
   DAILY_SUMMARY_SYSTEM_PROMPT,
+  MONEY_ANALYSIS_SYSTEM_PROMPT,
   RECEIPT_SYSTEM_PROMPT,
   REPORT_BRIEF_SYSTEM_PROMPT,
   REPORT_FULL_SYSTEM_PROMPT,
+  STATEMENT_SYSTEM_PROMPT,
   STUDY_EXPLANATION_SYSTEM_PROMPT,
   STUDY_REVIEW_SYSTEM_PROMPT,
   WHATSAPP_CHAT_SYSTEM_PROMPT,
   type ChatTurn,
   type DailySummaryPromptInput,
+  type MoneyAnalysisPromptInput,
   type ReportPromptInput,
   type StudyExplanationPromptInput,
   type StudyReviewPromptInput,
@@ -25,15 +30,19 @@ import {
   parseDailySummary,
   parseExplanationCheck,
   parseFullReport,
+  parseMoneyAnalysis,
   parseReceiptReading,
   parseReviewFeedback,
+  parseStatementReading,
   parseTokenUsage,
   type BriefReportText,
   type ChatReply,
   type DailySummary,
   type ExplanationFeedback,
   type FullReportText,
+  type MoneyAnalysis,
   type ReceiptReading,
+  type StatementReading,
   type ReviewFeedbackItem,
   type StudyQuestion,
   type SummaryLanguage,
@@ -445,6 +454,83 @@ export async function readReceipt(
 
   throw new AiOutputError(
     `The model did not return a usable receipt reading after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+/**
+ * Lists the transactions in one part of a bank or e-wallet statement (PRD.md
+ * EXP-9), with the model of the daily analysis like the screenshot reader.
+ * `text` must already have gone through `prepareStatementText` and
+ * `splitStatementParts` (src/lib/statement.ts). Unusable output is retried once,
+ * then raised, so a part that could not be read is reported instead of guessed (AI-2).
+ */
+export async function readStatementPart(
+  input: { text: string; today: string; part: number; parts: number },
+  onUsage?: UsageSink,
+): Promise<{ reading: StatementReading; model: string }> {
+  const model = getModelFor(RECEIPT_MODEL_ROLE);
+  const messages: ChatMessage[] = [
+    { role: "system", content: STATEMENT_SYSTEM_PROMPT },
+    {
+      role: "user",
+      content: buildStatementUserPrompt({
+        ...input,
+        expenseCategories: EXPENSE_CATEGORIES,
+        incomeCategories: INCOME_CATEGORIES,
+      }),
+    },
+  ];
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return { reading: parseStatementReading(content), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return a usable statement reading after ${ATTEMPTS} attempts: ${
+      lastOutputError?.message ?? "unknown reason"
+    }`,
+  );
+}
+
+/**
+ * Writes the premium "Analisa uang" of one month (PRD.md EXP-10) with the model
+ * of the reports: a little more text than a daily analysis, from numbers the
+ * server already counted. Unusable output is retried once, then raised (AI-2).
+ */
+export async function writeMoneyAnalysis(
+  input: MoneyAnalysisPromptInput,
+  onUsage?: UsageSink,
+): Promise<{ analysis: MoneyAnalysis; model: string }> {
+  const model = getModelFor("report");
+  const messages: ChatMessage[] = [
+    { role: "system", content: MONEY_ANALYSIS_SYSTEM_PROMPT },
+    { role: "user", content: buildMoneyAnalysisUserPrompt(input) },
+  ];
+
+  let lastOutputError: Error | null = null;
+
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+    const content = await requestCompletion(model, messages, onUsage);
+
+    try {
+      return { analysis: parseMoneyAnalysis(content), model };
+    } catch (error) {
+      lastOutputError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw new AiOutputError(
+    `The model did not return a usable money analysis after ${ATTEMPTS} attempts: ${
       lastOutputError?.message ?? "unknown reason"
     }`,
   );

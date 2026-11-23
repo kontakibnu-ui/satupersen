@@ -51,7 +51,7 @@ test("tambah pengeluaran: nominal berpemisah ribuan, kategori, catatan; total da
   await expect(page.getByText("Belum ada catatan uang di bulan ini.")).toBeVisible();
   await expect(page.getByText("Rp 0", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await page.getByRole("button", { name: "Catat uang" }).click();
   const amount = page.getByLabel("Nominal");
   await amount.fill("25000");
   await expect(amount).toHaveValue("25.000");
@@ -63,7 +63,7 @@ test("tambah pengeluaran: nominal berpemisah ribuan, kategori, catatan; total da
   await expect(page.getByRole("heading", { name: "Hari ini" })).toBeVisible();
 
   // A second one on the same day adds to the day and the month.
-  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await page.getByRole("button", { name: "Catat uang" }).click();
   await page.getByLabel("Nominal").fill("20000");
   await page.getByRole("radio", { name: "Transport" }).check({ force: true });
   await page.getByRole("button", { name: "Simpan" }).click();
@@ -75,7 +75,7 @@ test("nominal dan kategori wajib: pesan jelas dan tidak ada yang tersimpan (EXP-
   await newUser(page, "wajib");
   await page.goto("/expenses");
 
-  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await page.getByRole("button", { name: "Catat uang" }).click();
   await page.getByRole("button", { name: "Simpan" }).click();
   await expect(page.getByText("Isi nominalnya dulu.")).toBeVisible();
 
@@ -116,7 +116,8 @@ test("tambah pemasukan: sisa uang, masuk, dan keluar tampil; kategori pemasukan 
 
   await expect(page.getByText("Catat pemasukan supaya sisa uangmu kelihatan.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Tambah pemasukan" }).click();
+  await page.getByRole("button", { name: "Catat uang" }).click();
+  await page.getByRole("radio", { name: "Uang masuk" }).check({ force: true });
   await expect(page.getByRole("radio", { name: "Makan" })).toHaveCount(0);
   await page.getByLabel("Nominal").fill("1000000");
   await page.getByRole("radio", { name: "Gaji" }).check({ force: true });
@@ -232,10 +233,10 @@ test("bulan sebelumnya bisa dibuka tanpa tombol tambah, dan bulan depan dipotong
   await expect(page.getByRole("link", { name: "Bulan berikutnya" })).toHaveCount(0);
   await page.getByRole("link", { name: "Bulan sebelumnya" }).click();
   await expect(page.getByRole("button", { name: /Transport\s*Rp 12\.000/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Tambah pengeluaran" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Catat uang" })).toHaveCount(0);
 
   await page.goto("/expenses?bulan=2099-01");
-  await expect(page.getByRole("button", { name: "Tambah pengeluaran" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Catat uang" })).toBeVisible();
 });
 
 /**
@@ -263,7 +264,7 @@ test("tanggal entri: bisa hari sebelumnya di bulan lalu dan ada tautan ke bulann
   const lastMonthDay = daysBefore(firstOfMonth, 10);
   await page.goto("/expenses");
 
-  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await page.getByRole("button", { name: "Catat uang" }).click();
   await expect(page.getByLabel("Tanggal")).toHaveValue(today);
   await page.getByLabel("Nominal").fill("15000");
   await page.getByRole("radio", { name: "Makan" }).check({ force: true });
@@ -281,7 +282,7 @@ test("tanggal entri: bisa hari sebelumnya di bulan lalu dan ada tautan ke bulann
   expect(rows).toEqual([{ date: lastMonthDay, amount: 15000 }]);
 
   await page.goto("/expenses");
-  await page.getByRole("button", { name: "Tambah pengeluaran" }).click();
+  await page.getByRole("button", { name: "Catat uang" }).click();
   await page.getByLabel("Nominal").fill("5000");
   await page.getByRole("radio", { name: "Makan" }).check({ force: true });
   await page.getByLabel("Tanggal").fill(daysBefore(today, -1));
@@ -305,7 +306,8 @@ test("isi dari screenshot: gambar dibaca di perangkat; lewat batas token AI tida
   ]);
   await page.goto("/expenses");
 
-  await page.getByLabel("Isi dari screenshot bank").setInputFiles({ name: "bukti.png", mimeType: "image/png", buffer: shot });
+  await page.getByRole("button", { name: "Catat uang" }).click();
+  await page.getByLabel("Dari screenshot bank").setInputFiles({ name: "bukti.png", mimeType: "image/png", buffer: shot });
   await expect(page.getByRole("heading", { name: "Isi dari screenshot" })).toBeVisible();
 
   // The engine and the language data come from /ocr on this site, under the
@@ -316,7 +318,7 @@ test("isi dari screenshot: gambar dibaca di perangkat; lewat batas token AI tida
   expect(await readRows("expenses", `select=id&user_id=eq.${user.id}`)).toHaveLength(0);
 
   await page.getByRole("button", { name: "Isi manual" }).click();
-  await expect(page.getByRole("heading", { name: "Pengeluaran baru" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Catat uang" })).toBeVisible();
 });
 
 test("isi dari screenshot: gambar tanpa tulisan dijawab jelas tanpa memanggil server, lalu bisa pilih gambar lain (EXP-7)", async ({
@@ -328,7 +330,8 @@ test("isi dari screenshot: gambar tanpa tulisan dijawab jelas tanpa memanggil se
   const blank = await picture(page, []);
   await page.goto("/expenses");
 
-  await page.getByLabel("Isi dari screenshot bank").setInputFiles({ name: "kosong.png", mimeType: "image/png", buffer: blank });
+  await page.getByRole("button", { name: "Catat uang" }).click();
+  await page.getByLabel("Dari screenshot bank").setInputFiles({ name: "kosong.png", mimeType: "image/png", buffer: blank });
   await expect(page.getByText("Tulisan di gambar ini tidak terbaca.", { exact: false })).toBeVisible({ timeout: 120_000 });
   await expect(page.getByLabel("Pilih gambar lain")).toBeAttached();
   expect(await readRows("ai_usage", `select=id&user_id=eq.${user.id}`)).toHaveLength(0);

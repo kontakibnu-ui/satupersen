@@ -140,7 +140,7 @@ async function open(page: Page, scenario: Scenario): Promise<void> {
 
   await signIn(page.context(), user);
   await page.goto(scenario.path());
-  await expect(page.getByRole("heading", { name: "Halaman ini belum bisa ditampilkan" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Halaman ini belum bisa dibuka" })).toHaveCount(0);
   await expect(page.getByRole("main")).toBeVisible();
   await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
 }
@@ -284,31 +284,33 @@ test("Belajar draf: kuota habis menyimpan penjelasan tanpa memanggil AI, dan bah
   expect(await readRows("study_checks", `select=id&user_id=eq.${drafter!.id}`)).toHaveLength(1);
 });
 
-test("Belajar review: jawab dulu, lihat jawaban, nilai sendiri, lalu jadwal bergeser (LEARN-3, LEARN-4)", async ({ page }) => {
+test("Belajar review: satu kartu per pertanyaan, jawab dulu, lihat jawaban, nilai sendiri, lalu jadwal bergeser (LEARN-3, LEARN-4)", async ({ page }) => {
   test.skip(!stackUp, "Supabase lokal belum jalan (npx supabase start)");
 
   await open(page, scenarioNamed("learn-review"));
 
   const session = page.getByRole("region", { name: "Review hari ini" });
-  // Retrieval first: the answers from the material are not on screen yet.
+  // One question at a time (DESIGN.md §15.8), retrieval first: the answer from
+  // the material is not on screen yet.
+  await expect(session.getByText("1 dari 2")).toBeVisible();
   await expect(session.getByText("Menurut bahan")).toHaveCount(0);
-  await expect(session.getByText("Hubungkan dengan pemahamanmu")).toBeVisible();
 
-  const answers = session.getByLabel("Jawabanmu");
-  await answers.nth(0).fill("Cahaya matahari dan air");
+  await session.getByLabel("Jawabanmu").fill("Cahaya matahari dan air");
   await session.getByRole("button", { name: "Lihat jawaban" }).click();
-
-  await expect(session.getByText("Menurut bahan")).toHaveCount(2);
+  await expect(session.getByText("Menurut bahan")).toHaveCount(1);
   await expect(session.getByText("Cahaya matahari, air, dan karbon dioksida.")).toBeVisible();
+
+  // Every question needs the user's own rating before going on.
+  await session.getByRole("button", { name: "Lanjut ke pertanyaan 2" }).click();
+  await expect(session.getByText("Pilih dulu: Lupa, Ragu, atau Ingat.")).toBeVisible();
+  await session.getByRole("group", { name: "Seberapa ingat?" }).getByText("Ingat", { exact: true }).click();
+  await session.getByRole("button", { name: "Lanjut ke pertanyaan 2" }).click();
+
+  await expect(session.getByText("2 dari 2")).toBeVisible();
+  await expect(session.getByText("Hubungkan dengan pemahamanmu")).toBeVisible();
+  await session.getByRole("button", { name: "Lihat jawaban" }).click();
   await expect(session.getByText("Kamu tidak menulis jawaban.")).toBeVisible();
-
-  // Every question needs the user's own rating before saving.
-  await session.getByRole("button", { name: "Simpan review" }).click();
-  await expect(session.getByText("Nilai semua pertanyaan dulu: Lupa, Ragu, atau Ingat.")).toBeVisible();
-
-  const ratings = session.getByRole("group", { name: "Seberapa ingat?" });
-  await ratings.nth(0).getByText("Ingat", { exact: true }).click();
-  await ratings.nth(1).getByText("Lupa", { exact: true }).click();
+  await session.getByRole("group", { name: "Seberapa ingat?" }).getByText("Lupa", { exact: true }).click();
   await session.getByRole("button", { name: "Simpan review" }).click();
 
   const done = page.getByRole("region", { name: "Review hari ini selesai" });
@@ -318,6 +320,9 @@ test("Belajar review: jawab dulu, lihat jawaban, nilai sendiri, lalu jadwal berg
   await expect(done).toContainText("Kamu menilai: Lupa. Muncul lagi besok.");
   // No check is left today, so no AI call was made and the reason is shown.
   await expect(done).toContainText("Pemeriksaan AI hari ini sudah terpakai.");
+  // The summary on top (DESIGN.md §15.8) and the way back when nothing else waits.
+  await expect(done).toContainText("Muncul lagi");
+  await expect(page.getByRole("link", { name: "Kembali ke Belajar" })).toBeVisible();
 
   const questions = await readRows<{ id: string; step: number; due_date: string }>(
     "study_questions",

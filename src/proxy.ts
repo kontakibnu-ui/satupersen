@@ -32,6 +32,11 @@ const PUBLIC_PATHS = [
   "/terms",
   "/auth/callback",
   "/manifest.webmanifest",
+  // Read by search engines and AI assistants (SEO and GEO), never user data.
+  "/robots.txt",
+  "/sitemap.xml",
+  "/llms.txt",
+  "/opengraph-image",
 ];
 
 function isPublicPath(pathname: string): boolean {

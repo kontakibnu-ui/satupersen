@@ -3,9 +3,9 @@ import { Brand } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
- * The frame of the screens before the app (login and onboarding): the brand and
- * the day and night switch on top, one sheet in the middle of the page, and the
- * disclaimer under it.
+ * The frame of the screens before the app (login, password reset, onboarding):
+ * the brand and the day and night switch on top, and one plain card (DESIGN.md
+ * §15.6, radius 14 as in §14.4) in the middle of the page.
  */
 export function AuthShell({
   title,
@@ -26,7 +26,7 @@ export function AuthShell({
       </header>
 
       <main className="my-auto py-8">
-        <div className="rounded-3xl border border-border bg-surface p-6 md:p-8">
+        <div className="rounded-[14px] border border-border bg-surface p-6 md:p-8">
           <h1 className="font-heading text-title font-bold text-text">{title}</h1>
           {description ? <div className="mt-2 text-base text-text-muted">{description}</div> : null}
           {children}

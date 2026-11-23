@@ -342,6 +342,25 @@ export async function deleteUserByEmail(email: string): Promise<void> {
 }
 
 /** One metered AI call, written the way src/lib/ai/usage.ts writes it (service role). */
+/** A stored "Analisa uang" (EXP-10), as the server writes it after the model answered. */
+export async function seedMoneyAnalysis(
+  user: TestUser,
+  month: string,
+  generatedOn: string,
+  paragraphs: string[] = ["Makan paling besar bulan ini, dan kebanyakan di akhir pekan."],
+  nextMonth = "Coba jatah makan di luar per minggu.",
+): Promise<void> {
+  await rest("money_analyses", "POST", {
+    user_id: user.id,
+    month: `${month}-01`,
+    paragraphs,
+    next_month: nextMonth,
+    through_date: generatedOn,
+    generated_on: generatedOn,
+    model: "uji",
+  });
+}
+
 export async function seedAiUsage(user: TestUser, promptTokens: number, completionTokens = 0): Promise<void> {
   await rest("ai_usage", "POST", {
     user_id: user.id,

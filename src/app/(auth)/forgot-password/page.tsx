@@ -3,6 +3,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: true },
   title: "Lupa password · Satu Persen",
 };
 

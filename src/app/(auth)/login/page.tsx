@@ -4,6 +4,7 @@ import { safeNextPath } from "@/lib/redirects";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
+  robots: { index: false, follow: true },
   title: "Masuk · Satu Persen",
 };
 
@@ -23,9 +24,7 @@ export default async function LoginPage({
     <AuthShell
       title={signingUp ? "Buat akun Satu Persen" : "Masuk ke Satu Persen"}
       description={
-        signingUp
-          ? "Pakai email dan password pilihanmu."
-          : "Masuk dengan email dan passwordmu."
+        signingUp ? "Mulai catatan harianmu, gratis." : "Lanjutkan catatan harianmu."
       }
     >
       <LoginForm mode={signingUp ? "daftar" : "masuk"} next={safeNextPath(next)} failed={status === "gagal"} />
